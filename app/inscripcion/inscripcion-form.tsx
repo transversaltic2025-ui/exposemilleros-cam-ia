@@ -18,6 +18,7 @@ import {
   SEMILLEROS,
 } from "@/lib/constants";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { validatePosterFile, validateProjectDocumentFile } from "@/lib/upload-limits";
 
 const optionalEmail = z.union([z.string().email("Correo invalido."), z.literal("")]).optional();
 
@@ -138,6 +139,28 @@ function createCodigoTemporal() {
   return `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function uploadValidationError(kind: UploadKind, reason?: string, fallback?: string) {
+  if (kind === "archivo") {
+    if (reason === "size") {
+      return "El archivo supera el límite de 8 MB.";
+    }
+    if (reason === "editable") {
+      return "No se permiten formatos editables. Exporte el documento como PDF.";
+    }
+
+    return fallback ?? "El documento del proyecto debe estar en PDF.";
+  }
+
+  if (reason === "size") {
+    return "El póster supera el límite de 3 MB.";
+  }
+  if (reason === "editable") {
+    return "No se permiten formatos editables. Exporte el póster como PDF o imagen.";
+  }
+
+  return fallback ?? "El póster solo puede ser PDF, JPG, PNG o WEBP.";
+}
+
 export function InscripcionForm() {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -172,13 +195,45 @@ export function InscripcionForm() {
     const setStatus = kind === "archivo" ? setArchivoStatus : setPosterStatus;
     const setMetadata = kind === "archivo" ? setArchivoMetadata : setPosterMetadata;
     const setError = kind === "archivo" ? setArchivoError : setPosterError;
+    const validation = kind === "archivo"
+      ? validateProjectDocumentFile(file)
+      : validatePosterFile(file);
 
-    setStatus("uploading");
     setMetadata(null);
     setError(null);
 
+    console.log("[inscripcion] validacion de archivo seleccionado", {
+      kind,
+      fileName: file.name,
+      contentType: file.type,
+      fileSize: file.size,
+      valid: validation.valid,
+      reason: validation.reason,
+    });
+
+    if (!validation.valid) {
+      console.warn("[inscripcion] archivo rechazado antes de solicitar signed upload URL", {
+        kind,
+        fileName: file.name,
+        contentType: file.type,
+        fileSize: file.size,
+        reason: validation.reason,
+      });
+      setStatus("error");
+      setError(uploadValidationError(kind, validation.reason, validation.error));
+      return;
+    }
+
+    setStatus("uploading");
+
     try {
       const contentType = file.type || "application/octet-stream";
+      console.log("[inscripcion] solicitando signed upload URL", {
+        kind,
+        fileName: file.name,
+        contentType,
+        fileSize: file.size,
+      });
       const response = await fetch("/api/storage/create-upload-url", {
         method: "POST",
         headers: {
@@ -189,6 +244,7 @@ export function InscripcionForm() {
           tipo: kind,
           fileName: file.name,
           contentType,
+          fileSize: file.size,
         }),
       });
 
@@ -243,6 +299,14 @@ export function InscripcionForm() {
     setSubmitError(null);
     if (archivoStatus === "uploading" || posterStatus === "uploading") {
       setSubmitError("Espera a que termine la subida de archivos.");
+      return;
+    }
+    if (archivoStatus === "error") {
+      setSubmitError("Corrige el error del archivo del proyecto antes de registrar.");
+      return;
+    }
+    if (posterStatus === "error") {
+      setSubmitError("Corrige el error del póster antes de registrar.");
       return;
     }
     if (!archivoMetadata) {
@@ -391,7 +455,7 @@ export function InscripcionForm() {
           <Input
             id="archivo_proyecto"
             type="file"
-            accept=".pdf,.doc,.docx"
+            accept=".pdf,application/pdf"
             name={archivoProyectoRegister.name}
             ref={archivoProyectoRegister.ref}
             onBlur={archivoProyectoRegister.onBlur}
@@ -400,11 +464,23 @@ export function InscripcionForm() {
               const file = event.target.files?.item(0);
               if (file) {
                 await uploadSelectedFile("archivo", file);
+              } else {
+                setArchivoMetadata(null);
+                setArchivoError(null);
+                setArchivoStatus("idle");
               }
             }}
           />
-          <p className="text-sm text-[var(--color-muted)]">Se subirá directamente a Supabase Storage.</p>
-          <UploadState status={archivoStatus} uploadedText="Archivo cargado correctamente" error={archivoError} />
+          <p className="text-sm text-[var(--color-muted)]">
+            Suba el documento final del proyecto en PDF. Máximo 8 MB. No se permiten archivos editables como Word, PowerPoint o Excel.
+          </p>
+          <UploadState
+            status={archivoStatus}
+            uploadingText="Subiendo archivo..."
+            uploadedText="Archivo cargado correctamente"
+            defaultErrorText="Error al subir archivo"
+            error={archivoError}
+          />
         </div>
         <div className="grid gap-2 rounded-2xl border border-dashed border-[#6D3FA9]/30 bg-white/48 p-5">
           <Label htmlFor="poster_proyecto" className="inline-flex items-center gap-2">
@@ -414,7 +490,7 @@ export function InscripcionForm() {
           <Input
             id="poster_proyecto"
             type="file"
-            accept=".pdf,.png,.jpg,.jpeg"
+            accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
             name={posterProyectoRegister.name}
             ref={posterProyectoRegister.ref}
             onBlur={posterProyectoRegister.onBlur}
@@ -423,17 +499,37 @@ export function InscripcionForm() {
               const file = event.target.files?.item(0);
               if (file) {
                 await uploadSelectedFile("poster", file);
+              } else {
+                setPosterMetadata(null);
+                setPosterError(null);
+                setPosterStatus("idle");
               }
             }}
           />
-          <p className="text-sm text-[var(--color-muted)]">Acepta PDF o imagen. Se subirá directamente a Supabase Storage.</p>
-          <UploadState status={posterStatus} uploadedText="Póster cargado correctamente" error={posterError} />
+          <p className="text-sm text-[var(--color-muted)]">
+            Suba el póster en PDF o imagen JPG, PNG o WEBP. Máximo 3 MB. No se permiten archivos editables.
+          </p>
+          <UploadState
+            status={posterStatus}
+            uploadingText="Subiendo póster..."
+            uploadedText="Póster cargado correctamente"
+            defaultErrorText="Error al subir póster"
+            error={posterError}
+          />
         </div>
       </div>
 
+      <p className="text-sm font-semibold text-[var(--color-muted)]">
+        Estos límites permiten almacenar aproximadamente 80 proyectos con documento y póster dentro del espacio gratuito disponible.
+      </p>
+
       {submitError ? <p className="text-sm font-semibold text-red-700">{submitError}</p> : null}
 
-      <Button type="submit" size="lg" disabled={isSubmitting || archivoStatus === "uploading" || posterStatus === "uploading"}>
+      <Button
+        type="submit"
+        size="lg"
+        disabled={isSubmitting || !archivoMetadata || archivoStatus === "uploading" || posterStatus === "uploading" || archivoStatus === "error" || posterStatus === "error"}
+      >
         Registrar proyecto
       </Button>
     </form>
@@ -442,21 +538,25 @@ export function InscripcionForm() {
 
 function UploadState({
   status,
+  uploadingText,
   uploadedText,
+  defaultErrorText,
   error,
 }: {
   status: UploadStatus;
+  uploadingText: string;
   uploadedText: string;
+  defaultErrorText: string;
   error?: string | null;
 }) {
   if (status === "uploading") {
-    return <p className="text-sm font-semibold text-[var(--color-primary)]">Subiendo archivo...</p>;
+    return <p className="text-sm font-semibold text-[var(--color-primary)]">{uploadingText}</p>;
   }
   if (status === "uploaded") {
     return <p className="text-sm font-semibold text-green-700">{uploadedText}</p>;
   }
   if (status === "error") {
-    return <p className="text-sm font-semibold text-red-700">{error ?? "Error al subir archivo"}</p>;
+    return <p className="text-sm font-semibold text-red-700">{error ?? defaultErrorText}</p>;
   }
 
   return null;

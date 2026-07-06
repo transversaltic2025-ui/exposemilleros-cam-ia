@@ -3,6 +3,12 @@ import { z } from "zod";
 
 import { createProject, generateProjectCode, shouldUseMockData } from "@/lib/supabase/queries";
 import { uploadProjectFile } from "@/lib/supabase/storage";
+import {
+  validatePosterFile,
+  validatePosterMetadata,
+  validateProjectDocumentFile,
+  validateProjectDocumentMetadata,
+} from "@/lib/upload-limits";
 
 const optionalEmail = z.union([z.string().email(), z.literal("")]).optional();
 
@@ -270,6 +276,91 @@ function normalizeFileMetadata(source: Record<string, unknown>) {
   });
 }
 
+function validateRegisteredFileMetadata(fileMetadata: z.infer<typeof fileMetadataSchema>) {
+  console.log("[projects/register] validando archivo principal", {
+    path: fileMetadata.archivo_proyecto_path,
+    fileName: fileMetadata.archivo_proyecto_nombre,
+    contentType: fileMetadata.archivo_proyecto_tipo,
+    fileSize: fileMetadata.archivo_proyecto_size,
+  });
+
+  if (!fileMetadata.archivo_proyecto_path) {
+    return "El archivo del proyecto es obligatorio.";
+  }
+  if (!fileMetadata.archivo_proyecto_nombre) {
+    return "El nombre del archivo del proyecto es obligatorio.";
+  }
+
+  const documentValidation = validateProjectDocumentMetadata({
+    fileName: fileMetadata.archivo_proyecto_nombre,
+    contentType: fileMetadata.archivo_proyecto_tipo ?? "",
+    fileSize: fileMetadata.archivo_proyecto_size ?? 0,
+  });
+
+  console.log("[projects/register] validacion de archivo principal", {
+    fileName: fileMetadata.archivo_proyecto_nombre,
+    contentType: fileMetadata.archivo_proyecto_tipo,
+    fileSize: fileMetadata.archivo_proyecto_size,
+    valid: documentValidation.valid,
+    reason: documentValidation.reason,
+  });
+
+  if (!documentValidation.valid) {
+    console.warn("[projects/register] error de validacion de archivo principal", {
+      path: fileMetadata.archivo_proyecto_path,
+      fileName: fileMetadata.archivo_proyecto_nombre,
+      contentType: fileMetadata.archivo_proyecto_tipo,
+      fileSize: fileMetadata.archivo_proyecto_size,
+      reason: documentValidation.reason,
+      error: documentValidation.error,
+    });
+    return documentValidation.error ?? "El documento del proyecto no cumple los requisitos.";
+  }
+
+  if (fileMetadata.poster_proyecto_path) {
+    console.log("[projects/register] validando poster", {
+      path: fileMetadata.poster_proyecto_path,
+      fileName: fileMetadata.poster_proyecto_nombre,
+      contentType: fileMetadata.poster_proyecto_tipo,
+      fileSize: fileMetadata.poster_proyecto_size,
+    });
+
+    if (!fileMetadata.poster_proyecto_nombre) {
+      return "El nombre del poster es obligatorio.";
+    }
+
+    const posterValidation = validatePosterMetadata({
+      fileName: fileMetadata.poster_proyecto_nombre ?? "",
+      contentType: fileMetadata.poster_proyecto_tipo ?? "",
+      fileSize: fileMetadata.poster_proyecto_size ?? 0,
+    });
+
+    console.log("[projects/register] validacion de poster", {
+      fileName: fileMetadata.poster_proyecto_nombre,
+      contentType: fileMetadata.poster_proyecto_tipo,
+      fileSize: fileMetadata.poster_proyecto_size,
+      valid: posterValidation.valid,
+      reason: posterValidation.reason,
+    });
+
+    if (!posterValidation.valid) {
+      console.warn("[projects/register] error de validacion de poster", {
+        path: fileMetadata.poster_proyecto_path,
+        fileName: fileMetadata.poster_proyecto_nombre,
+        contentType: fileMetadata.poster_proyecto_tipo,
+        fileSize: fileMetadata.poster_proyecto_size,
+        reason: posterValidation.reason,
+        error: posterValidation.error,
+      });
+      return posterValidation.error ?? "El poster no cumple los requisitos.";
+    }
+  } else {
+    console.log("[projects/register] poster no enviado; validacion omitida");
+  }
+
+  return null;
+}
+
 function formDataToRecord(formData: FormData) {
   return Object.fromEntries(
     [...formData.entries()].filter(([, value]) => typeof value === "string"),
@@ -306,6 +397,61 @@ export async function POST(request: Request) {
       type: poster.type,
       size: poster.size,
     } : null);
+
+    if (file) {
+      const fileValidation = validateProjectDocumentFile(file);
+      console.log("[projects/register] validacion de archivo principal multipart", {
+        fileName: file.name,
+        contentType: file.type,
+        fileSize: file.size,
+        valid: fileValidation.valid,
+        reason: fileValidation.reason,
+      });
+      if (!fileValidation.valid) {
+        console.warn("[projects/register] rechazo de archivo principal multipart", {
+          fileName: file.name,
+          contentType: file.type,
+          fileSize: file.size,
+          reason: fileValidation.reason,
+        });
+        return NextResponse.json(
+          { error: fileValidation.error ?? "El documento del proyecto no cumple los requisitos." },
+          { status: 400 },
+        );
+      }
+    } else {
+      const metadataError = validateRegisteredFileMetadata(fileMetadata);
+      if (metadataError) {
+        console.warn("[projects/register] rechazo de metadatos de archivo principal", {
+          fileMetadata,
+          error: metadataError,
+        });
+        return NextResponse.json({ error: metadataError }, { status: 400 });
+      }
+    }
+
+    if (poster) {
+      const posterValidation = validatePosterFile(poster);
+      console.log("[projects/register] validacion de poster multipart", {
+        fileName: poster.name,
+        contentType: poster.type,
+        fileSize: poster.size,
+        valid: posterValidation.valid,
+        reason: posterValidation.reason,
+      });
+      if (!posterValidation.valid) {
+        console.warn("[projects/register] rechazo de poster multipart", {
+          fileName: poster.name,
+          contentType: poster.type,
+          fileSize: poster.size,
+          reason: posterValidation.reason,
+        });
+        return NextResponse.json(
+          { error: posterValidation.error ?? "El poster no cumple los requisitos." },
+          { status: 400 },
+        );
+      }
+    }
 
     if (useMockData) {
       const mockProject = {
@@ -367,7 +513,23 @@ export async function POST(request: Request) {
       poster_proyecto_tipo: posterProyectoTipo,
       poster_proyecto_size: posterProyectoSize,
     };
-    console.log("[projects/register] payload final insertado en Supabase", projectPayload);
+    const finalMetadataError = validateRegisteredFileMetadata(projectPayload);
+    if (finalMetadataError) {
+      console.warn("[projects/register] error de validacion en payload final", {
+        error: finalMetadataError,
+        archivo_proyecto_path: projectPayload.archivo_proyecto_path,
+        archivo_proyecto_nombre: projectPayload.archivo_proyecto_nombre,
+        archivo_proyecto_tipo: projectPayload.archivo_proyecto_tipo,
+        archivo_proyecto_size: projectPayload.archivo_proyecto_size,
+        poster_proyecto_path: projectPayload.poster_proyecto_path,
+        poster_proyecto_nombre: projectPayload.poster_proyecto_nombre,
+        poster_proyecto_tipo: projectPayload.poster_proyecto_tipo,
+        poster_proyecto_size: projectPayload.poster_proyecto_size,
+      });
+      return NextResponse.json({ error: finalMetadataError }, { status: 400 });
+    }
+
+    console.log("[projects/register] payload final aceptado", projectPayload);
     const project = await createProject(projectPayload);
 
     return NextResponse.json({ project }, { status: 201 });

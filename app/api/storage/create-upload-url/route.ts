@@ -3,12 +3,17 @@ import { z } from "zod";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PROJECT_FILES_BUCKET } from "@/lib/supabase/storage";
+import {
+  validatePosterMetadata,
+  validateProjectDocumentMetadata,
+} from "@/lib/upload-limits";
 
 const schema = z.object({
   codigoTemporal: z.string().min(8),
   tipo: z.enum(["archivo", "poster"]),
   fileName: z.string().min(1),
   contentType: z.string().min(1),
+  fileSize: z.coerce.number().nonnegative(),
 });
 
 function safeFileName(fileName: string) {
@@ -28,6 +33,41 @@ function safeFileName(fileName: string) {
 export async function POST(request: Request) {
   try {
     const values = schema.parse(await request.json());
+    const validation = values.tipo === "archivo"
+      ? validateProjectDocumentMetadata({
+        fileName: values.fileName,
+        contentType: values.contentType,
+        fileSize: values.fileSize,
+      })
+      : validatePosterMetadata({
+        fileName: values.fileName,
+        contentType: values.contentType,
+        fileSize: values.fileSize,
+      });
+
+    console.log("[storage/create-upload-url] validacion de metadatos", {
+      tipo: values.tipo,
+      fileName: values.fileName,
+      contentType: values.contentType,
+      fileSize: values.fileSize,
+      valid: validation.valid,
+      reason: validation.reason,
+    });
+
+    if (!validation.valid) {
+      console.warn("[storage/create-upload-url] rechazo por validacion", {
+        tipo: values.tipo,
+        fileName: values.fileName,
+        contentType: values.contentType,
+        fileSize: values.fileSize,
+        reason: validation.reason,
+      });
+      return NextResponse.json(
+        { error: validation.error ?? "Archivo invalido." },
+        { status: 400 },
+      );
+    }
+
     const path = `proyectos/tmp/${values.codigoTemporal}/${values.tipo}/${Date.now()}-${safeFileName(values.fileName)}`;
 
     console.log("[storage/create-upload-url] creando signed upload URL", {
@@ -35,6 +75,7 @@ export async function POST(request: Request) {
       tipo: values.tipo,
       fileName: values.fileName,
       contentType: values.contentType,
+      fileSize: values.fileSize,
     });
     console.log("[storage/create-upload-url] path generado", path);
 
