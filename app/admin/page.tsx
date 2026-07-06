@@ -69,6 +69,12 @@ export default async function AdminPage() {
         <MetricCard label="Evaluaciones" value={resumenLogistica.evaluaciones} detail="Recibidas" accent="success" />
         <MetricCard label="Certificados" value={resumenLogistica.certificadosPendientes} detail="Pendientes" />
       </div>
+      <div className="mt-4 grid gap-4 md:grid-cols-4">
+        <MetricCard label="Electricidad" value={resumenLogistica.proyectosRequierenElectricidad ?? 0} detail="Proyectos" accent="secondary" />
+        <MetricCard label="Mobiliario" value={resumenLogistica.proyectosRequierenMobiliario ?? 0} detail="Proyectos" accent="mint" />
+        <MetricCard label="Prototipos" value={resumenLogistica.proyectosConPrototipoFuncional ?? 0} detail="Funcionales" accent="success" />
+        <MetricCard label="Otro elemento" value={resumenLogistica.proyectosRequierenOtroElemento ?? 0} detail="Requerido" />
+      </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-3">
         {adminLinks.map((item) => {

@@ -3,7 +3,9 @@ import { createSupabaseServerClient } from "./server";
 export const PROJECT_FILES_BUCKET = "project-files";
 export const CERTIFICATES_BUCKET = "certificates";
 
-export async function uploadProjectFile(file: File, codigo: string) {
+type ProjectFileKind = "archivo" | "poster";
+
+export async function uploadProjectFile(file: File, codigo: string, kind: ProjectFileKind = "archivo") {
   const supabase = createSupabaseServerClient();
   const extension = file.name.split(".").pop();
   const safeName = file.name
@@ -11,7 +13,7 @@ export async function uploadProjectFile(file: File, codigo: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
-  const path = `${codigo}/${Date.now()}-${safeName || "archivo"}${extension ? `.${extension}` : ""}`;
+  const path = `proyectos/${codigo}/${kind}/${Date.now()}-${safeName || kind}${extension ? `.${extension}` : ""}`;
   const bytes = await file.arrayBuffer();
 
   const { error } = await supabase.storage
@@ -22,8 +24,20 @@ export async function uploadProjectFile(file: File, codigo: string) {
     });
 
   if (error) {
+    console.error("[storage/project-files] error exacto al subir archivo", {
+      bucket: PROJECT_FILES_BUCKET,
+      path,
+      error,
+    });
     throw error;
   }
+
+  console.log("[storage/project-files] archivo subido", {
+    bucket: PROJECT_FILES_BUCKET,
+    path,
+    contentType: file.type || "application/octet-stream",
+    size: file.size,
+  });
 
   return path;
 }

@@ -1,3 +1,4 @@
+import { MetricCard } from "@/components/metric-card";
 import { SiteShell } from "@/components/site-shell";
 import { StatusPill } from "@/components/status-pill";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,12 +10,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getEvaluators } from "@/lib/supabase/queries";
+import { getEvaluators, getProjects } from "@/lib/supabase/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminEvaluadoresPage() {
-  const evaluadores = await getEvaluators();
+  const [evaluadores, proyectos] = await Promise.all([getEvaluators(), getProjects()]);
+  const electricidad = proyectos.filter((project) => project.requiere_conexion_electrica).length;
+  const mobiliario = proyectos.filter((project) => project.requiere_mesa_mobiliario).length;
+  const prototipos = proyectos.filter((project) => project.presenta_prototipo_funcional).length;
+  const otros = proyectos.filter((project) => project.requiere_otro_elemento).length;
 
   return (
     <SiteShell>
@@ -24,6 +29,12 @@ export default async function AdminEvaluadoresPage() {
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
           Vista interna de carga y disponibilidad. Los datos sensibles se mantienen fuera de tablas publicas.
         </p>
+      </div>
+      <div className="mb-6 grid gap-4 md:grid-cols-4">
+        <MetricCard label="Electricidad" value={electricidad} detail="Proyectos" accent="secondary" />
+        <MetricCard label="Mobiliario" value={mobiliario} detail="Proyectos" accent="mint" />
+        <MetricCard label="Prototipos" value={prototipos} detail="Funcionales" accent="success" />
+        <MetricCard label="Otro elemento" value={otros} detail="Requerido" />
       </div>
       <Card>
         <CardHeader>

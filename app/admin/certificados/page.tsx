@@ -34,7 +34,13 @@ export default async function AdminCertificadosPage() {
   const ponentes = proyectos
     .filter((proyecto) => ["Ponencia", "Oral"].includes(proyecto.categoria_presentacion))
     .reduce((total, proyecto) => total + proyecto.integrantes.length, 0);
-  const instructores = new Set(proyectos.map((proyecto) => proyecto.instructor_nombre).filter(Boolean)).size;
+  const instructores = new Set(
+    proyectos.flatMap((proyecto) => [
+      proyecto.instructor_nombre,
+      proyecto.instructor_2_nombre,
+      proyecto.instructor_3_nombre,
+    ]).filter(Boolean),
+  ).size;
   const evaluadoresConEvaluacion = new Set(
     evaluaciones.map((evaluacion) => evaluacion.evaluador_id).filter(Boolean),
   ).size;

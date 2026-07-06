@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { MetricCard } from "@/components/metric-card";
 import { SiteShell } from "@/components/site-shell";
 import { StatusPill } from "@/components/status-pill";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,12 +12,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getAssignments } from "@/lib/supabase/queries";
+import { getAssignments, getProjects } from "@/lib/supabase/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminAsignacionesPage() {
-  const asignaciones = await getAssignments();
+  const [asignaciones, proyectos] = await Promise.all([getAssignments(), getProjects()]);
+  const electricidad = proyectos.filter((project) => project.requiere_conexion_electrica).length;
+  const mobiliario = proyectos.filter((project) => project.requiere_mesa_mobiliario).length;
+  const prototipos = proyectos.filter((project) => project.presenta_prototipo_funcional).length;
+  const otros = proyectos.filter((project) => project.requiere_otro_elemento).length;
 
   return (
     <SiteShell>
@@ -26,6 +31,12 @@ export default async function AdminAsignacionesPage() {
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
           Control de asignaciones por area, tokens y lectura del archivo.
         </p>
+      </div>
+      <div className="mb-6 grid gap-4 md:grid-cols-4">
+        <MetricCard label="Electricidad" value={electricidad} detail="Proyectos" accent="secondary" />
+        <MetricCard label="Mobiliario" value={mobiliario} detail="Proyectos" accent="mint" />
+        <MetricCard label="Prototipos" value={prototipos} detail="Funcionales" accent="success" />
+        <MetricCard label="Otro elemento" value={otros} detail="Requerido" />
       </div>
       <Card>
         <CardHeader>

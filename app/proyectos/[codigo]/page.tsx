@@ -34,6 +34,9 @@ export default async function ProyectoDetallePage({
   const fileUrl = proyecto.archivo_storage_path && !shouldUseMockData()
     ? await createProjectFileSignedUrl(proyecto.archivo_storage_path)
     : proyecto.archivo_url ?? "#";
+  const posterUrl = proyecto.poster_proyecto_path && !shouldUseMockData()
+    ? await createProjectFileSignedUrl(proyecto.poster_proyecto_path)
+    : "#";
 
   return (
     <SiteShell>
@@ -58,8 +61,19 @@ export default async function ProyectoDetallePage({
               className="inline-flex h-12 items-center gap-2 rounded-xl border border-[var(--color-border)] bg-white/70 px-5 text-sm font-bold text-[var(--color-text)] hover:bg-white"
             >
               <ExternalLink className="size-4" />
-              Abrir archivo
+              Ver archivo
             </Link>
+            {proyecto.poster_proyecto_path ? (
+              <Link
+                href={posterUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-12 items-center gap-2 rounded-xl border border-[var(--color-border)] bg-white/70 px-5 text-sm font-bold text-[var(--color-text)] hover:bg-white"
+              >
+                <ExternalLink className="size-4" />
+                Ver póster
+              </Link>
+            ) : null}
           </div>
         </div>
         <Card>
@@ -84,8 +98,8 @@ export default async function ProyectoDetallePage({
             <Info label="Categoria" value={proyecto.categoria_presentacion} />
             <Info label="Institucion" value={proyecto.institucion} />
             <Info label="Municipio" value={proyecto.municipio} />
-            <Info label="Instructor" value={proyecto.instructor_nombre} />
-            <Info label="Archivo" value={proyecto.archivo_nombre ?? proyecto.archivo_proyecto_nombre ?? "Sin archivo"} />
+            <Info label="Archivo del proyecto" value={proyecto.archivo_nombre ?? proyecto.archivo_proyecto_nombre ?? "Sin archivo"} />
+            <Info label="Poster del proyecto" value={proyecto.poster_proyecto_nombre ?? "Sin poster"} />
           </CardContent>
         </Card>
 
@@ -101,6 +115,56 @@ export default async function ProyectoDetallePage({
             <CriteriaWeight label="Pertinencia IA" value={analisis?.nivel_pertinencia_ia ?? scoreHumano} />
             <CriteriaWeight label="Impacto IA" value={analisis?.nivel_impacto_ia ?? 0} />
             <CriteriaWeight label="Viabilidad IA" value={analisis?.nivel_viabilidad_ia ?? 0} />
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="mt-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Instructores líderes</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 lg:grid-cols-3">
+            <InstructorInfo
+              label="Instructor líder 1"
+              nombre={proyecto.instructor_nombre}
+              documento={proyecto.instructor_documento}
+              correo={proyecto.instructor_correo}
+              celular={proyecto.instructor_celular}
+            />
+            {proyecto.instructor_2_nombre ? (
+              <InstructorInfo
+                label="Instructor líder 2"
+                nombre={proyecto.instructor_2_nombre}
+                documento={proyecto.instructor_2_documento}
+                correo={proyecto.instructor_2_correo}
+                celular={proyecto.instructor_2_celular}
+              />
+            ) : null}
+            {proyecto.instructor_3_nombre ? (
+              <InstructorInfo
+                label="Instructor líder 3"
+                nombre={proyecto.instructor_3_nombre}
+                documento={proyecto.instructor_3_documento}
+                correo={proyecto.instructor_3_correo}
+                celular={proyecto.instructor_3_celular}
+              />
+            ) : null}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="mt-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Requisitos del stand</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <Info label="Punto de electricidad" value={booleanText(proyecto.requiere_conexion_electrica)} />
+            <Info label="Mesa o mobiliario especial" value={booleanText(proyecto.requiere_mesa_mobiliario)} />
+            <Info label="Prototipo funcional" value={booleanText(proyecto.presenta_prototipo_funcional)} />
+            <Info label="Otro elemento requerido" value={booleanText(proyecto.requiere_otro_elemento)} />
+            <Info label="Descripcion del otro elemento" value={proyecto.otro_elemento_descripcion ?? ""} />
           </CardContent>
         </Card>
       </section>
@@ -215,8 +279,38 @@ function ComparisonBlock({ label, score, concept }: { label: string; score?: num
   );
 }
 
+function InstructorInfo({
+  label,
+  nombre,
+  documento,
+  correo,
+  celular,
+}: {
+  label: string;
+  nombre?: string;
+  documento?: string;
+  correo?: string;
+  celular?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[var(--color-border)] bg-white/45 p-4">
+      <p className="expo-eyebrow">{label}</p>
+      <p className="mt-2 text-sm font-extrabold leading-6 text-[var(--color-text)]">{displayText(nombre)}</p>
+      <div className="mt-3 grid gap-2 text-sm leading-6 text-[var(--color-muted)]">
+        <p>Documento: {displayText(documento)}</p>
+        <p>Correo: {displayText(correo)}</p>
+        <p>Celular: {displayText(celular)}</p>
+      </div>
+    </div>
+  );
+}
+
 function displayText(value?: string | null) {
   return value?.trim() || "Pendiente";
+}
+
+function booleanText(value?: boolean) {
+  return value ? "Si" : "No";
 }
 
 function ChipList({ label, values }: { label: string; values?: unknown }) {

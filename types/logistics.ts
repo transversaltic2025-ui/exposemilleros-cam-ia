@@ -8,6 +8,10 @@ export interface LogisticsSummary {
   proyectosSinEvaluador: number;
   proyectosConUnEvaluador: number;
   proyectosConDosEvaluadores: number;
+  proyectosRequierenElectricidad?: number;
+  proyectosRequierenMobiliario?: number;
+  proyectosConPrototipoFuncional?: number;
+  proyectosRequierenOtroElemento?: number;
 }
 
 export interface EventLogistics {

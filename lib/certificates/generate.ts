@@ -17,6 +17,10 @@ interface ProjectRow {
   municipio?: string | null;
   instructor_nombre?: string | null;
   instructor_documento?: string | null;
+  instructor_2_nombre?: string | null;
+  instructor_2_documento?: string | null;
+  instructor_3_nombre?: string | null;
+  instructor_3_documento?: string | null;
   aprendiz_1_nombre?: string | null;
   aprendiz_1_documento?: string | null;
   aprendiz_2_nombre?: string | null;
@@ -54,13 +58,11 @@ interface ExistingCertificate {
   evaluador_id: string | null;
 }
 
-function certificateKey(row: ExistingCertificate) {
+function certificateKey(row: ExistingCertificate | CertificateCandidate) {
   return [
     row.tipo_certificado,
-    row.nombre_persona.trim().toLowerCase(),
     row.documento_persona.trim().toLowerCase(),
     row.proyecto_id ?? "",
-    row.evaluador_id ?? "",
   ].join("|");
 }
 
@@ -91,6 +93,23 @@ function projectLearners(project: ProjectRow) {
   ].filter((learner) => learner.nombre?.trim());
 }
 
+function projectInstructors(project: ProjectRow) {
+  return [
+    {
+      nombre: project.instructor_nombre,
+      documento: project.instructor_documento,
+    },
+    {
+      nombre: project.instructor_2_nombre,
+      documento: project.instructor_2_documento,
+    },
+    {
+      nombre: project.instructor_3_nombre,
+      documento: project.instructor_3_documento,
+    },
+  ].filter((instructor) => instructor.nombre?.trim());
+}
+
 async function getProjectCandidates(tipoCertificado: CertificateType) {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
@@ -107,6 +126,10 @@ async function getProjectCandidates(tipoCertificado: CertificateType) {
         "municipio",
         "instructor_nombre",
         "instructor_documento",
+        "instructor_2_nombre",
+        "instructor_2_documento",
+        "instructor_3_nombre",
+        "instructor_3_documento",
         "aprendiz_1_nombre",
         "aprendiz_1_documento",
         "aprendiz_2_nombre",
@@ -132,17 +155,17 @@ async function getProjectCandidates(tipoCertificado: CertificateType) {
       : projects;
 
   if (tipoCertificado === "Instructor") {
-    return eligibleProjects
-      .filter((project) => project.instructor_nombre?.trim())
-      .map((project) => ({
+    return eligibleProjects.flatMap((project) =>
+      projectInstructors(project).map((instructor) => ({
         tipo_certificado: tipoCertificado,
-        nombre_persona: String(project.instructor_nombre),
-        documento_persona: String(project.instructor_documento ?? ""),
+        nombre_persona: String(instructor.nombre),
+        documento_persona: String(instructor.documento ?? ""),
         rol_certificado: "Instructor líder",
         proyecto_id: project.id,
         evaluador_id: null,
         proyecto: project,
-      }));
+      })),
+    );
   }
 
   return eligibleProjects.flatMap((project) =>

@@ -50,6 +50,56 @@ function toNumberValue(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
+function normalizeEmail(value: unknown) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value).trim().toLowerCase();
+}
+
+function normalizeDocument(value: unknown) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value).trim().replace(/[\s.,-]+/g, "");
+}
+
+type InstructorProjectFields = Pick<
+  Project,
+  | "instructor_documento"
+  | "instructor_correo"
+  | "instructor_2_documento"
+  | "instructor_2_correo"
+  | "instructor_3_documento"
+  | "instructor_3_correo"
+>;
+
+export function isEvaluatorInstructorOfProject(
+  evaluador: Pick<Evaluator, "documento_evaluador" | "correo_evaluador">,
+  proyecto: InstructorProjectFields,
+) {
+  const evaluatorDocument = normalizeDocument(evaluador.documento_evaluador);
+  const evaluatorEmail = normalizeEmail(evaluador.correo_evaluador);
+
+  const instructorDocuments = [
+    proyecto.instructor_documento,
+    proyecto.instructor_2_documento,
+    proyecto.instructor_3_documento,
+  ].map(normalizeDocument);
+  const instructorEmails = [
+    proyecto.instructor_correo,
+    proyecto.instructor_2_correo,
+    proyecto.instructor_3_correo,
+  ].map(normalizeEmail);
+
+  return (
+    Boolean(evaluatorDocument && instructorDocuments.some((document) => document === evaluatorDocument)) ||
+    Boolean(evaluatorEmail && instructorEmails.some((email) => email === evaluatorEmail))
+  );
+}
+
 function normalizeProject(row: Record<string, unknown>): Project {
   const aprendizNombres = [
     toStringValue(row.aprendiz_1_nombre),
@@ -75,7 +125,27 @@ function normalizeProject(row: Record<string, unknown>): Project {
     instructor_documento: toStringValue(row.instructor_documento),
     instructor_correo: toStringValue(row.instructor_correo),
     instructor_celular: toStringValue(row.instructor_celular),
+    instructor_2_nombre: toStringValue(row.instructor_2_nombre),
+    instructor_2_documento: toStringValue(row.instructor_2_documento),
+    instructor_2_correo: toStringValue(row.instructor_2_correo),
+    instructor_2_celular: toStringValue(row.instructor_2_celular),
+    instructor_3_nombre: toStringValue(row.instructor_3_nombre),
+    instructor_3_documento: toStringValue(row.instructor_3_documento),
+    instructor_3_correo: toStringValue(row.instructor_3_correo),
+    instructor_3_celular: toStringValue(row.instructor_3_celular),
+    aprendiz_1_ficha: toStringValue(row.aprendiz_1_ficha),
+    aprendiz_2_ficha: toStringValue(row.aprendiz_2_ficha),
+    aprendiz_3_ficha: toStringValue(row.aprendiz_3_ficha),
     categoria_presentacion: toStringValue(row.categoria_presentacion) as Project["categoria_presentacion"],
+    requiere_conexion_electrica: Boolean(row.requiere_conexion_electrica),
+    requiere_mesa_mobiliario: Boolean(row.requiere_mesa_mobiliario),
+    presenta_prototipo_funcional: Boolean(row.presenta_prototipo_funcional),
+    requiere_otro_elemento: Boolean(row.requiere_otro_elemento),
+    otro_elemento_descripcion: toStringValue(row.otro_elemento_descripcion),
+    poster_proyecto_path: toStringValue(row.poster_proyecto_path),
+    poster_proyecto_nombre: toStringValue(row.poster_proyecto_nombre),
+    poster_proyecto_tipo: toStringValue(row.poster_proyecto_tipo),
+    poster_proyecto_size: toNumberValue(row.poster_proyecto_size),
     estado_proyecto: toStringValue(row.estado_proyecto) as Project["estado_proyecto"],
     estado_evaluacion_humana: toStringValue(row.estado_evaluacion_humana) as Project["estado_evaluacion_humana"],
     estado_analisis_ia: toStringValue(row.estado_analisis_ia) as Project["estado_analisis_ia"],
@@ -90,6 +160,7 @@ function normalizeProject(row: Record<string, unknown>): Project {
     participantes: aprendizNombres.map((nombreParticipante, index) => ({
       nombre: nombreParticipante,
       documento: toStringValue(row[`aprendiz_${index + 1}_documento`]),
+      ficha: toStringValue(row[`aprendiz_${index + 1}_ficha`]),
     })),
     integrantes: aprendizNombres,
     estado: toStringValue(row.estado_proyecto) as Project["estado"],
@@ -486,28 +557,45 @@ export async function createProject(input: {
   instructor_documento?: string;
   instructor_correo: string;
   instructor_celular: string;
+  instructor_2_nombre?: string;
+  instructor_2_documento?: string;
+  instructor_2_correo?: string;
+  instructor_2_celular?: string;
+  instructor_3_nombre?: string;
+  instructor_3_documento?: string;
+  instructor_3_correo?: string;
+  instructor_3_celular?: string;
   rol_proyecto?: string;
   aprendiz_1_nombre?: string;
   aprendiz_1_documento?: string;
   aprendiz_1_correo?: string;
   aprendiz_1_celular?: string;
+  aprendiz_1_ficha?: string;
   aprendiz_2_nombre?: string;
   aprendiz_2_documento?: string;
   aprendiz_2_correo?: string;
   aprendiz_2_celular?: string;
+  aprendiz_2_ficha?: string;
   aprendiz_3_nombre?: string;
   aprendiz_3_documento?: string;
   aprendiz_3_correo?: string;
   aprendiz_3_celular?: string;
+  aprendiz_3_ficha?: string;
   categoria_presentacion: string;
   archivo_proyecto_url?: string;
   archivo_proyecto_path?: string;
   archivo_proyecto_nombre?: string;
   archivo_proyecto_tipo?: string;
   archivo_proyecto_size?: number;
+  poster_proyecto_path?: string;
+  poster_proyecto_nombre?: string;
+  poster_proyecto_tipo?: string;
+  poster_proyecto_size?: number;
   requiere_conexion_electrica?: boolean;
   requiere_mesa_mobiliario?: boolean;
   presenta_prototipo_funcional?: boolean;
+  requiere_otro_elemento?: boolean;
+  otro_elemento_descripcion?: string;
   observaciones_adicionales?: string;
   observaciones_admin?: string;
 }) {
@@ -523,28 +611,45 @@ export async function createProject(input: {
     instructor_documento: input.instructor_documento ?? "",
     instructor_correo: input.instructor_correo,
     instructor_celular: input.instructor_celular,
+    instructor_2_nombre: input.instructor_2_nombre ?? "",
+    instructor_2_documento: input.instructor_2_documento ?? "",
+    instructor_2_correo: input.instructor_2_correo ?? "",
+    instructor_2_celular: input.instructor_2_celular ?? "",
+    instructor_3_nombre: input.instructor_3_nombre ?? "",
+    instructor_3_documento: input.instructor_3_documento ?? "",
+    instructor_3_correo: input.instructor_3_correo ?? "",
+    instructor_3_celular: input.instructor_3_celular ?? "",
     rol_proyecto: input.rol_proyecto ?? "",
     aprendiz_1_nombre: input.aprendiz_1_nombre ?? "",
     aprendiz_1_documento: input.aprendiz_1_documento ?? "",
     aprendiz_1_correo: input.aprendiz_1_correo ?? "",
     aprendiz_1_celular: input.aprendiz_1_celular ?? "",
+    aprendiz_1_ficha: input.aprendiz_1_ficha ?? "",
     aprendiz_2_nombre: input.aprendiz_2_nombre ?? "",
     aprendiz_2_documento: input.aprendiz_2_documento ?? "",
     aprendiz_2_correo: input.aprendiz_2_correo ?? "",
     aprendiz_2_celular: input.aprendiz_2_celular ?? "",
+    aprendiz_2_ficha: input.aprendiz_2_ficha ?? "",
     aprendiz_3_nombre: input.aprendiz_3_nombre ?? "",
     aprendiz_3_documento: input.aprendiz_3_documento ?? "",
     aprendiz_3_correo: input.aprendiz_3_correo ?? "",
     aprendiz_3_celular: input.aprendiz_3_celular ?? "",
+    aprendiz_3_ficha: input.aprendiz_3_ficha ?? "",
     categoria_presentacion: input.categoria_presentacion,
     archivo_proyecto_url: input.archivo_proyecto_url ?? "",
     archivo_proyecto_path: input.archivo_proyecto_path ?? "",
     archivo_proyecto_nombre: input.archivo_proyecto_nombre ?? "",
     archivo_proyecto_tipo: input.archivo_proyecto_tipo ?? "",
     archivo_proyecto_size: input.archivo_proyecto_size ?? 0,
+    poster_proyecto_path: input.poster_proyecto_path ?? "",
+    poster_proyecto_nombre: input.poster_proyecto_nombre ?? "",
+    poster_proyecto_tipo: input.poster_proyecto_tipo ?? "",
+    poster_proyecto_size: input.poster_proyecto_size ?? 0,
     requiere_conexion_electrica: input.requiere_conexion_electrica ?? false,
     requiere_mesa_mobiliario: input.requiere_mesa_mobiliario ?? false,
     presenta_prototipo_funcional: input.presenta_prototipo_funcional ?? false,
+    requiere_otro_elemento: input.requiere_otro_elemento ?? false,
+    otro_elemento_descripcion: input.otro_elemento_descripcion ?? "",
     observaciones_adicionales: input.observaciones_adicionales ?? "",
     estado_proyecto: "Registrado",
     estado_evaluacion_humana: "Pendiente",
@@ -646,7 +751,15 @@ export async function createEvaluatorAndAssignments(input: {
   const created = data as Evaluator;
   const assignments = await assignProjectsToEvaluator(created);
 
-  return { evaluador: created, assignments };
+  return {
+    evaluador: created,
+    assignments,
+    ...(assignments.length === 0
+      ? {
+          message: "El evaluador fue registrado, pero no tiene proyectos elegibles para asignación.",
+        }
+      : {}),
+  };
 }
 
 export async function assignProjectsToEvaluator(evaluador: Evaluator) {
@@ -657,7 +770,7 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
   const client = supabase();
   const { data: projectRows, error: projectsError } = await client
     .from("proyectos")
-    .select("id,codigo_proyecto,nombre_proyecto,linea_tematica,estado_proyecto,created_at")
+    .select("id,codigo_proyecto,nombre_proyecto,linea_tematica,estado_proyecto,instructor_documento,instructor_correo,instructor_2_documento,instructor_2_correo,instructor_3_documento,instructor_3_correo,created_at")
     .eq("linea_tematica", evaluador.area_conocimiento)
     .order("created_at", { ascending: true });
 
@@ -666,11 +779,36 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
     throw projectsError;
   }
 
-  const proyectos = ((projectRows ?? []) as Record<string, unknown>[]).map(normalizeProject);
-  console.log("[evaluators/register] proyectos candidatos encontrados", proyectos.length);
+  const proyectos = (projectRows ?? []) as Project[];
+  const evaluadorNormalizado = {
+    id: evaluador.id,
+    codigo_evaluador: evaluador.codigo_evaluador,
+    documento_evaluador: evaluador.documento_evaluador,
+    documento_normalizado: normalizeDocument(evaluador.documento_evaluador),
+    correo_evaluador: evaluador.correo_evaluador,
+    correo_normalizado: normalizeEmail(evaluador.correo_evaluador),
+    area_conocimiento: evaluador.area_conocimiento,
+  };
+  console.log("[evaluators/register] evaluador normalizado", evaluadorNormalizado);
+  console.log("[evaluators/register] proyectos candidatos encontrados", proyectos.map((proyecto) => ({
+    id: proyecto.id,
+    codigo_proyecto: proyecto.codigo_proyecto,
+    nombre_proyecto: proyecto.nombre_proyecto,
+    linea_tematica: proyecto.linea_tematica,
+    instructor_documento: proyecto.instructor_documento,
+    instructor_correo: proyecto.instructor_correo,
+    instructor_2_documento: proyecto.instructor_2_documento,
+    instructor_2_correo: proyecto.instructor_2_correo,
+    instructor_3_documento: proyecto.instructor_3_documento,
+    instructor_3_correo: proyecto.instructor_3_correo,
+  })));
 
   const projectIds = proyectos.map((proyecto) => proyecto.id).filter(Boolean) as string[];
   if (projectIds.length === 0) {
+    console.log("[evaluators/register] proyectos excluidos por cupo lleno", []);
+    console.log("[evaluators/register] proyectos excluidos porque el evaluador es instructor del proyecto", []);
+    console.log("[evaluators/register] proyectos excluidos por asignacion duplicada", []);
+    console.log("[evaluators/register] proyectos finales asignados", []);
     console.log("[evaluators/register] asignaciones creadas", []);
     return [];
   }
@@ -698,17 +836,75 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
     }
   });
 
-  const proyectosDisponibles = proyectos
-    .filter((proyecto) => {
-      if (!proyecto.id) {
-        return false;
-      }
-      return (
-        (asignacionesPorProyecto.get(proyecto.id) ?? 0) < 2 &&
-        !proyectosYaAsignadosAlEvaluador.has(proyecto.id)
-      );
-    })
-    .slice(0, 3);
+  const proyectosConCupo = proyectos.filter((proyecto) => {
+    const proyectoId = proyecto.id;
+    if (!proyectoId) {
+      return false;
+    }
+    return (asignacionesPorProyecto.get(proyectoId) ?? 0) < 2;
+  });
+  const proyectosExcluidosPorCupo = proyectos.filter((proyecto) => {
+    const proyectoId = proyecto.id;
+    if (!proyectoId) {
+      return true;
+    }
+    return (asignacionesPorProyecto.get(proyectoId) ?? 0) >= 2;
+  });
+  console.log("[evaluators/register] proyectos excluidos por cupo lleno", proyectosExcluidosPorCupo.map((proyecto) => ({
+    id: proyecto.id,
+    codigo_proyecto: proyecto.codigo_proyecto,
+    asignaciones_existentes: proyecto.id ? asignacionesPorProyecto.get(proyecto.id) ?? 0 : 0,
+  })));
+
+  const proyectosSinInstructor = proyectosConCupo.filter((proyecto) => {
+    return !isEvaluatorInstructorOfProject(evaluador, proyecto);
+  });
+  const proyectosExcluidosPorInstructor = proyectosConCupo.filter((proyecto) => {
+    return isEvaluatorInstructorOfProject(evaluador, proyecto);
+  });
+  console.log("[evaluators/register] proyectos excluidos porque el evaluador es instructor del proyecto", proyectosExcluidosPorInstructor.map((proyecto) => ({
+    id: proyecto.id,
+    codigo_proyecto: proyecto.codigo_proyecto,
+    evaluador_documento_normalizado: evaluadorNormalizado.documento_normalizado,
+    evaluador_correo_normalizado: evaluadorNormalizado.correo_normalizado,
+    instructores_documentos_normalizados: [
+      normalizeDocument(proyecto.instructor_documento),
+      normalizeDocument(proyecto.instructor_2_documento),
+      normalizeDocument(proyecto.instructor_3_documento),
+    ],
+    instructores_correos_normalizados: [
+      normalizeEmail(proyecto.instructor_correo),
+      normalizeEmail(proyecto.instructor_2_correo),
+      normalizeEmail(proyecto.instructor_3_correo),
+    ],
+  })));
+
+  const proyectosDisponiblesSinDuplicado = proyectosSinInstructor.filter((proyecto) => {
+    const proyectoId = proyecto.id;
+    if (!proyectoId) {
+      return false;
+    }
+    return !proyectosYaAsignadosAlEvaluador.has(proyectoId);
+  });
+  const proyectosExcluidosPorDuplicado = proyectosSinInstructor.filter((proyecto) => {
+    const proyectoId = proyecto.id;
+    if (!proyectoId) {
+      return false;
+    }
+    return proyectosYaAsignadosAlEvaluador.has(proyectoId);
+  });
+  console.log("[evaluators/register] proyectos excluidos por asignacion duplicada", proyectosExcluidosPorDuplicado.map((proyecto) => ({
+    id: proyecto.id,
+    codigo_proyecto: proyecto.codigo_proyecto,
+    evaluador_id: evaluador.id,
+  })));
+
+  const proyectosDisponibles = proyectosDisponiblesSinDuplicado.slice(0, 3);
+  console.log("[evaluators/register] proyectos finales asignados", proyectosDisponibles.map((proyecto) => ({
+    id: proyecto.id,
+    codigo_proyecto: proyecto.codigo_proyecto,
+    nombre_proyecto: proyecto.nombre_proyecto,
+  })));
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
   const rows = proyectosDisponibles.map((proyecto) => {
@@ -929,7 +1125,10 @@ export async function getLogisticsSummary(): Promise<LogisticsSummary> {
         .select("*", { count: "exact", head: true })
         .neq("estado_asignacion", "Completada"),
     ),
-    client.from("proyectos").select("id").order("created_at", { ascending: false }),
+    client
+      .from("proyectos")
+      .select("id,requiere_conexion_electrica,requiere_mesa_mobiliario,presenta_prototipo_funcional,requiere_otro_elemento")
+      .order("created_at", { ascending: false }),
     client
       .from("asignaciones")
       .select("proyecto_id")
@@ -956,7 +1155,14 @@ export async function getLogisticsSummary(): Promise<LogisticsSummary> {
     );
   });
 
-  const conteosPorProyecto = ((projectsResult.data ?? []) as { id: string }[]).map(
+  const projectRows = (projectsResult.data ?? []) as {
+    id: string;
+    requiere_conexion_electrica?: boolean | null;
+    requiere_mesa_mobiliario?: boolean | null;
+    presenta_prototipo_funcional?: boolean | null;
+    requiere_otro_elemento?: boolean | null;
+  }[];
+  const conteosPorProyecto = projectRows.map(
     (project) => asignacionesPorProyecto.get(project.id) ?? 0,
   );
 
@@ -970,6 +1176,10 @@ export async function getLogisticsSummary(): Promise<LogisticsSummary> {
     proyectosSinEvaluador: conteosPorProyecto.filter((count) => count === 0).length,
     proyectosConUnEvaluador: conteosPorProyecto.filter((count) => count === 1).length,
     proyectosConDosEvaluadores: conteosPorProyecto.filter((count) => count >= 2).length,
+    proyectosRequierenElectricidad: projectRows.filter((project) => project.requiere_conexion_electrica).length,
+    proyectosRequierenMobiliario: projectRows.filter((project) => project.requiere_mesa_mobiliario).length,
+    proyectosConPrototipoFuncional: projectRows.filter((project) => project.presenta_prototipo_funcional).length,
+    proyectosRequierenOtroElemento: projectRows.filter((project) => project.requiere_otro_elemento).length,
   };
 }
 
