@@ -112,14 +112,24 @@ const schema = z.object({
   });
 });
 
-function text(formData: FormData, key: string) {
-  const value = formData.get(key);
+const fileMetadataSchema = z.object({
+  archivo_proyecto_path: z.string().optional(),
+  archivo_proyecto_nombre: z.string().optional(),
+  archivo_proyecto_tipo: z.string().optional(),
+  archivo_proyecto_size: z.coerce.number().optional(),
+  poster_proyecto_path: z.string().optional(),
+  poster_proyecto_nombre: z.string().optional(),
+  poster_proyecto_tipo: z.string().optional(),
+  poster_proyecto_size: z.coerce.number().optional(),
+});
+
+function stringValue(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function textAlias(formData: FormData, keys: string[]) {
+function textAlias(source: Record<string, unknown>, keys: string[]) {
   for (const key of keys) {
-    const value = text(formData, key);
+    const value = stringValue(source[key]);
     if (value) {
       return value;
     }
@@ -128,9 +138,36 @@ function textAlias(formData: FormData, keys: string[]) {
   return "";
 }
 
-function booleanAlias(formData: FormData, keys: string[]) {
-  const value = textAlias(formData, keys).toLowerCase();
-  return ["si", "sí", "true", "1", "on"].includes(value);
+function booleanAlias(source: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const rawValue = source[key];
+    if (typeof rawValue === "boolean") {
+      return rawValue;
+    }
+
+    const value = stringValue(rawValue).toLowerCase();
+    if (value) {
+      return ["si", "sí", "true", "1", "on"].includes(value);
+    }
+  }
+
+  return false;
+}
+
+function numberAlias(source: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    const text = stringValue(value);
+    if (text) {
+      const parsed = Number(text);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+  }
+
+  return 0;
 }
 
 function fileAlias(formData: FormData, keys: string[]) {
@@ -144,75 +181,75 @@ function fileAlias(formData: FormData, keys: string[]) {
   return null;
 }
 
-function normalizeRegistrationPayload(formData: FormData) {
-  const integrantes = textAlias(formData, ["integrantes"])
+function normalizeRegistrationPayload(source: Record<string, unknown>) {
+  const integrantes = textAlias(source, ["integrantes"])
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
-  const requiereOtroElemento = booleanAlias(formData, [
+  const requiereOtroElemento = booleanAlias(source, [
     "requiere_otro_elemento",
     "requiereOtroElemento",
   ]);
 
   return {
-    nombre_proyecto: textAlias(formData, ["nombre_proyecto", "nombreProyecto", "titulo"]),
-    linea_tematica: textAlias(formData, ["linea_tematica", "lineaTematica", "area_conocimiento"]),
-    modalidad_participacion: textAlias(formData, [
+    nombre_proyecto: textAlias(source, ["nombre_proyecto", "nombreProyecto", "titulo"]),
+    linea_tematica: textAlias(source, ["linea_tematica", "lineaTematica", "area_conocimiento"]),
+    modalidad_participacion: textAlias(source, [
       "modalidad_participacion",
       "modalidadParticipacion",
     ]),
-    semillero: text(formData, "semillero"),
-    institucion: text(formData, "institucion"),
-    municipio: text(formData, "municipio"),
-    instructor_nombre: textAlias(formData, ["instructor_nombre", "instructorNombre"]),
-    instructor_documento: textAlias(formData, ["instructor_documento", "instructorDocumento"]),
-    instructor_correo: textAlias(formData, ["instructor_correo", "instructorCorreo"]),
-    instructor_celular: textAlias(formData, ["instructor_celular", "instructorCelular"]),
-    instructor_2_nombre: textAlias(formData, ["instructor_2_nombre", "instructor2Nombre"]),
-    instructor_2_documento: textAlias(formData, ["instructor_2_documento", "instructor2Documento"]),
-    instructor_2_correo: textAlias(formData, ["instructor_2_correo", "instructor2Correo"]),
-    instructor_2_celular: textAlias(formData, ["instructor_2_celular", "instructor2Celular"]),
-    instructor_3_nombre: textAlias(formData, ["instructor_3_nombre", "instructor3Nombre"]),
-    instructor_3_documento: textAlias(formData, ["instructor_3_documento", "instructor3Documento"]),
-    instructor_3_correo: textAlias(formData, ["instructor_3_correo", "instructor3Correo"]),
-    instructor_3_celular: textAlias(formData, ["instructor_3_celular", "instructor3Celular"]),
-    rol_proyecto: textAlias(formData, ["rol_proyecto", "rolProyecto"]),
-    aprendiz_1_nombre: textAlias(formData, ["aprendiz_1_nombre", "aprendiz1Nombre"]) || integrantes[0],
-    aprendiz_1_documento: textAlias(formData, ["aprendiz_1_documento", "aprendiz1Documento"]),
-    aprendiz_1_correo: textAlias(formData, ["aprendiz_1_correo", "aprendiz1Correo"]),
-    aprendiz_1_celular: textAlias(formData, ["aprendiz_1_celular", "aprendiz1Celular"]),
-    aprendiz_1_ficha: textAlias(formData, ["aprendiz_1_ficha", "aprendiz1Ficha"]),
-    aprendiz_2_nombre: textAlias(formData, ["aprendiz_2_nombre", "aprendiz2Nombre"]) || integrantes[1],
-    aprendiz_2_documento: textAlias(formData, ["aprendiz_2_documento", "aprendiz2Documento"]),
-    aprendiz_2_correo: textAlias(formData, ["aprendiz_2_correo", "aprendiz2Correo"]),
-    aprendiz_2_celular: textAlias(formData, ["aprendiz_2_celular", "aprendiz2Celular"]),
-    aprendiz_2_ficha: textAlias(formData, ["aprendiz_2_ficha", "aprendiz2Ficha"]),
-    aprendiz_3_nombre: textAlias(formData, ["aprendiz_3_nombre", "aprendiz3Nombre"]) || integrantes[2],
-    aprendiz_3_documento: textAlias(formData, ["aprendiz_3_documento", "aprendiz3Documento"]),
-    aprendiz_3_correo: textAlias(formData, ["aprendiz_3_correo", "aprendiz3Correo"]),
-    aprendiz_3_celular: textAlias(formData, ["aprendiz_3_celular", "aprendiz3Celular"]),
-    aprendiz_3_ficha: textAlias(formData, ["aprendiz_3_ficha", "aprendiz3Ficha"]),
-    categoria_presentacion: textAlias(formData, [
+    semillero: textAlias(source, ["semillero"]),
+    institucion: textAlias(source, ["institucion"]),
+    municipio: textAlias(source, ["municipio"]),
+    instructor_nombre: textAlias(source, ["instructor_nombre", "instructorNombre"]),
+    instructor_documento: textAlias(source, ["instructor_documento", "instructorDocumento"]),
+    instructor_correo: textAlias(source, ["instructor_correo", "instructorCorreo"]),
+    instructor_celular: textAlias(source, ["instructor_celular", "instructorCelular"]),
+    instructor_2_nombre: textAlias(source, ["instructor_2_nombre", "instructor2Nombre"]),
+    instructor_2_documento: textAlias(source, ["instructor_2_documento", "instructor2Documento"]),
+    instructor_2_correo: textAlias(source, ["instructor_2_correo", "instructor2Correo"]),
+    instructor_2_celular: textAlias(source, ["instructor_2_celular", "instructor2Celular"]),
+    instructor_3_nombre: textAlias(source, ["instructor_3_nombre", "instructor3Nombre"]),
+    instructor_3_documento: textAlias(source, ["instructor_3_documento", "instructor3Documento"]),
+    instructor_3_correo: textAlias(source, ["instructor_3_correo", "instructor3Correo"]),
+    instructor_3_celular: textAlias(source, ["instructor_3_celular", "instructor3Celular"]),
+    rol_proyecto: textAlias(source, ["rol_proyecto", "rolProyecto"]),
+    aprendiz_1_nombre: textAlias(source, ["aprendiz_1_nombre", "aprendiz1Nombre"]) || integrantes[0],
+    aprendiz_1_documento: textAlias(source, ["aprendiz_1_documento", "aprendiz1Documento"]),
+    aprendiz_1_correo: textAlias(source, ["aprendiz_1_correo", "aprendiz1Correo"]),
+    aprendiz_1_celular: textAlias(source, ["aprendiz_1_celular", "aprendiz1Celular"]),
+    aprendiz_1_ficha: textAlias(source, ["aprendiz_1_ficha", "aprendiz1Ficha"]),
+    aprendiz_2_nombre: textAlias(source, ["aprendiz_2_nombre", "aprendiz2Nombre"]) || integrantes[1],
+    aprendiz_2_documento: textAlias(source, ["aprendiz_2_documento", "aprendiz2Documento"]),
+    aprendiz_2_correo: textAlias(source, ["aprendiz_2_correo", "aprendiz2Correo"]),
+    aprendiz_2_celular: textAlias(source, ["aprendiz_2_celular", "aprendiz2Celular"]),
+    aprendiz_2_ficha: textAlias(source, ["aprendiz_2_ficha", "aprendiz2Ficha"]),
+    aprendiz_3_nombre: textAlias(source, ["aprendiz_3_nombre", "aprendiz3Nombre"]) || integrantes[2],
+    aprendiz_3_documento: textAlias(source, ["aprendiz_3_documento", "aprendiz3Documento"]),
+    aprendiz_3_correo: textAlias(source, ["aprendiz_3_correo", "aprendiz3Correo"]),
+    aprendiz_3_celular: textAlias(source, ["aprendiz_3_celular", "aprendiz3Celular"]),
+    aprendiz_3_ficha: textAlias(source, ["aprendiz_3_ficha", "aprendiz3Ficha"]),
+    categoria_presentacion: textAlias(source, [
       "categoria_presentacion",
       "categoriaPresentacion",
     ]),
-    requiere_conexion_electrica: booleanAlias(formData, [
+    requiere_conexion_electrica: booleanAlias(source, [
       "requiere_conexion_electrica",
       "requiereConexionElectrica",
     ]),
-    requiere_mesa_mobiliario: booleanAlias(formData, [
+    requiere_mesa_mobiliario: booleanAlias(source, [
       "requiere_mesa_mobiliario",
       "requiereMesaMobiliario",
     ]),
-    presenta_prototipo_funcional: booleanAlias(formData, [
+    presenta_prototipo_funcional: booleanAlias(source, [
       "presenta_prototipo_funcional",
       "presentaPrototipoFuncional",
     ]),
     requiere_otro_elemento: requiereOtroElemento,
     otro_elemento_descripcion: requiereOtroElemento
-      ? textAlias(formData, ["otro_elemento_descripcion", "otroElementoDescripcion"])
+      ? textAlias(source, ["otro_elemento_descripcion", "otroElementoDescripcion"])
       : "",
-    observaciones_adicionales: textAlias(formData, [
+    observaciones_adicionales: textAlias(source, [
       "observaciones_adicionales",
       "observacionesAdicionales",
       "resumen",
@@ -220,24 +257,51 @@ function normalizeRegistrationPayload(formData: FormData) {
   };
 }
 
+function normalizeFileMetadata(source: Record<string, unknown>) {
+  return fileMetadataSchema.parse({
+    archivo_proyecto_path: textAlias(source, ["archivo_proyecto_path", "archivoProyectoPath"]),
+    archivo_proyecto_nombre: textAlias(source, ["archivo_proyecto_nombre", "archivoProyectoNombre"]),
+    archivo_proyecto_tipo: textAlias(source, ["archivo_proyecto_tipo", "archivoProyectoTipo"]),
+    archivo_proyecto_size: numberAlias(source, ["archivo_proyecto_size", "archivoProyectoSize"]),
+    poster_proyecto_path: textAlias(source, ["poster_proyecto_path", "posterProyectoPath"]),
+    poster_proyecto_nombre: textAlias(source, ["poster_proyecto_nombre", "posterProyectoNombre"]),
+    poster_proyecto_tipo: textAlias(source, ["poster_proyecto_tipo", "posterProyectoTipo"]),
+    poster_proyecto_size: numberAlias(source, ["poster_proyecto_size", "posterProyectoSize"]),
+  });
+}
+
+function formDataToRecord(formData: FormData) {
+  return Object.fromEntries(
+    [...formData.entries()].filter(([, value]) => typeof value === "string"),
+  ) as Record<string, unknown>;
+}
+
 export async function POST(request: Request) {
   try {
-    const formData = await request.formData();
     const useMockData = shouldUseMockData();
+    const contentType = request.headers.get("content-type") ?? "";
     console.log("[projects/register] USE_MOCK_DATA actual", process.env.USE_MOCK_DATA);
     console.log("[projects/register] modo", useMockData ? "mock" : "supabase");
+    console.log("[projects/register] content-type recibido", contentType);
 
-    const normalizedPayload = normalizeRegistrationPayload(formData);
+    const isJson = contentType.includes("application/json");
+    const jsonPayload = isJson ? ((await request.json()) as Record<string, unknown>) : null;
+    const formData = isJson ? null : await request.formData();
+    const source = jsonPayload ?? formDataToRecord(formData as FormData);
+    const normalizedPayload = normalizeRegistrationPayload(source);
+    const fileMetadata = normalizeFileMetadata(source);
     console.log("[projects/register] payload recibido normalizado", normalizedPayload);
+    console.log("[projects/register] metadatos de archivos recibidos", fileMetadata);
+
     const values = schema.parse(normalizedPayload);
-    const file = fileAlias(formData, ["archivo_proyecto", "archivoProyecto"]);
-    const poster = fileAlias(formData, ["poster_proyecto", "posterProyecto"]);
-    console.log("[projects/register] archivo completo recibido", file ? {
+    const file = formData ? fileAlias(formData, ["archivo_proyecto", "archivoProyecto"]) : null;
+    const poster = formData ? fileAlias(formData, ["poster_proyecto", "posterProyecto"]) : null;
+    console.log("[projects/register] archivo completo recibido por multipart", file ? {
       name: file.name,
       type: file.type,
       size: file.size,
     } : null);
-    console.log("[projects/register] poster recibido", poster ? {
+    console.log("[projects/register] poster recibido por multipart", poster ? {
       name: poster.name,
       type: poster.type,
       size: poster.size,
@@ -247,55 +311,68 @@ export async function POST(request: Request) {
       const mockProject = {
         codigo_proyecto: "EXPOCAM-2026-0001",
         ...values,
+        ...fileMetadata,
         estado_proyecto: "Registrado",
         estado_evaluacion_humana: "Pendiente",
         estado_analisis_ia: "Pendiente",
         estado_lectura_archivo: "Pendiente",
       };
       console.log("[projects/register] payload mock", mockProject);
-      return NextResponse.json(
-        {
-          project: mockProject,
-        },
-        { status: 201 },
-      );
+      return NextResponse.json({ project: mockProject }, { status: 201 });
     }
 
-    if (!file) {
+    const codigoProyecto = await generateProjectCode();
+    let archivoProyectoPath = fileMetadata.archivo_proyecto_path ?? "";
+    let posterProyectoPath = fileMetadata.poster_proyecto_path ?? "";
+    let archivoProyectoNombre = fileMetadata.archivo_proyecto_nombre ?? "";
+    let archivoProyectoTipo = fileMetadata.archivo_proyecto_tipo ?? "";
+    let archivoProyectoSize = fileMetadata.archivo_proyecto_size ?? 0;
+    let posterProyectoNombre = fileMetadata.poster_proyecto_nombre ?? "";
+    let posterProyectoTipo = fileMetadata.poster_proyecto_tipo ?? "";
+    let posterProyectoSize = fileMetadata.poster_proyecto_size ?? 0;
+
+    if (file) {
+      archivoProyectoPath = await uploadProjectFile(file, codigoProyecto, "archivo");
+      archivoProyectoNombre = file.name;
+      archivoProyectoTipo = file.type || "application/octet-stream";
+      archivoProyectoSize = file.size;
+    }
+    if (poster) {
+      posterProyectoPath = await uploadProjectFile(poster, codigoProyecto, "poster");
+      posterProyectoNombre = poster.name;
+      posterProyectoTipo = poster.type || "application/octet-stream";
+      posterProyectoSize = poster.size;
+    }
+    console.log("[projects/register] rutas de archivos para insertar", {
+      archivoProyectoPath,
+      posterProyectoPath,
+    });
+
+    if (!archivoProyectoPath) {
       return NextResponse.json(
         { error: "El archivo del proyecto es obligatorio." },
         { status: 400 },
       );
     }
 
-    const codigoProyecto = await generateProjectCode();
-    const archivoProyectoPath = await uploadProjectFile(file, codigoProyecto, "archivo");
-    const posterProyectoPath = poster
-      ? await uploadProjectFile(poster, codigoProyecto, "poster")
-      : "";
-    console.log("[projects/register] rutas subidas a Storage", {
-      archivoProyectoPath,
-      posterProyectoPath,
-    });
-
     const projectPayload = {
       codigo_proyecto: codigoProyecto,
       ...values,
       archivo_proyecto_path: archivoProyectoPath,
-      archivo_proyecto_nombre: file.name,
-      archivo_proyecto_tipo: file.type || "application/octet-stream",
-      archivo_proyecto_size: file.size,
+      archivo_proyecto_nombre: archivoProyectoNombre,
+      archivo_proyecto_tipo: archivoProyectoTipo || "application/octet-stream",
+      archivo_proyecto_size: archivoProyectoSize,
       poster_proyecto_path: posterProyectoPath,
-      poster_proyecto_nombre: poster?.name ?? "",
-      poster_proyecto_tipo: poster?.type || "",
-      poster_proyecto_size: poster?.size ?? 0,
+      poster_proyecto_nombre: posterProyectoNombre,
+      poster_proyecto_tipo: posterProyectoTipo,
+      poster_proyecto_size: posterProyectoSize,
     };
-    console.log("[projects/register] payload insertado en Supabase", projectPayload);
+    console.log("[projects/register] payload final insertado en Supabase", projectPayload);
     const project = await createProject(projectPayload);
 
     return NextResponse.json({ project }, { status: 201 });
   } catch (error) {
-    console.error("[projects/register] error exacto en API", error);
+    console.error("[projects/register] error exacto en registro de proyecto", error);
     const message = error instanceof Error ? error.message : "No se pudo registrar el proyecto.";
     return NextResponse.json({ error: message }, { status: 400 });
   }

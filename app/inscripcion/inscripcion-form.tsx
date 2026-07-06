@@ -17,6 +17,7 @@ import {
   MODALIDADES_PARTICIPACION,
   SEMILLEROS,
 } from "@/lib/constants";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const optionalEmail = z.union([z.string().email("Correo invalido."), z.literal("")]).optional();
 
@@ -123,9 +124,30 @@ const booleanFields = new Set([
   "requiere_otro_elemento",
 ]);
 
+type UploadKind = "archivo" | "poster";
+type UploadStatus = "idle" | "uploading" | "uploaded" | "error";
+
+interface UploadedFileMetadata {
+  path: string;
+  nombre: string;
+  tipo: string;
+  size: number;
+}
+
+function createCodigoTemporal() {
+  return `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function InscripcionForm() {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [codigoTemporal] = useState(createCodigoTemporal);
+  const [archivoStatus, setArchivoStatus] = useState<UploadStatus>("idle");
+  const [posterStatus, setPosterStatus] = useState<UploadStatus>("idle");
+  const [archivoMetadata, setArchivoMetadata] = useState<UploadedFileMetadata | null>(null);
+  const [posterMetadata, setPosterMetadata] = useState<UploadedFileMetadata | null>(null);
+  const [archivoError, setArchivoError] = useState<string | null>(null);
+  const [posterError, setPosterError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -143,35 +165,123 @@ export function InscripcionForm() {
     },
   });
   const requiereOtroElemento = watch("requiere_otro_elemento");
+  const archivoProyectoRegister = register("archivo_proyecto");
+  const posterProyectoRegister = register("poster_proyecto");
+
+  async function uploadSelectedFile(kind: UploadKind, file: File) {
+    const setStatus = kind === "archivo" ? setArchivoStatus : setPosterStatus;
+    const setMetadata = kind === "archivo" ? setArchivoMetadata : setPosterMetadata;
+    const setError = kind === "archivo" ? setArchivoError : setPosterError;
+
+    setStatus("uploading");
+    setMetadata(null);
+    setError(null);
+
+    try {
+      const contentType = file.type || "application/octet-stream";
+      const response = await fetch("/api/storage/create-upload-url", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          codigoTemporal,
+          tipo: kind,
+          fileName: file.name,
+          contentType,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "No se pudo preparar la subida del archivo.");
+      }
+
+      const uploadTarget = await response.json() as {
+        path: string;
+        token: string;
+        signedUrl?: string;
+      };
+      console.log("[inscripcion] signed upload URL recibida", {
+        kind,
+        path: uploadTarget.path,
+        signedUrl: uploadTarget.signedUrl,
+      });
+
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.storage
+        .from("project-files")
+        .uploadToSignedUrl(uploadTarget.path, uploadTarget.token, file, {
+          contentType,
+        });
+
+      if (error) {
+        console.error("[inscripcion] error exacto subiendo a Supabase Storage", error);
+        throw error;
+      }
+
+      const metadata = {
+        path: uploadTarget.path,
+        nombre: file.name,
+        tipo: contentType,
+        size: file.size,
+      };
+      setMetadata(metadata);
+      setStatus("uploaded");
+      console.log("[inscripcion] subida completada en cliente", {
+        kind,
+        ...metadata,
+      });
+    } catch (error) {
+      console.error("[inscripcion] error exacto al subir archivo", error);
+      setStatus("error");
+      setError(error instanceof Error ? error.message : "No se pudo subir el archivo.");
+    }
+  }
 
   async function onSubmit(values: FormValues) {
     setSubmitError(null);
-    const formData = new FormData();
+    if (archivoStatus === "uploading" || posterStatus === "uploading") {
+      setSubmitError("Espera a que termine la subida de archivos.");
+      return;
+    }
+    if (!archivoMetadata) {
+      setSubmitError("El archivo del proyecto es obligatorio y debe cargarse correctamente.");
+      return;
+    }
 
-    Object.entries(values).forEach(([key, value]) => {
-      if (key === "archivo_proyecto" || key === "poster_proyecto") {
-        const file = value instanceof FileList ? value.item(0) : null;
-        if (file) {
-          formData.append(key, file);
-        }
-        return;
-      }
-
-      if (booleanFields.has(key)) {
-        formData.append(key, value ? "true" : "false");
-        return;
-      }
-
-      formData.append(key, String(value ?? ""));
-    });
+    const payload = Object.fromEntries(
+      Object.entries(values)
+        .filter(([key]) => key !== "archivo_proyecto" && key !== "poster_proyecto")
+        .map(([key, value]) => [
+          key,
+          booleanFields.has(key) ? Boolean(value) : String(value ?? ""),
+        ]),
+    );
+    const finalPayload = {
+      ...payload,
+      archivo_proyecto_path: archivoMetadata.path,
+      archivo_proyecto_nombre: archivoMetadata.nombre,
+      archivo_proyecto_tipo: archivoMetadata.tipo,
+      archivo_proyecto_size: archivoMetadata.size,
+      poster_proyecto_path: posterMetadata?.path ?? "",
+      poster_proyecto_nombre: posterMetadata?.nombre ?? "",
+      poster_proyecto_tipo: posterMetadata?.tipo ?? "",
+      poster_proyecto_size: posterMetadata?.size ?? 0,
+    };
+    console.log("[inscripcion] payload final enviado a /api/projects/register", finalPayload);
 
     const response = await fetch("/api/projects/register", {
       method: "POST",
-      body: formData,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(finalPayload),
     });
 
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
+      console.error("[inscripcion] error exacto si falla registro de proyecto", payload);
       setSubmitError(payload?.error ?? "No se pudo registrar el proyecto.");
       return;
     }
@@ -278,26 +388,78 @@ export function InscripcionForm() {
             <Upload className="size-4" />
             Archivo del proyecto
           </Label>
-          <Input id="archivo_proyecto" type="file" accept=".pdf,.doc,.docx" {...register("archivo_proyecto")} />
-          <p className="text-sm text-[var(--color-muted)]">El archivo se guardara en Supabase Storage.</p>
+          <Input
+            id="archivo_proyecto"
+            type="file"
+            accept=".pdf,.doc,.docx"
+            name={archivoProyectoRegister.name}
+            ref={archivoProyectoRegister.ref}
+            onBlur={archivoProyectoRegister.onBlur}
+            onChange={async (event) => {
+              await archivoProyectoRegister.onChange(event);
+              const file = event.target.files?.item(0);
+              if (file) {
+                await uploadSelectedFile("archivo", file);
+              }
+            }}
+          />
+          <p className="text-sm text-[var(--color-muted)]">Se subirá directamente a Supabase Storage.</p>
+          <UploadState status={archivoStatus} uploadedText="Archivo cargado correctamente" error={archivoError} />
         </div>
         <div className="grid gap-2 rounded-2xl border border-dashed border-[#6D3FA9]/30 bg-white/48 p-5">
           <Label htmlFor="poster_proyecto" className="inline-flex items-center gap-2">
             <Upload className="size-4" />
             Subir póster del proyecto
           </Label>
-          <Input id="poster_proyecto" type="file" accept=".pdf,.png,.jpg,.jpeg" {...register("poster_proyecto")} />
-          <p className="text-sm text-[var(--color-muted)]">Opcional. Acepta PDF e imagenes.</p>
+          <Input
+            id="poster_proyecto"
+            type="file"
+            accept=".pdf,.png,.jpg,.jpeg"
+            name={posterProyectoRegister.name}
+            ref={posterProyectoRegister.ref}
+            onBlur={posterProyectoRegister.onBlur}
+            onChange={async (event) => {
+              await posterProyectoRegister.onChange(event);
+              const file = event.target.files?.item(0);
+              if (file) {
+                await uploadSelectedFile("poster", file);
+              }
+            }}
+          />
+          <p className="text-sm text-[var(--color-muted)]">Acepta PDF o imagen. Se subirá directamente a Supabase Storage.</p>
+          <UploadState status={posterStatus} uploadedText="Póster cargado correctamente" error={posterError} />
         </div>
       </div>
 
       {submitError ? <p className="text-sm font-semibold text-red-700">{submitError}</p> : null}
 
-      <Button type="submit" size="lg" disabled={isSubmitting}>
+      <Button type="submit" size="lg" disabled={isSubmitting || archivoStatus === "uploading" || posterStatus === "uploading"}>
         Registrar proyecto
       </Button>
     </form>
   );
+}
+
+function UploadState({
+  status,
+  uploadedText,
+  error,
+}: {
+  status: UploadStatus;
+  uploadedText: string;
+  error?: string | null;
+}) {
+  if (status === "uploading") {
+    return <p className="text-sm font-semibold text-[var(--color-primary)]">Subiendo archivo...</p>;
+  }
+  if (status === "uploaded") {
+    return <p className="text-sm font-semibold text-green-700">{uploadedText}</p>;
+  }
+  if (status === "error") {
+    return <p className="text-sm font-semibold text-red-700">{error ?? "Error al subir archivo"}</p>;
+  }
+
+  return null;
 }
 
 function AprendizFields({
