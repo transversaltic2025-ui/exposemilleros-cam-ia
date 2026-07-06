@@ -5,14 +5,15 @@ import { InscripcionForm } from "./inscripcion-form";
 export default function InscripcionPage() {
   return (
     <SiteShell>
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-6">
-          <h1 className="text-3xl font-semibold">Inscripcion de proyectos</h1>
-          <p className="mt-2 text-slate-700">
-            Registro mock para proyectos del evento. La conexion con Google Sheets y Google Drive se hara en la siguiente fase.
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-8">
+          <p className="expo-eyebrow">Registro publico</p>
+          <h1 className="expo-page-title mt-2">Inscripcion de proyectos</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
+            Registro publico de proyectos con almacenamiento en Supabase Database y Supabase Storage.
           </p>
         </div>
-        <Card className="rounded-lg">
+        <Card>
           <CardHeader>
             <CardTitle>Datos del proyecto</CardTitle>
           </CardHeader>

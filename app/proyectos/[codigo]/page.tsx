@@ -1,10 +1,18 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FileText } from "lucide-react";
+import { ExternalLink, FileText, Sparkles } from "lucide-react";
 
+import { CriteriaWeight } from "@/components/criteria-weight";
+import { ScoreOrb } from "@/components/score-orb";
+import { SectionShell } from "@/components/section-shell";
 import { SiteShell } from "@/components/site-shell";
-import { Badge } from "@/components/ui/badge";
+import { StatusPill } from "@/components/status-pill";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { analisisIAMock, evaluacionesMock, getProyectoByCodigo } from "@/lib/mock-data";
+import { getProjectDetail, shouldUseMockData } from "@/lib/supabase/queries";
+import { createProjectFileSignedUrl } from "@/lib/supabase/storage";
+import { AnalyzeProjectButton } from "./analyze-project-button";
+
+export const dynamic = "force-dynamic";
 
 export default async function ProyectoDetallePage({
   params,
@@ -12,103 +20,222 @@ export default async function ProyectoDetallePage({
   params: Promise<{ codigo: string }>;
 }) {
   const { codigo } = await params;
-  const proyecto = getProyectoByCodigo(codigo);
+  const { proyecto, evaluaciones, analisis } = await getProjectDetail(codigo);
 
   if (!proyecto) {
     notFound();
   }
 
-  const evaluacion = evaluacionesMock.find((item) => item.codigo_proyecto === proyecto.codigo);
-  const analisis = analisisIAMock.find((item) => item.codigo_proyecto === proyecto.codigo);
+  const evaluacion = evaluaciones[0] ?? null;
+  const estadoAnalisis = analisis?.estado_analisis ?? analisis?.estado;
+  const analisisCompleto = estadoAnalisis === "Completado";
+  const scoreIA = analisisCompleto ? analisis?.puntaje_sugerido_ia ?? null : null;
+  const scoreHumano = evaluacion?.porcentaje ?? evaluacion?.puntaje_total ?? null;
+  const fileUrl = proyecto.archivo_storage_path && !shouldUseMockData()
+    ? await createProjectFileSignedUrl(proyecto.archivo_storage_path)
+    : proyecto.archivo_url ?? "#";
 
   return (
     <SiteShell>
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="space-y-6">
-          <div>
-            <Badge variant="secondary">{proyecto.codigo}</Badge>
-            <h1 className="mt-3 text-3xl font-semibold">{proyecto.titulo}</h1>
-            <p className="mt-3 text-slate-700">{proyecto.resumen}</p>
+      <section className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
+        <div className="expo-panel p-6 sm:p-8">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusPill>{proyecto.codigo_proyecto ?? proyecto.codigo}</StatusPill>
+            <StatusPill status={proyecto.estado_analisis_ia ?? proyecto.estado} />
           </div>
-          <Card className="rounded-lg">
-            <CardHeader>
-              <CardTitle>Ficha publica</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3 text-sm md:grid-cols-2">
-              <Info label="Area" value={proyecto.area_conocimiento} />
-              <Info label="Modalidad" value={proyecto.modalidad_participacion} />
-              <Info label="Semillero" value={proyecto.semillero} />
-              <Info label="Categoria" value={proyecto.categoria_presentacion} />
-              <Info label="Institucion" value={proyecto.institucion} />
-              <Info label="Municipio" value={proyecto.municipio} />
-              <Info label="Instructor" value={proyecto.instructor_nombre} />
-              <Info label="Estado" value={proyecto.estado} />
-            </CardContent>
-          </Card>
-          <Card className="rounded-lg">
-            <CardHeader>
-              <CardTitle>Integrantes</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
-              {proyecto.integrantes.map((integrante) => (
-                <Badge key={integrante} variant="outline">{integrante}</Badge>
-              ))}
-            </CardContent>
-          </Card>
+          <h1 className="mt-5 max-w-4xl font-heading text-4xl font-black leading-tight text-[var(--color-text)] sm:text-5xl">
+            {proyecto.nombre_proyecto ?? proyecto.titulo}
+          </h1>
+          <p className="mt-4 max-w-3xl text-base leading-8 text-[var(--color-muted)]">
+            {displayText(proyecto.resumen)}
+          </p>
+          <div className="mt-7 flex flex-wrap gap-3">
+            {proyecto.id ? <AnalyzeProjectButton proyectoId={proyecto.id} /> : null}
+            <Link
+              href={fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-12 items-center gap-2 rounded-xl border border-[var(--color-border)] bg-white/70 px-5 text-sm font-bold text-[var(--color-text)] hover:bg-white"
+            >
+              <ExternalLink className="size-4" />
+              Abrir archivo
+            </Link>
+          </div>
         </div>
+        <Card>
+          <CardContent className="grid place-items-center pt-2">
+            <ScoreOrb score={scoreIA ?? scoreHumano} status={estadoAnalisis ?? proyecto.estado} size="lg" />
+            <p className="mt-4 text-center text-sm leading-6 text-[var(--color-muted)]">
+              Score IA prioritario. Si aun no existe, se muestra el score de evaluacion humana.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
 
-        <div className="space-y-6">
-          <Card className="rounded-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="size-5" />
-                Archivo
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-slate-700">{proyecto.archivo_nombre}</p>
-              <p className="mt-2 text-sm text-slate-600">
-                El enlace real se servira desde Google Drive con permisos controlados.
+      <section className="mt-6 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Ficha del proyecto</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            <Info label="Linea tematica" value={proyecto.linea_tematica} />
+            <Info label="Modalidad" value={proyecto.modalidad_participacion} />
+            <Info label="Semillero" value={proyecto.semillero} />
+            <Info label="Categoria" value={proyecto.categoria_presentacion} />
+            <Info label="Institucion" value={proyecto.institucion} />
+            <Info label="Municipio" value={proyecto.municipio} />
+            <Info label="Instructor" value={proyecto.instructor_nombre} />
+            <Info label="Archivo" value={proyecto.archivo_nombre ?? proyecto.archivo_proyecto_nombre ?? "Sin archivo"} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="size-5 text-[var(--color-primary)]" />
+              Criterios y score
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            <CriteriaWeight label="Innovacion IA" value={analisis?.nivel_innovacion_ia ?? scoreIA} />
+            <CriteriaWeight label="Pertinencia IA" value={analisis?.nivel_pertinencia_ia ?? scoreHumano} />
+            <CriteriaWeight label="Impacto IA" value={analisis?.nivel_impacto_ia ?? 0} />
+            <CriteriaWeight label="Viabilidad IA" value={analisis?.nivel_viabilidad_ia ?? 0} />
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Comparacion evaluador vs IA</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {evaluacion && analisisCompleto && analisis ? (
+              <div className="grid gap-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <ComparisonBlock label="Evaluador" score={scoreHumano} concept={evaluacion.concepto_evaluador} />
+                  <ComparisonBlock label="IA" score={scoreIA} concept={analisis.concepto_ia} />
+                </div>
+                <div className="rounded-2xl border border-[var(--color-border)] bg-white/52 p-4">
+                  <p className="expo-eyebrow">Diferencia</p>
+                  <p className="mt-2 font-sans text-3xl font-extrabold text-[var(--color-text)]">
+                    {Math.abs((scoreHumano ?? 0) - (scoreIA ?? 0))} pts
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm leading-6 text-[var(--color-muted)]">
+                La comparacion aparecera cuando existan evaluacion humana y analisis IA completado.
               </p>
-            </CardContent>
-          </Card>
-          <Card className="rounded-lg">
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="size-5 text-[var(--color-success)]" />
+              Integrantes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {proyecto.integrantes.length > 0
+              ? proyecto.integrantes.map((integrante) => <StatusPill key={integrante} tone="neutral">{integrante}</StatusPill>)
+              : <p className="text-sm text-[var(--color-muted)]">Sin integrantes registrados.</p>}
+          </CardContent>
+        </Card>
+      </section>
+
+      <SectionShell className="mt-8" eyebrow="Analisis IA" title="Lectura tecnica y tendencias">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
             <CardHeader>
-              <CardTitle>Comparacion evaluador vs IA</CardTitle>
+              <CardTitle>Resumen y concepto</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              {evaluacion && analisis ? (
+            <CardContent className="space-y-5 text-sm leading-6 text-[var(--color-muted)]">
+              {analisisCompleto && analisis ? (
                 <>
-                  <Info label="Puntaje humano" value={`${evaluacion.puntaje_total}/100`} />
-                  <Info
-                    label="Puntaje IA"
-                    value={
-                      analisis.puntaje_sugerido_ia === null
-                        ? "Pendiente"
-                        : `${analisis.puntaje_sugerido_ia}/100`
-                    }
-                  />
-                  <Info label="Concepto evaluador" value={evaluacion.concepto_evaluador} />
-                  <Info label="Concepto IA" value={analisis.concepto_ia} />
+                  <Info label="Resumen IA" value={displayText(analisis.resumen_ia)} />
+                  <Info label="Nivel de tendencia" value={displayText(analisis.nivel_tendencia_ia)} />
+                  <Info label="Concepto IA" value={displayText(analisis.concepto_ia)} />
+                  <ChipList label="Tendencias identificadas" values={analisis.tendencias_identificadas} />
+                  <ChipList label="Recomendaciones" values={[...(analisis.oportunidades_detectadas ?? []), ...(analisis.palabras_clave_ia ?? [])]} />
                 </>
               ) : (
-                <p className="text-slate-600">
-                  La comparacion aparecera cuando existan evaluacion humana y analisis IA completado.
-                </p>
+                <p>Aun no existe analisis IA completo para este proyecto.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Inclusion, genero y enfoque diferencial</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {analisisCompleto && analisis ? (
+                <>
+                  <CriteriaWeight label="Inclusion de genero" value={analisis.nivel_inclusion_genero_ia ?? 0} />
+                  <CriteriaWeight label="Inclusion etnica" value={analisis.nivel_inclusion_etnica_ia ?? 0} />
+                  <Info label="Enfoque de genero" value={displayText(analisis.enfoque_genero_ia)} />
+                  <Info label="Enfoque etnico" value={displayText(analisis.enfoque_etnico_ia)} />
+                  <Info label="Enfoque diferencial" value={displayText(analisis.enfoque_diferencial_ia)} />
+                  <ChipList label="Recomendaciones limpias" values={[...(analisis.recomendaciones_genero_ia ?? []), ...(analisis.recomendaciones_etnicas_ia ?? [])]} />
+                  <ChipList label="Riesgos de exclusion" values={analisis.riesgos_exclusion_ia ?? []} />
+                </>
+              ) : (
+                <p className="text-sm text-[var(--color-muted)]">Pendiente de analisis IA.</p>
               )}
             </CardContent>
           </Card>
         </div>
-      </div>
+      </SectionShell>
     </SiteShell>
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({ label, value }: { label: string; value?: string }) {
+  return (
+    <div className="rounded-2xl border border-[var(--color-border)] bg-white/45 p-4">
+      <p className="expo-eyebrow">{label}</p>
+      <p className="mt-2 text-sm font-semibold leading-6 text-[var(--color-text)]">{displayText(value)}</p>
+    </div>
+  );
+}
+
+function ComparisonBlock({ label, score, concept }: { label: string; score?: number | null; concept?: string }) {
+  return (
+    <div className="rounded-2xl border border-[var(--color-border)] bg-white/52 p-4">
+      <p className="expo-eyebrow">{label}</p>
+      <div className="mt-3 flex items-center gap-4">
+        <ScoreOrb score={score} size="sm" />
+        <p className="text-sm leading-6 text-[var(--color-muted)]">{displayText(concept)}</p>
+      </div>
+    </div>
+  );
+}
+
+function displayText(value?: string | null) {
+  return value?.trim() || "Pendiente";
+}
+
+function ChipList({ label, values }: { label: string; values?: unknown }) {
+  const safeValues = Array.isArray(values)
+    ? values.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    : [];
+
   return (
     <div>
-      <div className="font-medium text-slate-950">{label}</div>
-      <div className="text-slate-700">{value}</div>
+      <p className="expo-eyebrow">{label}</p>
+      {safeValues.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {safeValues.map((value) => (
+            <StatusPill key={value} tone="neutral">{value}</StatusPill>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-[var(--color-muted)]">Pendiente</p>
+      )}
     </div>
   );
 }

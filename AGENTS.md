@@ -8,12 +8,11 @@ Sistema web para el Encuentro de Semilleros de Investigacion CAM 2026 - ExpoInno
 - Nombre corto de interfaz: ExpoSemilleros IA.
 - No crear login tradicional.
 - No crear sistema de usuarios con contrasena.
-- No usar Supabase.
-- No usar Google Forms.
+- No usar formularios externos para la inscripcion.
 - La inscripcion de proyectos se hace desde `/inscripcion`.
 - El registro de evaluadores se hace desde `/evaluadores/registro`.
-- Los proyectos se guardan en Google Sheets.
-- Los archivos de proyectos se guardan en Google Drive.
+- Los proyectos se guardan en Supabase Database.
+- Los archivos de proyectos se guardan en Supabase Storage.
 - Los evaluadores no inician sesion, se registran y reciben enlaces de evaluacion por token.
 - Cada evaluador puede tener maximo 3 proyectos asignados.
 - Cada proyecto puede tener maximo 2 evaluadores.
@@ -49,4 +48,4 @@ Sistema web para el Encuentro de Semilleros de Investigacion CAM 2026 - ExpoInno
 
 ## Flujo principal
 
-Sistema web -> API Next.js -> Google Apps Script -> Google Sheets + Google Drive -> Evaluacion humana -> Analisis IA -> Dashboard -> Certificados.
+Sistema web -> API Next.js -> Supabase Database + Supabase Storage -> Evaluacion humana -> Analisis IA -> Dashboard -> Certificados.

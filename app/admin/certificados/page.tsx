@@ -1,57 +1,167 @@
+import Link from "next/link";
 import { FileBadge } from "lucide-react";
 
+import { MetricCard } from "@/components/metric-card";
 import { SiteShell } from "@/components/site-shell";
-import { StatCard } from "@/components/stat-card";
+import { StatusPill } from "@/components/status-pill";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  certificadosMock,
-  proyectosMock,
-  resumenLogisticaMock,
-} from "@/lib/mock-data";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  getCertificates,
+  getHumanEvaluations,
+  getProjects,
+} from "@/lib/supabase/queries";
+import { createCertificateSignedUrl } from "@/lib/supabase/storage";
+import { GenerateCertificateButton } from "./generate-certificate-button";
 
-export default function AdminCertificadosPage() {
-  const participantes = proyectosMock.reduce((total, proyecto) => total + proyecto.integrantes.length, 0);
-  const instructores = new Set(proyectosMock.map((proyecto) => proyecto.instructor_nombre)).size;
+export const dynamic = "force-dynamic";
+
+export default async function AdminCertificadosPage() {
+  const [certificados, proyectos, evaluaciones] = await Promise.all([
+    getCertificates(),
+    getProjects(),
+    getHumanEvaluations(),
+  ]);
+
+  const participantes = proyectos.reduce((total, proyecto) => total + proyecto.integrantes.length, 0);
+  const ponentes = proyectos
+    .filter((proyecto) => ["Ponencia", "Oral"].includes(proyecto.categoria_presentacion))
+    .reduce((total, proyecto) => total + proyecto.integrantes.length, 0);
+  const instructores = new Set(proyectos.map((proyecto) => proyecto.instructor_nombre).filter(Boolean)).size;
+  const evaluadoresConEvaluacion = new Set(
+    evaluaciones.map((evaluacion) => evaluacion.evaluador_id).filter(Boolean),
+  ).size;
+  const generados = certificados.filter(
+    (certificado) => (certificado.estado_certificado ?? certificado.estado) === "Generado",
+  ).length;
+  const candidatos = participantes + ponentes + instructores + evaluadoresConEvaluacion;
+  const pendientes = Math.max(candidatos - generados, 0);
+
+  const certificadosConUrl = await Promise.all(
+    certificados.map(async (certificado) => {
+      const pathOrUrl = certificado.url_certificado ?? certificado.archivo_certificado_url;
+      if (!pathOrUrl) {
+        return { ...certificado, signedUrl: null };
+      }
+
+      try {
+        return {
+          ...certificado,
+          signedUrl: await createCertificateSignedUrl(pathOrUrl),
+        };
+      } catch {
+        return { ...certificado, signedUrl: pathOrUrl };
+      }
+    }),
+  );
 
   return (
     <SiteShell>
-      <div className="mb-6">
-        <h1 className="text-3xl font-semibold">Certificados</h1>
-        <p className="mt-2 text-slate-700">
-          Preparacion mock de datos para participantes, instructores y evaluadores.
+      <div className="mb-8">
+        <p className="expo-eyebrow">Admin</p>
+        <h1 className="expo-page-title mt-2">Certificados</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--color-muted)]">
+          Generacion de certificados PDF en Supabase Storage para participantes, ponentes, instructores y evaluadores.
         </p>
       </div>
-      <div className="grid gap-4 md:grid-cols-4">
-        <StatCard label="Participantes" value={participantes} detail="Desde proyectos mock" />
-        <StatCard label="Instructores" value={instructores} detail="Responsables unicos" />
-        <StatCard label="Evaluadores" value={resumenLogisticaMock.evaluadores} detail="Registrados" />
-        <StatCard label="Pendientes" value={resumenLogisticaMock.certificadosPendientes} detail="Por generar" />
+
+      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+        <MetricCard label="Participantes" value={participantes} detail="Aprendices registrados" />
+        <MetricCard label="Ponentes" value={ponentes} detail="Ponencia u oral" accent="secondary" />
+        <MetricCard label="Instructores" value={instructores} detail="Responsables unicos" accent="mint" />
+        <MetricCard label="Evaluadores" value={evaluadoresConEvaluacion} detail="Con evaluacion" accent="success" />
+        <MetricCard label="Generados" value={generados} detail="PDF creados" />
+        <MetricCard label="Pendientes" value={pendientes} detail="Estimados" accent="secondary" />
       </div>
-      <Card className="mt-6 rounded-lg">
+
+      <Card className="mt-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileBadge className="size-5 text-teal-700" />
-            Datos requeridos
+            <FileBadge className="size-5 text-[var(--color-primary)]" />
+            Generacion
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 text-sm text-slate-700 md:grid-cols-3">
-          <p>Participantes: nombre, documento interno, proyecto, rol y fecha del evento.</p>
-          <p>Instructores: nombre, documento interno, proyecto asociado y centro.</p>
-          <p>Evaluadores: nombre, documento interno, entidad, area y evaluaciones completadas.</p>
+        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <GenerateCertificateButton
+            tipoCertificado="Participante"
+            label="Generar certificados de participantes"
+          />
+          <GenerateCertificateButton
+            tipoCertificado="Ponente"
+            label="Generar certificados de ponentes"
+          />
+          <GenerateCertificateButton
+            tipoCertificado="Instructor"
+            label="Generar certificados de instructores"
+          />
+          <GenerateCertificateButton
+            tipoCertificado="Evaluador"
+            label="Generar certificados de evaluadores"
+          />
         </CardContent>
       </Card>
-      <Card className="mt-6 rounded-lg">
+
+      <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Registros mock</CardTitle>
+          <CardTitle>Registros</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 text-sm md:grid-cols-3">
-          {certificadosMock.map((certificado) => (
-            <div key={certificado.certificado_id} className="rounded-lg border p-3">
-              <div className="font-medium">{certificado.nombre}</div>
-              <div className="text-slate-600">{certificado.tipo} - {certificado.estado}</div>
-              <div className="text-slate-600">{certificado.codigo_proyecto ?? "Evento"}</div>
-            </div>
-          ))}
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Rol</TableHead>
+                <TableHead>Proyecto</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Certificado</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {certificadosConUrl.map((certificado) => (
+                <TableRow key={certificado.id ?? certificado.certificado_id}>
+                  <TableCell className="font-medium">
+                    {certificado.nombre_persona ?? certificado.nombre}
+                  </TableCell>
+                  <TableCell>{certificado.tipo_certificado ?? certificado.tipo}</TableCell>
+                  <TableCell>{certificado.rol_certificado ?? certificado.rol}</TableCell>
+                  <TableCell className="whitespace-normal">
+                    {certificado.proyecto_nombre ??
+                      certificado.proyecto_codigo ??
+                      certificado.codigo_proyecto ??
+                      "Evento"}
+                  </TableCell>
+                  <TableCell>
+                    <StatusPill status={certificado.estado_certificado ?? certificado.estado ?? "Pendiente"} />
+                  </TableCell>
+                  <TableCell>
+                    {certificado.signedUrl ? (
+                      <Link
+                        href={certificado.signedUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex h-9 items-center rounded-xl border border-[var(--color-border)] bg-white/65 px-3 text-sm font-bold text-[var(--color-primary)] hover:bg-white"
+                      >
+                        Ver certificado
+                      </Link>
+                    ) : (
+                      <span className="text-sm text-[var(--color-muted)]">Sin PDF</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {certificadosConUrl.length === 0 ? (
+            <p className="mt-4 text-sm text-[var(--color-muted)]">Aun no hay certificados generados.</p>
+          ) : null}
         </CardContent>
       </Card>
     </SiteShell>

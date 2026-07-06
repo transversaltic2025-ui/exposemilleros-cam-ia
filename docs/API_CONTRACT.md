@@ -1,6 +1,6 @@
 # ExpoSemilleros CAM IA - Contrato API inicial
 
-Esta version define contratos para APIs Next.js que despues actuaran como puente hacia Google Apps Script. Por ahora las paginas usan datos mock.
+Esta version define contratos para APIs Next.js conectadas a Supabase Database y Supabase Storage. Los datos mock solo se usan cuando `USE_MOCK_DATA=true`.
 
 ## Convenciones
 
@@ -10,7 +10,7 @@ Esta version define contratos para APIs Next.js que despues actuaran como puente
 - Los errores incluyen `ok: false`, `code` y `message`.
 - No se expone correo, documento ni celular desde endpoints publicos.
 
-## `POST /api/proyectos`
+## `POST /api/projects/register`
 
 Registra un proyecto y sube su archivo.
 
@@ -35,13 +35,14 @@ Respuesta:
 
 ```json
 {
-  "ok": true,
-  "codigo": "CAM-2026-001",
-  "estado": "recibido"
+  "project": {
+    "codigo": "CAM-2026-001",
+    "estado": "Registrado"
+  }
 }
 ```
 
-## `GET /api/proyectos`
+## Lectura de proyectos
 
 Lista proyectos publicos sin datos sensibles.
 
@@ -62,11 +63,9 @@ Respuesta:
 }
 ```
 
-## `GET /api/proyectos/:codigo`
+Las paginas `/proyectos` y `/proyectos/[codigo]` leen desde `lib/supabase/queries.ts`. Los datos publicos no incluyen correos, documentos ni celulares.
 
-Obtiene ficha publica del proyecto.
-
-## `POST /api/evaluadores`
+## `POST /api/evaluators/register`
 
 Registra evaluador.
 
@@ -88,15 +87,17 @@ Respuesta:
 
 ```json
 {
-  "ok": true,
-  "evaluador_id": "EVAL-001",
-  "estado": "disponible"
+  "evaluador": {
+    "evaluador_id": "EVAL-001",
+    "estado": "Disponible"
+  },
+  "assignments": []
 }
 ```
 
-## `POST /api/asignaciones/auto`
+## Asignacion automatica
 
-Ejecuta asignacion automatica.
+La asignacion automatica se ejecuta al registrar evaluadores desde `/api/evaluators/register`.
 
 Reglas:
 
@@ -115,11 +116,11 @@ Respuesta:
 }
 ```
 
-## `GET /api/evaluaciones/:token`
+## Lectura de evaluacion por token
 
-Obtiene informacion de evaluacion por token. Debe devolver lo necesario para evaluar, sin credenciales.
+La pagina `/evaluar/[token]` lee la asignacion desde Supabase y genera un signed URL del archivo en `project-files`.
 
-## `POST /api/evaluaciones/:token`
+## `POST /api/evaluations/:token`
 
 Registra evaluacion humana.
 
@@ -136,12 +137,16 @@ Payload:
   "observaciones": "Proyecto claro y pertinente.",
   "fortalezas": "Alta pertinencia regional.",
   "oportunidades": "Fortalecer validacion con usuarios.",
-  "recomendacion_final": "destacado",
+  "recomendacion_final": "Destacado",
   "concepto_evaluador": "Recomendado por su impacto potencial."
 }
 ```
 
-## `POST /api/ia/analizar/:codigo`
+## Analisis IA
+
+No conectado todavia. La tabla `analisis_ia` queda preparada para almacenar resultados futuros.
+
+Ejemplo futuro:
 
 Dispara analisis IA del archivo asociado al proyecto.
 
@@ -158,10 +163,10 @@ Respuesta:
 }
 ```
 
-## `GET /api/tendencias`
+## Tendencias
 
-Entrega agregados para dashboard con Recharts.
+La pagina `/tendencias` entrega agregados para dashboard con Recharts desde consultas centralizadas.
 
-## `GET /api/admin/logistica`
+## Logistica admin
 
-Entrega agregados internos: proyectos, evaluadores, asignaciones, evaluaciones, certificados pendientes y distribucion por area.
+La pagina `/admin` entrega agregados internos: proyectos, evaluadores, asignaciones, evaluaciones, certificados pendientes y distribucion por area.

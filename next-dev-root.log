@@ -1,0 +1,154 @@
+
+> exposemilleros-cam-ia@0.1.0 dev
+> next dev --webpack
+
+▲ Next.js 16.2.10 (webpack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.55:3000
+- Environments: .env.local
+✓ Ready in 439ms
+
+ HEAD / 200 in 2.9s (next.js: 1389ms, application-code: 1500ms)
+ GET /proyectos/EXPOCAM-2026-0001 200 in 948ms
+ GET /proyectos/EXPOCAM-2026-0001 200 in 1585ms (next.js: 381ms, application-code: 1205ms)
+ GET /proyectos/EXPOCAM-2026-0001 200 in 2.9s (next.js: 1446ms, application-code: 1475ms)
+ GET /proyectos/EXPOCAM-2026-0001 200 in 1146ms (next.js: 2ms, application-code: 1144ms)
+ GET /proyectos/EXPOCAM-2026-0001 200 in 1249ms (next.js: 13ms, application-code: 1237ms)
+ GET /proyectos/EXPOCAM-2026-0001 200 in 1625ms (next.js: 3ms, application-code: 1623ms)
+ GET /proyectos/EXPOCAM-2026-0001 200 in 1546ms (next.js: 3ms, application-code: 1543ms)
+ GET /proyectos/EXPOCAM-2026-0001 200 in 447ms (next.js: 2ms, application-code: 444ms)
+ GET /proyectos/EXPOCAM-2026-0001 200 in 367ms (next.js: 3ms, application-code: 363ms)
+ GET /proyectos/EXPOCAM-2026-0001 200 in 319ms (next.js: 2ms, application-code: 317ms)
+ GET /proyectos/EXPOCAM-2026-0001 200 in 136ms (next.js: 11ms, application-code: 125ms)
+ GET /proyectos/EXPOCAM-2026-0001 200 in 84ms (next.js: 3ms, application-code: 82ms)
+ GET /proyectos/EXPOCAM-2026-0003 200 in 939ms (next.js: 10ms, application-code: 929ms)
+[ai/analyze-project] proyecto_id recibido f27f9913-c7d5-4dbe-895b-318452bcc1e5
+[ai/openrouter] modelo usado google/gemma-4-31b-it:free
+[ai/openrouter] error exacto de OpenRouter Provider returned error
+[ai/analyze-project] error exacto Error: OpenRouter error: Provider returned error
+    at callOpenRouter (lib\ai\openrouter.ts:53:11)
+    at async analyzeProjectTrends (lib\ai\trend-analysis.ts:164:20)
+    at async POST (app\api\ai\analyze-project\route.ts:105:22)
+  51 |     const message = payload?.error?.message ?? raw ?? response.statusText;
+  52 |     console.error("[ai/openrouter] error exacto de OpenRouter", message);
+> 53 |     throw new Error(`OpenRouter error: ${message}`);
+     |           ^
+  54 |   }
+  55 |
+  56 |   if (payload?.error) {
+[ai/analyze-project] error exacto guardando mensaje_error {
+  code: 'PGRST204',
+  details: null,
+  hint: null,
+  message: "Could not find the 'alertas_calidad' column of 'analisis_ia' in the schema cache"
+}
+ POST /api/ai/analyze-project 500 in 2.5s (next.js: 396ms, application-code: 2.1s)
+[ai/analyze-project] proyecto_id recibido f27f9913-c7d5-4dbe-895b-318452bcc1e5
+[ai/openrouter] modelo usado google/gemma-4-31b-it:free
+[ai/analyze-project] analisis guardado correctamente {
+  id: '10eb3d1e-6cf6-4807-981b-f070df187a25',
+  proyecto_id: 'f27f9913-c7d5-4dbe-895b-318452bcc1e5',
+  resumen_ia: 'El proyecto propone un sistema de calefacción de agua aplicado al sector apícola, integrando herramientas de automatización, analítica y gestión de servicios basada en modelos de ITSM (gestión de servicios de TI) para la estandarización de incidentes y toma de decisiones.',
+  tendencias_identificadas: [
+    'Automatización de procesos productivos',
+    'Digitalización de la gestión apícola',
+    'Implementación de analítica de datos en el sector agropecuario',
+    'Aplicación de marcos de trabajo ITSM en entornos productivos'
+  ],
+  palabras_clave_ia: [
+    'Calefacción de agua',
+    'Apicultura',
+    'Automatización',
+    'Analítica',
+    'ITSM',
+    'Gestión de tickets'
+  ],
+  sectores_relacionados: [
+    'Agropecuario',
+    'Tecnologías de la Información',
+    'Apicultura',
+    'Automatización Industrial'
+  ],
+  nivel_innovacion_ia: 75,
+  nivel_pertinencia_ia: 70,
+  nivel_impacto_ia: 60,
+  nivel_viabilidad_ia: 65,
+  nivel_claridad_metodologica_ia: 50,
+  nivel_articulacion_tendencias_ia: 80,
+  riesgos_detectados: [
+    'Desconexión conceptual entre la calefacción de agua y la gestión de tickets (ITSM)',
+    'Complejidad técnica en la implementación de analítica avanzada en entornos rurales',
+    'Posible sobrecosto tecnológico para pequeños apicultores'
+  ],
+  oportunidades_detectadas: [
+    'Optimización de la productividad apícola mediante control térmico',
+    'Creación de un modelo de soporte técnico estandarizado para el sector agro',
+    'Escalabilidad del sistema de gestión a otras líneas pecuarias'
+  ],
+  puntaje_sugerido_ia: 66,
+  promedio_ia: 67,
+  porcentaje_ia: 66,
+  nivel_tendencia_ia: 'Tendencia emergente relevante',
+  concepto_ia: 'Proyecto con un enfoque híbrido interesante que busca profesionalizar la gestión apícola mediante herramientas tecnológicas de TI, aunque presenta una descripción fragmentada entre la solución física (calefacción) y la gestión administrativa (ITSM).',
+  modelo_ia: 'google/gemma-4-31b-it:free',
+  estado_analisis: 'Completado',
+  mensaje_error: '',
+  created_at: '2026-07-06T02:35:15.415872+00:00',
+  enfoque_genero_ia: 'No se evidencia un enfoque de género explícito en la información suministrada.',
+  nivel_inclusion_genero_ia: 0,
+  recomendaciones_genero_ia: [
+    'Incorporar la participación equitativa de mujeres en el diseño y operación de los sistemas de automatización',
+    'Evaluar el impacto del proyecto en la reducción de la carga laboral para mujeres rurales'
+  ],
+  enfoque_etnico_ia: 'No se evidencia un enfoque étnico explícito en la información suministrada.',
+  nivel_inclusion_etnica_ia: 0,
+  recomendaciones_etnicas_ia: [
+    'Adaptar la tecnología a los saberes ancestrales de comunidades indígenas o afrodescendientes que realicen apicultura',
+    'Implementar pilotos en territorios con presencia de grupos étnicos para validar la pertinencia cultural de la herramienta'
+  ],
+  enfoque_diferencial_ia: 'El proyecto no reconoce explícitamente diferencias por territorio, ruralidad, discapacidad, edad o pertenencia étnica.',
+  riesgos_exclusion_ia: [
+    'Exclusión de productores con baja alfabetización digital debido al uso de sistemas de gestión de tickets',
+    'Barreras de acceso para pequeños campesinos por el costo de la infraestructura tecnológica'
+  ],
+  oportunidades_inclusion_ia: [
+    'Diseñar interfaces de usuario simplificadas para personas con diferentes niveles de escolaridad',
+    'Incluir un enfoque de ruralidad que adapte la analítica de datos a las condiciones reales del campo'
+  ]
+}
+ POST /api/ai/analyze-project 200 in 24.3s (next.js: 5ms, application-code: 24.3s)
+ GET /proyectos/EXPOCAM-2026-0003 200 in 749ms (next.js: 48ms, application-code: 701ms)
+ GET /tendencias 200 in 4.8s (next.js: 2.8s, application-code: 2.1s)
+ GET /tendencias 200 in 2.2s (next.js: 424ms, application-code: 1809ms)
+ GET /tendencias 200 in 1191ms (next.js: 6ms, application-code: 1185ms)
+ GET /tendencias 200 in 524ms (next.js: 6ms, application-code: 517ms)
+ GET /tendencias 200 in 304ms (next.js: 6ms, application-code: 298ms)
+ GET /tendencias 200 in 967ms (next.js: 6ms, application-code: 962ms)
+ GET /tendencias 200 in 746ms (next.js: 8ms, application-code: 739ms)
+ GET /tendencias 200 in 994ms (next.js: 7ms, application-code: 987ms)
+ GET /tendencias 200 in 363ms (next.js: 7ms, application-code: 357ms)
+ GET /tendencias 200 in 778ms (next.js: 6ms, application-code: 772ms)
+ GET /tendencias 200 in 584ms (next.js: 5ms, application-code: 578ms)
+ GET /tendencias 200 in 686ms (next.js: 6ms, application-code: 680ms)
+ GET /tendencias 200 in 936ms (next.js: 7ms, application-code: 929ms)
+ GET /tendencias 200 in 488ms (next.js: 6ms, application-code: 482ms)
+ GET /tendencias 200 in 810ms (next.js: 8ms, application-code: 801ms)
+ GET /tendencias 200 in 1107ms (next.js: 6ms, application-code: 1101ms)
+ GET /tendencias 200 in 1314ms (next.js: 7ms, application-code: 1307ms)
+ GET /tendencias 200 in 1649ms (next.js: 7ms, application-code: 1641ms)
+ GET /tendencias 200 in 801ms (next.js: 5ms, application-code: 795ms)
+ GET /tendencias 200 in 1244ms (next.js: 7ms, application-code: 1237ms)
+ GET /tendencias 200 in 1487ms (next.js: 8ms, application-code: 1478ms)
+ GET /tendencias 200 in 4.8s (next.js: 8ms, application-code: 4.8s)
+ GET /tendencias 200 in 355ms (next.js: 31ms, application-code: 324ms)
+ GET / 200 in 4.4s (next.js: 2.6s, application-code: 1790ms)
+○ Compiling /inscripcion ...
+ GET /inscripcion 200 in 7.1s (next.js: 6.8s, application-code: 309ms)
+ GET /inscripcion 200 in 96ms (next.js: 12ms, application-code: 84ms)
+ GET / 200 in 1007ms (next.js: 34ms, application-code: 972ms)
+ GET /proyectos 200 in 2.8s (next.js: 1993ms, application-code: 828ms)
+ GET /proyectos/EXPOCAM-2026-0002 200 in 4.4s (next.js: 2.9s, application-code: 1500ms)
+ GET /proyectos/EXPOCAM-2026-0002 200 in 1456ms (next.js: 8ms, application-code: 1448ms)
+ GET /evaluadores/registro 200 in 2.8s (next.js: 2.1s, application-code: 696ms)
+ GET /tendencias 200 in 1098ms (next.js: 27ms, application-code: 1071ms)
+ GET /admin 200 in 4.2s (next.js: 2.2s, application-code: 1949ms)

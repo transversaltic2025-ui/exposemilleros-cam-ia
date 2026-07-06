@@ -39,7 +39,7 @@ export const proyectosMock: Project[] = [
     instructor_celular: "3001112233",
     estado: "Asignado",
     archivo_nombre: "riego-inteligente.pdf",
-    archivo_drive_id: "mock-drive-riego",
+    archivo_storage_path: "mock-storage-riego",
     archivo_url: "#",
     evaluadores_asignados: 2,
     requiere_certificado: true,
@@ -69,7 +69,7 @@ export const proyectosMock: Project[] = [
     instructor_celular: "3002223344",
     estado: "Evaluado",
     archivo_nombre: "clasificador-residuos.pdf",
-    archivo_drive_id: "mock-drive-residuos",
+    archivo_storage_path: "mock-storage-residuos",
     archivo_url: "#",
     evaluadores_asignados: 2,
     requiere_certificado: true,
@@ -99,7 +99,7 @@ export const proyectosMock: Project[] = [
     instructor_celular: "3003334455",
     estado: "En evaluación",
     archivo_nombre: "biofertilizante.pdf",
-    archivo_drive_id: "mock-drive-bio",
+    archivo_storage_path: "mock-storage-bio",
     archivo_url: "#",
     evaluadores_asignados: 1,
     requiere_certificado: true,
@@ -126,7 +126,7 @@ export const proyectosMock: Project[] = [
     instructor_celular: "3004445566",
     estado: "Registrado",
     archivo_nombre: "ferias-campesinas.pdf",
-    archivo_drive_id: "mock-drive-ferias",
+    archivo_storage_path: "mock-storage-ferias",
     archivo_url: "#",
     evaluadores_asignados: 0,
     requiere_certificado: true,
@@ -156,7 +156,7 @@ export const proyectosMock: Project[] = [
     instructor_celular: "3005556677",
     estado: "Asignado",
     archivo_nombre: "monitoreo-apicola.pdf",
-    archivo_drive_id: "mock-drive-apicola",
+    archivo_storage_path: "mock-storage-apicola",
     archivo_url: "#",
     evaluadores_asignados: 1,
     requiere_certificado: true,
@@ -183,7 +183,7 @@ export const proyectosMock: Project[] = [
     instructor_celular: "3001112233",
     estado: "Asignado",
     archivo_nombre: "germinacion-viveros.pdf",
-    archivo_drive_id: "mock-drive-germinacion",
+    archivo_storage_path: "mock-storage-germinacion",
     archivo_url: "#",
     evaluadores_asignados: 1,
     requiere_certificado: true,
@@ -210,7 +210,7 @@ export const proyectosMock: Project[] = [
     instructor_celular: "3001112233",
     estado: "Asignado",
     archivo_nombre: "bitacora-cafe.pdf",
-    archivo_drive_id: "mock-drive-cafe",
+    archivo_storage_path: "mock-storage-cafe",
     archivo_url: "#",
     evaluadores_asignados: 1,
     requiere_certificado: true,
@@ -464,7 +464,7 @@ export const evaluacionesMock: HumanEvaluation[] = [
   {
     evaluacion_id: "EVALH-001",
     asignacion_id: "ASIG-003",
-    codigo_proyecto: "CAM-2026-002",
+    proyecto_id: "CAM-2026-002",
     evaluador_id: "EVAL-002",
     estado: "Completada",
     puntaje_pertinencia: 18,
@@ -484,7 +484,7 @@ export const evaluacionesMock: HumanEvaluation[] = [
   {
     evaluacion_id: "EVALH-002",
     asignacion_id: "ASIG-006",
-    codigo_proyecto: "CAM-2026-005",
+    proyecto_id: "CAM-2026-005",
     evaluador_id: "EVAL-004",
     estado: "Completada",
     puntaje_pertinencia: 16,
@@ -506,8 +506,8 @@ export const evaluacionesMock: HumanEvaluation[] = [
 export const analisisIAMock: AIAnalysis[] = [
   {
     analisis_id: "IA-001",
-    codigo_proyecto: "CAM-2026-001",
-    archivo_drive_id: "mock-drive-riego",
+    proyecto_id: "CAM-2026-001",
+    archivo_storage_path: "mock-storage-riego",
     estado: "Pendiente",
     resumen_ia: "",
     tendencias_identificadas: [],
@@ -518,8 +518,8 @@ export const analisisIAMock: AIAnalysis[] = [
   },
   {
     analisis_id: "IA-002",
-    codigo_proyecto: "CAM-2026-002",
-    archivo_drive_id: "mock-drive-residuos",
+    proyecto_id: "CAM-2026-002",
+    archivo_storage_path: "mock-storage-residuos",
     estado: "Completado",
     resumen_ia:
       "El documento describe un prototipo de visión artificial para clasificar residuos y apoyar procesos educativos ambientales.",
@@ -537,8 +537,8 @@ export const analisisIAMock: AIAnalysis[] = [
   },
   {
     analisis_id: "IA-003",
-    codigo_proyecto: "CAM-2026-005",
-    archivo_drive_id: "mock-drive-apicola",
+    proyecto_id: "CAM-2026-005",
+    archivo_storage_path: "mock-storage-apicola",
     estado: "Completado",
     resumen_ia:
       "El archivo plantea monitoreo de variables críticas en colmenas escuela para mejorar prácticas de formación apícola.",
@@ -556,8 +556,8 @@ export const analisisIAMock: AIAnalysis[] = [
   },
   {
     analisis_id: "IA-004",
-    codigo_proyecto: "CAM-2026-003",
-    archivo_drive_id: "mock-drive-bio",
+    proyecto_id: "CAM-2026-003",
+    archivo_storage_path: "mock-storage-bio",
     estado: "Procesando",
     resumen_ia: "",
     tendencias_identificadas: [],
@@ -653,13 +653,13 @@ export const tendenciasPorAreaMock: TrendByArea[] = [
 export const comparacionesHumanoIaMock: HumanVsAIComparison[] = evaluacionesMock.map(
   (evaluacion) => {
     const analisis = analisisIAMock.find(
-      (item) => item.codigo_proyecto === evaluacion.codigo_proyecto,
+      (item) => item.proyecto_id === evaluacion.proyecto_id,
     );
     const puntajeIA =
       analisis?.estado === "Completado" ? analisis.puntaje_sugerido_ia : null;
 
     return {
-      codigo_proyecto: evaluacion.codigo_proyecto,
+      codigo_proyecto: evaluacion.proyecto_id,
       puntaje_humano: evaluacion.puntaje_total,
       puntaje_ia: puntajeIA,
       diferencia:
@@ -702,17 +702,18 @@ export function getAsignacionesByProyecto(codigo: string) {
 }
 
 export function getEvaluacionesByProyecto(codigo: string) {
-  return evaluacionesMock.filter((item) => item.codigo_proyecto === codigo);
+  return evaluacionesMock.filter((item) => item.proyecto_id === codigo);
 }
 
 export function getAnalisisIAByProyecto(codigo: string) {
-  return analisisIAMock.find((item) => item.codigo_proyecto === codigo);
+  return analisisIAMock.find((item) => item.proyecto_id === codigo);
 }
 
 export function getEvaluacionByToken(token: string) {
   const asignacion = asignacionesMock.find((item) => item.token === token);
-  const proyecto = asignacion
-    ? getProyectoByCodigo(asignacion.codigo_proyecto)
+  const codigoProyecto = asignacion?.codigo_proyecto;
+  const proyecto = codigoProyecto
+    ? getProyectoByCodigo(codigoProyecto)
     : undefined;
   const analisis = proyecto ? getAnalisisIAByProyecto(proyecto.codigo) : undefined;
 

@@ -1,5 +1,5 @@
 import { SiteShell } from "@/components/site-shell";
-import { Badge } from "@/components/ui/badge";
+import { StatusPill } from "@/components/status-pill";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -9,18 +9,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { evaluadoresMock } from "@/lib/mock-data";
+import { getEvaluators } from "@/lib/supabase/queries";
 
-export default function AdminEvaluadoresPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AdminEvaluadoresPage() {
+  const evaluadores = await getEvaluators();
+
   return (
     <SiteShell>
-      <div className="mb-6">
-        <h1 className="text-3xl font-semibold">Evaluadores</h1>
-        <p className="mt-2 text-slate-700">
-          Vista interna mock. Los datos sensibles se mantienen fuera de tablas publicas.
+      <div className="mb-8">
+        <p className="expo-eyebrow">Admin</p>
+        <h1 className="expo-page-title mt-2">Evaluadores</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
+          Vista interna de carga y disponibilidad. Los datos sensibles se mantienen fuera de tablas publicas.
         </p>
       </div>
-      <Card className="rounded-lg">
+      <Card>
         <CardHeader>
           <CardTitle>Carga por evaluador</CardTitle>
         </CardHeader>
@@ -32,22 +37,24 @@ export default function AdminEvaluadoresPage() {
                 <TableHead>Nombre</TableHead>
                 <TableHead>Entidad</TableHead>
                 <TableHead>Area</TableHead>
-                <TableHead>Disponibilidad</TableHead>
+                <TableHead>Registro</TableHead>
                 <TableHead>Asignados</TableHead>
                 <TableHead>Estado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {evaluadoresMock.map((evaluador) => (
-                <TableRow key={evaluador.evaluador_id}>
-                  <TableCell>{evaluador.evaluador_id}</TableCell>
-                  <TableCell>{evaluador.nombre}</TableCell>
-                  <TableCell>{evaluador.entidad}</TableCell>
+              {evaluadores.map((evaluador) => (
+                <TableRow key={evaluador.id ?? evaluador.evaluador_id}>
+                  <TableCell>{evaluador.codigo_evaluador ?? evaluador.evaluador_id}</TableCell>
+                  <TableCell>{evaluador.nombre_evaluador ?? evaluador.nombre}</TableCell>
+                  <TableCell>{evaluador.institucion_evaluador ?? evaluador.entidad}</TableCell>
                   <TableCell>{evaluador.area_conocimiento}</TableCell>
-                  <TableCell>{evaluador.disponibilidad}</TableCell>
-                  <TableCell>{evaluador.proyectos_asignados}/3</TableCell>
+                  <TableCell>{formatDate(evaluador.created_at ?? evaluador.fecha_registro)}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{evaluador.estado}</Badge>
+                    {evaluador.cantidad_proyectos_asignados ?? evaluador.proyectos_asignados ?? 0}/3
+                  </TableCell>
+                  <TableCell>
+                    <StatusPill status={evaluador.estado_evaluador ?? evaluador.estado ?? "Activo"} />
                   </TableCell>
                 </TableRow>
               ))}
@@ -57,4 +64,12 @@ export default function AdminEvaluadoresPage() {
       </Card>
     </SiteShell>
   );
+}
+
+function formatDate(value?: string) {
+  if (!value) return "Sin fecha";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat("es-CO", { dateStyle: "medium" }).format(date);
 }

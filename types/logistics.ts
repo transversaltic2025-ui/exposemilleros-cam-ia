@@ -2,6 +2,7 @@ export interface LogisticsSummary {
   proyectos: number;
   evaluadores: number;
   asignaciones: number;
+  asignacionesPendientes?: number;
   evaluaciones: number;
   certificadosPendientes: number;
   proyectosSinEvaluador: number;

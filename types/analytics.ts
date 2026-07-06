@@ -4,6 +4,8 @@ export interface TrendByArea {
   area: LineaTematica;
   proyectos: number;
   puntajePromedio: number;
+  puntajePromedioIA?: number;
+  analisisIA?: number;
 }
 
 export interface HumanVsAIComparison {

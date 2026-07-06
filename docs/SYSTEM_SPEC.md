@@ -6,9 +6,9 @@ ExpoSemilleros CAM IA es el sistema web del Encuentro de Semilleros de Investiga
 
 ## Alcance inicial
 
-- Capturar proyectos desde `/inscripcion` sin Google Forms.
-- Recibir archivos de proyecto desde el sistema y almacenarlos posteriormente en Google Drive.
-- Guardar registros estructurados en Google Sheets mediante Google Apps Script.
+- Capturar proyectos desde `/inscripcion`.
+- Recibir archivos de proyecto desde el sistema y almacenarlos en Supabase Storage.
+- Guardar registros estructurados en Supabase Database.
 - Registrar evaluadores desde `/evaluadores/registro`, sin login ni contrasena.
 - Asignar proyectos por area de conocimiento con maximo 3 proyectos por evaluador y maximo 2 evaluadores por proyecto.
 - Entregar enlaces de evaluacion por token.
@@ -20,8 +20,6 @@ ExpoSemilleros CAM IA es el sistema web del Encuentro de Semilleros de Investiga
 
 ## Fuera de alcance por ahora
 
-- Conexion real con Google Sheets.
-- Conexion real con Google Drive.
 - Ejecucion real de IA sobre documentos.
 - Envio real de correos o WhatsApp.
 - Login tradicional o sistema de usuarios con contrasena.
@@ -31,8 +29,7 @@ ExpoSemilleros CAM IA es el sistema web del Encuentro de Semilleros de Investiga
 ```text
 Next.js App Router
   -> API Routes Next.js
-  -> Google Apps Script Web App
-  -> Google Sheets + Google Drive
+  -> Supabase Database + Supabase Storage
   -> Analisis IA de archivos
   -> Dashboard + certificados
 ```
@@ -41,7 +38,7 @@ Next.js App Router
 
 - `/app`: rutas, paginas y componentes de ruta.
 - `/components`: componentes reutilizables y shadcn/ui.
-- `/lib`: datos mock, reglas de negocio, clientes futuros de Apps Script, helpers.
+- `/lib`: datos mock de fallback, consultas Supabase, reglas de negocio y helpers.
 - `/types`: tipos compartidos del dominio.
 - `/docs`: especificaciones funcionales, contratos y prompts.
 
@@ -59,9 +56,9 @@ Next.js App Router
 | `/evaluar/[token]` | Evaluacion humana por enlace tokenizado. |
 | `/tendencias` | Dashboard publico de tendencias agregadas. |
 | `/admin` | Resumen interno de operacion. |
-| `/admin/evaluadores` | Gestion mock de evaluadores. |
-| `/admin/asignaciones` | Revision mock de asignaciones. |
-| `/admin/certificados` | Preparacion mock de certificados. |
+| `/admin/evaluadores` | Gestion de evaluadores. |
+| `/admin/asignaciones` | Revision de asignaciones. |
+| `/admin/certificados` | Preparacion de certificados. |
 
 ## Privacidad
 
@@ -69,4 +66,4 @@ Las tablas publicas no deben mostrar correos, documentos ni celulares. Esos dato
 
 ## Estado actual
 
-La primera version usa datos mock locales. Las integraciones externas se implementaran despues mediante contratos definidos en `docs/API_CONTRACT.md`.
+La aplicacion usa Supabase cuando `USE_MOCK_DATA=false`. Los datos mock locales se conservan solo como fallback cuando `USE_MOCK_DATA=true`.

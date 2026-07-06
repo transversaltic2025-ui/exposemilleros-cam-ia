@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2 } from "lucide-react";
+import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
@@ -10,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import type { EvaluationCriterion } from "@/types";
 
 const schema = z.object({
   archivo_abierto: z.boolean().refine(Boolean, "Debes abrir y leer el archivo."),
@@ -23,11 +25,29 @@ const schema = z.object({
   oportunidades: z.string().min(10),
   recomendacion_final: z.string().min(1),
   concepto_evaluador: z.string().min(20),
+  detalles: z.array(z.object({
+    criterio_id: z.string(),
+    puntaje: z.number().min(0),
+    observacion_criterio: z.string().optional(),
+  })).optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-export function EvaluationForm() {
+export function EvaluationForm({
+  token,
+  criterios,
+}: {
+  token: string;
+  criterios: EvaluationCriterion[];
+}) {
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const hasCriteria = criterios.length > 0;
+  const normalizedCriteria = criterios.map((criterio) => ({
+    ...criterio,
+    id: criterio.id ?? criterio.criterio_id ?? "",
+    nombre_criterio: criterio.nombre_criterio ?? criterio.nombre ?? "Criterio",
+  }));
   const {
     register,
     handleSubmit,
@@ -43,28 +63,48 @@ export function EvaluationForm() {
       puntaje_metodologia: 0,
       puntaje_impacto: 0,
       puntaje_comunicacion: 0,
+      detalles: normalizedCriteria.map((criterio) => ({
+        criterio_id: criterio.id,
+        puntaje: 0,
+        observacion_criterio: "",
+      })),
     },
   });
 
   const archivoAbierto = useWatch({ control, name: "archivo_abierto" });
 
-  if (isSubmitSuccessful) {
+  async function onSubmit(values: FormValues) {
+    setSubmitError(null);
+    const response = await fetch(`/api/evaluations/${token}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(values),
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      setSubmitError(payload?.error ?? "No se pudo enviar la evaluacion.");
+      return;
+    }
+  }
+
+  if (isSubmitSuccessful && !submitError) {
     return (
-      <div className="rounded-lg border bg-emerald-50 p-5 text-emerald-900">
+      <div className="rounded-2xl border border-[#2E7D5B]/20 bg-[#2E7D5B]/10 p-5 text-[#2E7D5B]">
         <div className="flex items-center gap-2 font-semibold">
           <CheckCircle2 className="size-5" />
-          Evaluacion mock enviada
+          Evaluacion registrada correctamente
         </div>
         <p className="mt-2 text-sm">
-          En la integracion real se guardara en Google Sheets y se comparara con el analisis IA.
+          La evaluacion humana quedo guardada y lista para comparar con el analisis IA cuando este disponible.
         </p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit(() => undefined)} className="grid gap-5">
-      <label className="flex items-start gap-3 rounded-lg border bg-slate-50 p-4 text-sm">
+    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-5">
+      <label className="flex items-start gap-3 rounded-2xl border border-[var(--color-border)] bg-white/48 p-4 text-sm">
         <Checkbox
           checked={archivoAbierto}
           onCheckedChange={(checked) => setValue("archivo_abierto", checked === true)}
@@ -72,31 +112,67 @@ export function EvaluationForm() {
         <span>
           Confirmo que abri y lei el archivo del proyecto antes de evaluar.
           {errors.archivo_abierto ? (
-            <span className="block text-red-600">{errors.archivo_abierto.message}</span>
+            <span className="block font-semibold text-red-700">{errors.archivo_abierto.message}</span>
           ) : null}
         </span>
       </label>
 
-      <div className="grid gap-4 md:grid-cols-5">
-        {[
-          ["puntaje_pertinencia", "Pertinencia"],
-          ["puntaje_innovacion", "Innovacion"],
-          ["puntaje_metodologia", "Metodologia"],
-          ["puntaje_impacto", "Impacto"],
-          ["puntaje_comunicacion", "Comunicacion"],
-        ].map(([name, label]) => (
-          <div key={name} className="grid gap-2">
-            <Label htmlFor={name}>{label}</Label>
-            <Input
-              id={name}
-              type="number"
-              min={0}
-              max={20}
-              {...register(name as keyof FormValues, { valueAsNumber: true })}
-            />
-          </div>
-        ))}
-      </div>
+      {hasCriteria ? (
+        <div className="grid gap-4">
+          {normalizedCriteria.map((criterio, index) => (
+            <div key={criterio.id} className="grid gap-3 rounded-2xl border border-[var(--color-border)] bg-white/45 p-4">
+              <div>
+                <Label htmlFor={`criterio-${criterio.id}`}>
+                  {criterio.nombre_criterio ?? criterio.nombre}
+                </Label>
+                <p className="mt-1 text-sm leading-6 text-[var(--color-muted)]">{criterio.descripcion}</p>
+              </div>
+              <input type="hidden" {...register(`detalles.${index}.criterio_id`)} />
+              <div className="grid gap-3 md:grid-cols-[180px_1fr]">
+                <div className="grid gap-2">
+                  <Label htmlFor={`criterio-${criterio.id}`}>Puntaje</Label>
+                  <Input
+                    id={`criterio-${criterio.id}`}
+                    type="number"
+                    min={0}
+                    max={criterio.puntaje_maximo}
+                    {...register(`detalles.${index}.puntaje`, { valueAsNumber: true })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor={`observacion-${criterio.id}`}>Observacion del criterio</Label>
+                  <Textarea
+                    id={`observacion-${criterio.id}`}
+                    rows={2}
+                    {...register(`detalles.${index}.observacion_criterio`)}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-5">
+          {[
+            ["puntaje_pertinencia", "Pertinencia"],
+            ["puntaje_innovacion", "Innovacion"],
+            ["puntaje_metodologia", "Metodologia"],
+            ["puntaje_impacto", "Impacto"],
+            ["puntaje_comunicacion", "Comunicacion"],
+          ].map(([name, label]) => (
+            <div key={name} className="grid gap-2">
+              <Label htmlFor={name}>{label}</Label>
+              <Input
+                id={name}
+                type="number"
+                min={0}
+                max={20}
+                {...register(name as keyof FormValues, { valueAsNumber: true })}
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-2">
         <Label htmlFor="observaciones">Observaciones</Label>
@@ -114,20 +190,22 @@ export function EvaluationForm() {
         <Label htmlFor="recomendacion_final">Recomendacion final</Label>
         <select
           id="recomendacion_final"
-          className="h-9 rounded-md border bg-white px-3 text-sm"
+          className="h-11 rounded-xl border border-[var(--color-border)] bg-white/70 px-3 text-sm"
           {...register("recomendacion_final")}
         >
           <option value="">Seleccionar</option>
-          <option value="destacado">Destacado</option>
-          <option value="aprobar">Aprobar</option>
-          <option value="ajustar">Ajustar</option>
-          <option value="no_recomendado">No recomendado</option>
+          <option value="Destacado">Destacado</option>
+          <option value="Aprobar">Aprobar</option>
+          <option value="Ajustar">Ajustar</option>
+          <option value="No recomendado">No recomendado</option>
         </select>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="concepto_evaluador">Concepto del evaluador</Label>
         <Textarea id="concepto_evaluador" rows={4} {...register("concepto_evaluador")} />
       </div>
+
+      {submitError ? <p className="text-sm font-semibold text-red-700">{submitError}</p> : null}
 
       <Button type="submit" size="lg">
         Enviar evaluacion

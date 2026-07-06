@@ -1,15 +1,29 @@
 import type { EstadoAsignacion, LineaTematica } from "@/lib/constants";
 
 export interface Assignment {
-  asignacion_id: string;
-  codigo_proyecto: string;
-  titulo_proyecto: string;
+  id?: string;
+  token_evaluacion?: string;
+  proyecto_id?: string;
   evaluador_id: string;
-  evaluador_nombre: string;
-  area_conocimiento: LineaTematica;
-  token: string;
-  fecha_asignacion: string;
-  estado: EstadoAsignacion;
-  archivo_abierto: boolean;
+  estado_asignacion?: EstadoAsignacion;
+  fecha_asignacion?: string;
+  fecha_limite?: string | null;
+  permitir_edicion?: boolean;
+  url_evaluacion?: string | null;
+  fecha_envio_evaluacion?: string | null;
+  observaciones_admin?: string | null;
+  proyecto_codigo?: string;
+  proyecto_nombre?: string;
+  proyecto_area?: LineaTematica;
+  evaluador_codigo?: string;
+  evaluador_nombre?: string;
+
+  asignacion_id?: string;
+  codigo_proyecto?: string;
+  titulo_proyecto?: string;
+  area_conocimiento?: LineaTematica;
+  token?: string;
+  estado?: EstadoAsignacion;
+  archivo_abierto?: boolean;
   fecha_apertura_archivo?: string;
 }

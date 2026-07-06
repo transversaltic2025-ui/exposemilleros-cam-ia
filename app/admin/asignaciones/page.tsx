@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { SiteShell } from "@/components/site-shell";
-import { Badge } from "@/components/ui/badge";
+import { StatusPill } from "@/components/status-pill";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -11,18 +11,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { asignacionesMock } from "@/lib/mock-data";
+import { getAssignments } from "@/lib/supabase/queries";
 
-export default function AdminAsignacionesPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AdminAsignacionesPage() {
+  const asignaciones = await getAssignments();
+
   return (
     <SiteShell>
-      <div className="mb-6">
-        <h1 className="text-3xl font-semibold">Asignaciones</h1>
-        <p className="mt-2 text-slate-700">
-          Control mock de asignaciones por area, tokens y lectura del archivo.
+      <div className="mb-8">
+        <p className="expo-eyebrow">Admin</p>
+        <h1 className="expo-page-title mt-2">Asignaciones</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
+          Control de asignaciones por area, tokens y lectura del archivo.
         </p>
       </div>
-      <Card className="rounded-lg">
+      <Card>
         <CardHeader>
           <CardTitle>Asignaciones actuales</CardTitle>
         </CardHeader>
@@ -35,30 +40,34 @@ export default function AdminAsignacionesPage() {
                 <TableHead>Evaluador</TableHead>
                 <TableHead>Area</TableHead>
                 <TableHead>Token</TableHead>
-                <TableHead>Archivo</TableHead>
+                <TableHead>Edicion</TableHead>
                 <TableHead>Estado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {asignacionesMock.map((asignacion) => (
-                <TableRow key={asignacion.asignacion_id}>
-                  <TableCell>{asignacion.asignacion_id}</TableCell>
+              {asignaciones.map((asignacion) => (
+                <TableRow key={asignacion.id ?? asignacion.asignacion_id}>
+                  <TableCell>{asignacion.id ?? asignacion.asignacion_id}</TableCell>
                   <TableCell className="whitespace-normal">
-                    <div className="font-medium">{asignacion.codigo_proyecto}</div>
-                    <div className="text-slate-600">{asignacion.titulo_proyecto}</div>
+                    <div className="font-medium">
+                      {asignacion.proyecto_codigo ?? asignacion.codigo_proyecto ?? asignacion.proyecto_id}
+                    </div>
+                    <div className="text-[var(--color-muted)]">
+                      {asignacion.proyecto_nombre ?? asignacion.titulo_proyecto ?? "Proyecto asignado"}
+                    </div>
                   </TableCell>
-                  <TableCell>{asignacion.evaluador_nombre}</TableCell>
-                  <TableCell>{asignacion.area_conocimiento}</TableCell>
+                  <TableCell>{asignacion.evaluador_nombre ?? asignacion.evaluador_id}</TableCell>
+                  <TableCell>{asignacion.proyecto_area ?? asignacion.area_conocimiento ?? "Sin area"}</TableCell>
                   <TableCell>
-                    <Link href={`/evaluar/${asignacion.token}`}>
-                      <code className="rounded bg-slate-100 px-2 py-1 text-xs hover:bg-slate-200">
-                        {asignacion.token}
+                    <Link href={`/evaluar/${asignacion.token_evaluacion ?? asignacion.token}`}>
+                      <code className="rounded-full bg-white/70 px-3 py-1 text-xs font-bold text-[var(--color-primary)] hover:bg-white">
+                        {asignacion.token_evaluacion ?? asignacion.token}
                       </code>
                     </Link>
                   </TableCell>
-                  <TableCell>{asignacion.archivo_abierto ? "Abierto" : "Pendiente"}</TableCell>
+                  <TableCell>{asignacion.permitir_edicion ? "Permitida" : "Cerrada"}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{asignacion.estado}</Badge>
+                    <StatusPill status={asignacion.estado_asignacion ?? asignacion.estado} />
                   </TableCell>
                 </TableRow>
               ))}

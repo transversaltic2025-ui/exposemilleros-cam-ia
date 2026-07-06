@@ -23,7 +23,7 @@ export type {
 export type { Project, ProjectParticipant } from "./project";
 export type { Evaluator } from "./evaluator";
 export type { Assignment } from "./assignment";
-export type { EvaluationCriterion, HumanEvaluation } from "./evaluation";
+export type { EvaluationCriterion, EvaluationDetailInput, HumanEvaluation } from "./evaluation";
 export type { AIAnalysis } from "./ai-analysis";
 export type { EventLogistics, LogisticsSummary } from "./logistics";
 export type { CertificateRecord } from "./certificate";
