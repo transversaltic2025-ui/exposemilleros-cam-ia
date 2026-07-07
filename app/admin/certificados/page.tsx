@@ -18,22 +18,22 @@ import {
   getHumanEvaluations,
   getProjects,
 } from "@/lib/supabase/queries";
+import { requireAdmin } from "@/lib/admin-auth";
 import { createCertificateSignedUrl } from "@/lib/supabase/storage";
 import { GenerateCertificateButton } from "./generate-certificate-button";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminCertificadosPage() {
+  await requireAdmin();
+
   const [certificados, proyectos, evaluaciones] = await Promise.all([
     getCertificates(),
     getProjects(),
     getHumanEvaluations(),
   ]);
 
-  const participantes = proyectos.reduce((total, proyecto) => total + proyecto.integrantes.length, 0);
-  const ponentes = proyectos
-    .filter((proyecto) => String(proyecto.categoria_presentacion) === "Ponencia oral")
-    .reduce((total, proyecto) => total + proyecto.integrantes.length, 0);
+  const ponentes = proyectos.reduce((total, proyecto) => total + proyecto.integrantes.length, 0);
   const instructores = new Set(
     proyectos.flatMap((proyecto) => [
       proyecto.instructor_nombre,
@@ -47,7 +47,7 @@ export default async function AdminCertificadosPage() {
   const generados = certificados.filter(
     (certificado) => (certificado.estado_certificado ?? certificado.estado) === "Generado",
   ).length;
-  const candidatos = participantes + ponentes + instructores + evaluadoresConEvaluacion;
+  const candidatos = ponentes + instructores + evaluadoresConEvaluacion;
   const pendientes = Math.max(candidatos - generados, 0);
 
   const certificadosConUrl = await Promise.all(
@@ -74,14 +74,13 @@ export default async function AdminCertificadosPage() {
         <p className="expo-eyebrow">Admin</p>
         <h1 className="expo-page-title mt-2">Certificados</h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--color-muted)]">
-          Generacion de certificados PDF en Supabase Storage para participantes, ponentes, instructores y evaluadores.
+          Generacion de certificados PDF en Supabase Storage para ponentes, instructores lideres y evaluadores.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-        <MetricCard label="Participantes" value={participantes} detail="Aprendices registrados" />
-        <MetricCard label="Ponentes" value={ponentes} detail="Ponencia oral" accent="secondary" />
-        <MetricCard label="Instructores" value={instructores} detail="Responsables unicos" accent="mint" />
+      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
+        <MetricCard label="Ponentes" value={ponentes} detail="Aprendices en poster" accent="secondary" />
+        <MetricCard label="Instructores lideres" value={instructores} detail="Responsables unicos" accent="mint" />
         <MetricCard label="Evaluadores" value={evaluadoresConEvaluacion} detail="Con evaluacion" accent="success" />
         <MetricCard label="Generados" value={generados} detail="PDF creados" />
         <MetricCard label="Pendientes" value={pendientes} detail="Estimados" accent="secondary" />
@@ -94,11 +93,7 @@ export default async function AdminCertificadosPage() {
             Generacion
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <GenerateCertificateButton
-            tipoCertificado="Participante"
-            label="Generar certificados de participantes"
-          />
+        <CardContent className="grid gap-3 md:grid-cols-3">
           <GenerateCertificateButton
             tipoCertificado="Ponente"
             label="Generar certificados de ponentes"

@@ -1,16 +1,30 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowUpRight, ClipboardList, FileBadge, GitBranch, Users } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BarChart3, ClipboardCheck, ClipboardList, FileBadge, GitBranch, Users } from "lucide-react";
 
 import { MetricCard } from "@/components/metric-card";
 import { SectionShell } from "@/components/section-shell";
 import { SiteShell } from "@/components/site-shell";
 import { StatusPill } from "@/components/status-pill";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireAdmin } from "@/lib/admin-auth";
 import { getAIAnalyses, getAssignments, getHumanEvaluations, getLogisticsSummary, getProjects } from "@/lib/supabase/queries";
+import { AdminLogoutButton } from "./logout-button";
 
 export const dynamic = "force-dynamic";
 
 const adminLinks = [
+  {
+    href: "/proyectos",
+    title: "Proyectos",
+    detail: "Consulta interna de registros y analisis.",
+    icon: ClipboardCheck,
+  },
+  {
+    href: "/tendencias",
+    title: "Tendencias",
+    detail: "Dashboard de tendencias IA y logistica.",
+    icon: BarChart3,
+  },
   {
     href: "/admin/evaluadores",
     title: "Evaluadores",
@@ -26,12 +40,14 @@ const adminLinks = [
   {
     href: "/admin/certificados",
     title: "Certificados",
-    detail: "Participantes, instructores y evaluadores.",
+    detail: "Ponentes, instructores lideres y evaluadores.",
     icon: FileBadge,
   },
 ];
 
 export default async function AdminPage() {
+  await requireAdmin();
+
   const [resumenLogistica, proyectos, asignaciones, evaluaciones, analisisIA] = await Promise.all([
     getLogisticsSummary(),
     getProjects(),
@@ -55,12 +71,15 @@ export default async function AdminPage() {
 
   return (
     <SiteShell>
-      <div className="mb-8">
-        <p className="expo-eyebrow">Administracion</p>
-        <h1 className="expo-page-title mt-2">Panel ejecutivo personal</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
-          Gestion operativa sin login tradicional: carga de evaluadores, asignaciones, certificados y alertas de avance.
-        </p>
+      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="expo-eyebrow">Administracion</p>
+          <h1 className="expo-page-title mt-2">Panel ejecutivo personal</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
+            Gestion operativa sin login tradicional: carga de evaluadores, asignaciones, certificados y alertas de avance.
+          </p>
+        </div>
+        <AdminLogoutButton />
       </div>
       <div className="grid gap-4 md:grid-cols-5">
         <MetricCard label="Proyectos" value={resumenLogistica.proyectos} detail="Inscritos" />
@@ -76,7 +95,7 @@ export default async function AdminPage() {
         <MetricCard label="Otro elemento" value={resumenLogistica.proyectosRequierenOtroElemento ?? 0} detail="Requerido" />
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
+      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {adminLinks.map((item) => {
           const Icon = item.icon;
           return (

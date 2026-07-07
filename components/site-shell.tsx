@@ -1,13 +1,11 @@
 import Link from "next/link";
-import { BarChart3, ClipboardCheck, FileText, Home, ShieldCheck, UserRoundPlus } from "lucide-react";
+import { FileText, Home, ShieldCheck, UserRoundPlus } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/inscripcion", label: "Inscripcion", icon: FileText },
-  { href: "/proyectos", label: "Proyectos", icon: ClipboardCheck },
   { href: "/evaluadores/registro", label: "Evaluadores", icon: UserRoundPlus },
-  { href: "/tendencias", label: "Tendencias", icon: BarChart3 },
-  { href: "/admin", label: "Admin", icon: ShieldCheck },
+  { href: "/admin/login", label: "Admin", icon: ShieldCheck },
 ];
 
 export function SiteShell({ children }: { children: React.ReactNode }) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { analyzeProjectTrends } from "@/lib/ai/trend-analysis";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Project } from "@/types";
@@ -69,6 +70,12 @@ async function saveErrorAnalysis(proyectoId: string, message: string) {
 }
 
 export async function POST(request: Request) {
+  if (!(await isAdminAuthenticated())) {
+    console.warn("[ai/analyze-project] analisis IA no autorizado");
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+  console.log("[ai/analyze-project] analisis IA autorizado");
+
   const client = createSupabaseServerClient();
   let proyectoId = "";
 
@@ -150,7 +157,7 @@ export async function POST(request: Request) {
     }
 
     console.log("[ai/analyze-project] analisis guardado correctamente", savedAnalysis);
-    return NextResponse.json({ analysis: savedAnalysis });
+    return NextResponse.json({ success: true, analysis: savedAnalysis });
   } catch (error) {
     const message = errorMessage(error);
     console.error("[ai/analyze-project] error exacto", error);
@@ -160,6 +167,12 @@ export async function POST(request: Request) {
       await saveErrorAnalysis(proyectoId, message);
     }
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "No fue posible generar el analisis IA. Intenta nuevamente en unos minutos.",
+        detail: message,
+      },
+      { status: 500 },
+    );
   }
 }

@@ -5,6 +5,7 @@ import { SiteShell } from "@/components/site-shell";
 import { StatusPill } from "@/components/status-pill";
 import { TendenciasChart } from "@/components/tendencias-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireAdmin } from "@/lib/admin-auth";
 import {
   getAIAnalyses,
   getLogisticsSummary,
@@ -15,6 +16,8 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function TendenciasPage() {
+  await requireAdmin();
+
   const [resumenLogistica, asignacionesPendientes, tendenciasPorArea, analisisIA] = await Promise.all([
     getLogisticsSummary(),
     getPendingAssignmentsCount(),

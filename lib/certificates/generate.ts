@@ -4,7 +4,7 @@ import { createCertificatePdf } from "@/lib/certificates/pdf";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { uploadCertificatePdf } from "@/lib/supabase/storage";
 
-export type CertificateType = "Participante" | "Ponente" | "Instructor" | "Evaluador";
+export type CertificateType = "Ponente" | "Instructor" | "Evaluador";
 
 interface ProjectRow {
   id: string;
@@ -147,15 +147,8 @@ async function getProjectCandidates(tipoCertificado: CertificateType) {
   }
 
   const projects = (data ?? []) as unknown as ProjectRow[];
-  const eligibleProjects =
-    tipoCertificado === "Ponente"
-      ? projects.filter((project) =>
-          String(project.categoria_presentacion ?? "") === "Ponencia oral",
-        )
-      : projects;
-
   if (tipoCertificado === "Instructor") {
-    return eligibleProjects.flatMap((project) =>
+    return projects.flatMap((project) =>
       projectInstructors(project).map((instructor) => ({
         tipo_certificado: tipoCertificado,
         nombre_persona: String(instructor.nombre),
@@ -168,12 +161,12 @@ async function getProjectCandidates(tipoCertificado: CertificateType) {
     );
   }
 
-  return eligibleProjects.flatMap((project) =>
+  return projects.flatMap((project) =>
     projectLearners(project).map((learner) => ({
       tipo_certificado: tipoCertificado,
       nombre_persona: String(learner.nombre),
       documento_persona: String(learner.documento ?? ""),
-      rol_certificado: tipoCertificado === "Ponente" ? "Ponente" : "Aprendiz investigador",
+      rol_certificado: "Ponente",
       proyecto_id: project.id,
       evaluador_id: null,
       proyecto: project,

@@ -8,6 +8,7 @@ import { SectionShell } from "@/components/section-shell";
 import { SiteShell } from "@/components/site-shell";
 import { StatusPill } from "@/components/status-pill";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireAdmin } from "@/lib/admin-auth";
 import { getProjectDetail, shouldUseMockData } from "@/lib/supabase/queries";
 import { createProjectFileSignedUrl } from "@/lib/supabase/storage";
 import { AnalyzeProjectButton } from "./analyze-project-button";
@@ -19,6 +20,8 @@ export default async function ProyectoDetallePage({
 }: {
   params: Promise<{ codigo: string }>;
 }) {
+  await requireAdmin();
+
   const { codigo } = await params;
   const { proyecto, evaluaciones, analisis } = await getProjectDetail(codigo);
 

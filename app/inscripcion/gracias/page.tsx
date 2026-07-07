@@ -12,11 +12,19 @@ export default function GraciasInscripcionPage() {
           <CheckCircle2 className="mx-auto mb-4 size-12 text-[var(--color-success)]" />
           <h1 className="font-heading text-3xl font-black text-[var(--color-text)]">Proyecto recibido</h1>
           <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">
-            El registro fue recibido. El archivo queda disponible para evaluacion mediante enlaces seguros por token.
+            El registro fue recibido correctamente. El equipo organizador revisara la informacion registrada.
           </p>
-          <Link className="mt-6 inline-flex h-11 items-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]" href="/proyectos">
-            Ver proyectos publicos
-          </Link>
+          <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">
+            Guarde la informacion enviada y este atento a las comunicaciones del evento.
+          </p>
+          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link className="inline-flex h-11 items-center justify-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]" href="/inscripcion">
+              Registrar otro proyecto
+            </Link>
+            <Link className="inline-flex h-11 items-center justify-center rounded-xl border border-[var(--color-border)] bg-white/65 px-4 text-sm font-bold text-[var(--color-primary)] hover:bg-white" href="/">
+              Volver al inicio
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </SiteShell>

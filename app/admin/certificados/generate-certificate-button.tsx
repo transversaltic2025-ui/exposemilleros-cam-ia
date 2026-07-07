@@ -6,7 +6,7 @@ import { FileBadge } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-type CertificateType = "Participante" | "Ponente" | "Instructor" | "Evaluador";
+type CertificateType = "Ponente" | "Instructor" | "Evaluador";
 
 export function GenerateCertificateButton({
   tipoCertificado,
@@ -25,6 +25,7 @@ export function GenerateCertificateButton({
 
     const response = await fetch("/api/certificates/generate", {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tipo_certificado: tipoCertificado }),
     });

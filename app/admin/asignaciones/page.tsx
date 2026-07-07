@@ -12,11 +12,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { requireAdmin } from "@/lib/admin-auth";
 import { getAssignments, getProjects } from "@/lib/supabase/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminAsignacionesPage() {
+  await requireAdmin();
+
   const [asignaciones, proyectos] = await Promise.all([getAssignments(), getProjects()]);
   const electricidad = proyectos.filter((project) => project.requiere_conexion_electrica).length;
   const mobiliario = proyectos.filter((project) => project.requiere_mesa_mobiliario).length;

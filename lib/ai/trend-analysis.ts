@@ -7,7 +7,10 @@ const scoreSchema = z.coerce
   .number()
   .catch(0)
   .transform((score) => Math.min(100, Math.max(0, Math.round(score))));
-const stringSchema = z.string().catch("");
+const stringSchema = z.preprocess(
+  (value) => typeof value === "string" && value.trim() ? value.trim() : "Pendiente",
+  z.string().catch("Pendiente"),
+);
 const stringArraySchema = z.preprocess(
   (value) => Array.isArray(value) ? value : [],
   z.array(z.string()).catch([]),
@@ -65,18 +68,30 @@ function getNivelTendencia(porcentaje: number) {
 }
 
 function extractJson(content: string) {
-  const fenced = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  if (fenced?.[1]) {
-    return fenced[1];
-  }
-
-  const first = content.indexOf("{");
-  const last = content.lastIndexOf("}");
+  const trimmed = content.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  const candidate = fenced?.[1]?.trim() ?? trimmed;
+  const first = candidate.indexOf("{");
+  const last = candidate.lastIndexOf("}");
   if (first >= 0 && last > first) {
-    return content.slice(first, last + 1);
+    return candidate.slice(first, last + 1);
   }
 
-  return content;
+  throw new Error("No se pudo interpretar la respuesta JSON del modelo.");
+}
+
+function parseAnalysisJson(content: string) {
+  try {
+    const parsed = JSON.parse(extractJson(content));
+    console.log("[ai/trend-analysis] parseo JSON exitoso");
+    return parsed;
+  } catch (error) {
+    console.warn("[ai/trend-analysis] parseo JSON fallido");
+    if (error instanceof Error && error.message === "No se pudo interpretar la respuesta JSON del modelo.") {
+      throw error;
+    }
+    throw new Error("No se pudo interpretar la respuesta JSON del modelo.");
+  }
 }
 
 function projectValue(project: Project, key: keyof Project) {
@@ -88,6 +103,16 @@ function cleanStringArray(values: unknown) {
   return Array.isArray(values)
     ? values.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
     : [];
+}
+
+function cleanText(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : "Pendiente";
+}
+
+function cleanScore(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.min(100, Math.max(0, Math.round(value)))
+    : 0;
 }
 
 export async function analyzeProjectTrends(project: Project): Promise<TrendAnalysisResult> {
@@ -166,13 +191,7 @@ Datos del proyecto:
     { role: "user", content: userPrompt },
   ]);
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(extractJson(response.content));
-  } catch (error) {
-    console.error("[ai/trend-analysis] respuesta cruda de OpenRouter si falla el parseo", response.raw);
-    throw error;
-  }
+  const parsed = parseAnalysisJson(response.content);
 
   const analysis = analysisSchema.parse(parsed);
   const rubricScores = [
@@ -190,28 +209,39 @@ Datos del proyecto:
 
   return {
     ...analysis,
+    resumen_ia: cleanText(analysis.resumen_ia),
     tendencias_identificadas: cleanStringArray(analysis.tendencias_identificadas),
     palabras_clave_ia: cleanStringArray(analysis.palabras_clave_ia),
     sectores_relacionados: cleanStringArray(analysis.sectores_relacionados),
+    nivel_innovacion_ia: cleanScore(analysis.nivel_innovacion_ia),
+    nivel_pertinencia_ia: cleanScore(analysis.nivel_pertinencia_ia),
+    nivel_impacto_ia: cleanScore(analysis.nivel_impacto_ia),
+    nivel_viabilidad_ia: cleanScore(analysis.nivel_viabilidad_ia),
+    nivel_claridad_metodologica_ia: cleanScore(analysis.nivel_claridad_metodologica_ia),
+    nivel_articulacion_tendencias_ia: cleanScore(analysis.nivel_articulacion_tendencias_ia),
     riesgos_detectados: cleanStringArray(analysis.riesgos_detectados),
     oportunidades_detectadas: cleanStringArray(analysis.oportunidades_detectadas),
     enfoque_genero_ia:
       analysis.enfoque_genero_ia ||
       "No se evidencia un enfoque de género explícito en la información suministrada.",
+    nivel_inclusion_genero_ia: cleanScore(analysis.nivel_inclusion_genero_ia),
     recomendaciones_genero_ia: cleanStringArray(analysis.recomendaciones_genero_ia),
     enfoque_etnico_ia:
       analysis.enfoque_etnico_ia ||
       "No se evidencia un enfoque étnico explícito en la información suministrada.",
+    nivel_inclusion_etnica_ia: cleanScore(analysis.nivel_inclusion_etnica_ia),
     recomendaciones_etnicas_ia: cleanStringArray(analysis.recomendaciones_etnicas_ia),
-    enfoque_diferencial_ia: analysis.enfoque_diferencial_ia || "Pendiente",
+    enfoque_diferencial_ia: cleanText(analysis.enfoque_diferencial_ia),
     riesgos_exclusion_ia: cleanStringArray(analysis.riesgos_exclusion_ia),
     oportunidades_inclusion_ia: cleanStringArray(analysis.oportunidades_inclusion_ia),
     promedio_ia: promedio,
     porcentaje_ia: Math.min(100, Math.max(0, porcentaje)),
     puntaje_sugerido_ia: Math.min(100, Math.max(0, Math.round(analysis.puntaje_sugerido_ia || promedio))),
     nivel_tendencia_ia: getNivelTendencia(Math.min(100, Math.max(0, porcentaje))),
-    modelo_ia: response.model,
+    concepto_ia: cleanText(analysis.concepto_ia),
+    modelo_ia: response.modelUsed,
     estado_analisis: "Completado",
     mensaje_error: "",
   };
 }
+

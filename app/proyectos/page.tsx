@@ -5,11 +5,14 @@ import { EmptyState } from "@/components/empty-state";
 import { ProjectCard } from "@/components/project-card";
 import { SectionShell } from "@/components/section-shell";
 import { SiteShell } from "@/components/site-shell";
+import { requireAdmin } from "@/lib/admin-auth";
 import { getAIAnalyses, getHumanEvaluations, getProjects } from "@/lib/supabase/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProyectosPage() {
+  await requireAdmin();
+
   const [proyectos, evaluaciones, analisisIA] = await Promise.all([
     getProjects(),
     getHumanEvaluations(),
@@ -29,9 +32,9 @@ export default async function ProyectosPage() {
   return (
     <SiteShell>
       <SectionShell
-        eyebrow="Portafolio publico"
+        eyebrow="Panel interno"
         title="Proyectos registrados"
-        description="Listado sin correos, documentos ni celulares. Cada ficha muestra estado, linea tematica y score disponible."
+        description="Consulta interna de proyectos registrados, estados de evaluacion y analisis disponibles."
         action={
           <Link
             href="/inscripcion"
@@ -45,7 +48,7 @@ export default async function ProyectosPage() {
         {proyectos.length === 0 ? (
           <EmptyState
             title="Aun no hay proyectos evaluados"
-            description="Cuando existan registros, apareceran como fichas con score, estado y acceso al detalle publico."
+            description="Cuando existan registros, apareceran como fichas internas con estado y analisis disponible."
             actionLabel="Registrar primer proyecto"
             actionHref="/inscripcion"
           />
