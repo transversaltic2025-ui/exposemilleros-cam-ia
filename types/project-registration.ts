@@ -1,5 +1,6 @@
 import type {
   CategoriaPresentacion,
+  LineaInvestigacion,
   LineaTematica,
   ModalidadParticipacion,
   OpcionSiNo,
@@ -18,6 +19,7 @@ export interface ProjectRegistrationInput {
   codigo_proyecto?: string;
   nombre_proyecto: string;
   linea_tematica: LineaTematica;
+  linea_investigacion?: LineaInvestigacion | string;
   modalidad_participacion: ModalidadParticipacion;
   semillero: Semillero;
   institucion: string;

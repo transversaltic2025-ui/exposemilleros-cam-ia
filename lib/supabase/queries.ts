@@ -109,6 +109,7 @@ function normalizeProject(row: Record<string, unknown>): Project {
   const codigo = toStringValue(row.codigo_proyecto);
   const nombre = toStringValue(row.nombre_proyecto);
   const linea = toStringValue(row.linea_tematica) as Project["linea_tematica"];
+  const lineaInvestigacion = toStringValue(row.linea_investigacion);
   const createdAt = toStringValue(row.created_at) || new Date().toISOString();
 
   return {
@@ -156,7 +157,7 @@ function normalizeProject(row: Record<string, unknown>): Project {
     titulo: nombre,
     resumen: toStringValue(row.observaciones_adicionales),
     area_conocimiento: linea,
-    linea_investigacion: linea,
+    linea_investigacion: lineaInvestigacion || linea,
     participantes: aprendizNombres.map((nombreParticipante, index) => ({
       nombre: nombreParticipante,
       documento: toStringValue(row[`aprendiz_${index + 1}_documento`]),
@@ -549,6 +550,7 @@ export async function createProject(input: {
   codigo_proyecto: string;
   nombre_proyecto: string;
   linea_tematica: string;
+  linea_investigacion?: string;
   modalidad_participacion: string;
   semillero: string;
   institucion: string;
@@ -603,6 +605,7 @@ export async function createProject(input: {
     codigo_proyecto: input.codigo_proyecto,
     nombre_proyecto: input.nombre_proyecto,
     linea_tematica: input.linea_tematica,
+    linea_investigacion: input.linea_investigacion ?? "",
     modalidad_participacion: input.modalidad_participacion,
     semillero: input.semillero,
     institucion: input.institucion,

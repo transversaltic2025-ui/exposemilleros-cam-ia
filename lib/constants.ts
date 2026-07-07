@@ -11,6 +11,11 @@ export const LINEAS_TEMATICAS = [
   "Agroindustria",
 ] as const;
 
+export const LINEAS_INVESTIGACION = [
+  "Extensión agropecuaria, desarrollo social y pedagógico",
+  "Innovación agroindustrial sostenible",
+] as const;
+
 export const MODALIDADES_PARTICIPACION = [
   "Propuesta de investigación",
   "Proyecto en ejecución",
@@ -19,7 +24,7 @@ export const MODALIDADES_PARTICIPACION = [
 
 export const SEMILLEROS = [
   "Cienciatec",
-  "AgroinvLab",
+  "AgroadminLab",
   "Aspillanos",
   "Tecnobioma",
   "Administrativo Naranjos",
@@ -34,8 +39,7 @@ export const SEMILLEROS = [
 export const CATEGORIAS_PRESENTACION = [
   "Poster",
   "Prototipo",
-  "Ponencia",
-  "Oral",
+  "Ponencia oral",
 ] as const;
 
 export const OPCIONES_SI_NO = ["Sí", "No"] as const;
@@ -73,6 +77,7 @@ export const ESTADOS_ASIGNACION = [
 ] as const;
 
 export type LineaTematica = (typeof LINEAS_TEMATICAS)[number];
+export type LineaInvestigacion = (typeof LINEAS_INVESTIGACION)[number];
 export type ModalidadParticipacion = (typeof MODALIDADES_PARTICIPACION)[number];
 export type Semillero = (typeof SEMILLEROS)[number];
 export type CategoriaPresentacion = (typeof CATEGORIAS_PRESENTACION)[number];

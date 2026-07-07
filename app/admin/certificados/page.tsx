@@ -32,7 +32,7 @@ export default async function AdminCertificadosPage() {
 
   const participantes = proyectos.reduce((total, proyecto) => total + proyecto.integrantes.length, 0);
   const ponentes = proyectos
-    .filter((proyecto) => ["Ponencia", "Oral"].includes(proyecto.categoria_presentacion))
+    .filter((proyecto) => proyecto.categoria_presentacion === "Ponencia oral")
     .reduce((total, proyecto) => total + proyecto.integrantes.length, 0);
   const instructores = new Set(
     proyectos.flatMap((proyecto) => [
@@ -80,7 +80,7 @@ export default async function AdminCertificadosPage() {
 
       <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         <MetricCard label="Participantes" value={participantes} detail="Aprendices registrados" />
-        <MetricCard label="Ponentes" value={ponentes} detail="Ponencia u oral" accent="secondary" />
+        <MetricCard label="Ponentes" value={ponentes} detail="Ponencia oral" accent="secondary" />
         <MetricCard label="Instructores" value={instructores} detail="Responsables unicos" accent="mint" />
         <MetricCard label="Evaluadores" value={evaluadoresConEvaluacion} detail="Con evaluacion" accent="success" />
         <MetricCard label="Generados" value={generados} detail="PDF creados" />

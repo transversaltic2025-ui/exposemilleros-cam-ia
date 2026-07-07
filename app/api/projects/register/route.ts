@@ -15,6 +15,7 @@ const optionalEmail = z.union([z.string().email(), z.literal("")]).optional();
 const schema = z.object({
   nombre_proyecto: z.string().min(5),
   linea_tematica: z.string().min(1),
+  linea_investigacion: z.string().min(1),
   modalidad_participacion: z.string().min(1),
   semillero: z.string().min(1),
   institucion: z.string().min(2),
@@ -200,6 +201,7 @@ function normalizeRegistrationPayload(source: Record<string, unknown>) {
   return {
     nombre_proyecto: textAlias(source, ["nombre_proyecto", "nombreProyecto", "titulo"]),
     linea_tematica: textAlias(source, ["linea_tematica", "lineaTematica", "area_conocimiento"]),
+    linea_investigacion: textAlias(source, ["linea_investigacion", "lineaInvestigacion"]),
     modalidad_participacion: textAlias(source, [
       "modalidad_participacion",
       "modalidadParticipacion",

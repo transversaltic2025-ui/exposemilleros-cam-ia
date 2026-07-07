@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   CATEGORIAS_PRESENTACION,
+  LINEAS_INVESTIGACION,
   LINEAS_TEMATICAS,
   MODALIDADES_PARTICIPACION,
   SEMILLEROS,
@@ -26,7 +27,7 @@ const schema = z.object({
   titulo: z.string().min(5, "Escribe el titulo del proyecto."),
   resumen: z.string().min(30, "Incluye un resumen mas completo."),
   area_conocimiento: z.string().min(1, "Selecciona un area."),
-  linea_investigacion: z.string().min(3, "Indica la linea."),
+  linea_investigacion: z.string().min(1, "Selecciona la linea de investigacion."),
   modalidad_participacion: z.string().min(1, "Selecciona una modalidad."),
   semillero: z.string().min(1, "Selecciona un semillero."),
   categoria_presentacion: z.string().min(1, "Selecciona una categoria."),
@@ -386,7 +387,16 @@ export function InscripcionForm() {
         </div>
         <div className="grid gap-2">
           <Label htmlFor="linea_investigacion">Linea de investigacion</Label>
-          <Input id="linea_investigacion" {...register("linea_investigacion")} />
+          <select
+            id="linea_investigacion"
+            className="h-11 rounded-xl border border-[var(--color-border)] bg-white/70 px-3 text-sm"
+            {...register("linea_investigacion")}
+          >
+            <option value="">Seleccionar</option>
+            {LINEAS_INVESTIGACION.map((linea) => (
+              <option key={linea}>{linea}</option>
+            ))}
+          </select>
           <ErrorText message={errors.linea_investigacion?.message} />
         </div>
       </div>
@@ -400,7 +410,7 @@ export function InscripcionForm() {
       <div className="grid gap-4 md:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="institucion">Institucion</Label>
-          <Input id="institucion" defaultValue="Centro Agroempresarial y Minero" {...register("institucion")} />
+          <Input id="institucion" {...register("institucion")} />
           <ErrorText message={errors.institucion?.message} />
         </div>
         <div className="grid gap-2">

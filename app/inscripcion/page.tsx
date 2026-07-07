@@ -9,9 +9,6 @@ export default function InscripcionPage() {
         <div className="mb-8">
           <p className="expo-eyebrow">Registro publico</p>
           <h1 className="expo-page-title mt-2">Inscripcion de proyectos</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
-            Registro publico de proyectos con almacenamiento en Supabase Database y Supabase Storage.
-          </p>
         </div>
         <Card>
           <CardHeader>

@@ -3,6 +3,7 @@ import type {
   EstadoAnalisisIA,
   EstadoEvaluacionHumana,
   EstadoProyecto,
+  LineaInvestigacion,
   LineaTematica,
   ModalidadParticipacion,
   Semillero,
@@ -80,7 +81,7 @@ export interface Project {
   titulo: string;
   resumen?: string;
   area_conocimiento: LineaTematica;
-  linea_investigacion?: LineaTematica | string;
+  linea_investigacion?: LineaInvestigacion | string;
   participantes: ProjectParticipant[];
   integrantes: string[];
   estado: EstadoProyecto;

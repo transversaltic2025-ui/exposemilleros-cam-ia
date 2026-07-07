@@ -150,7 +150,7 @@ async function getProjectCandidates(tipoCertificado: CertificateType) {
   const eligibleProjects =
     tipoCertificado === "Ponente"
       ? projects.filter((project) =>
-          ["Ponencia", "Oral"].includes(String(project.categoria_presentacion ?? "")),
+          String(project.categoria_presentacion ?? "") === "Ponencia oral",
         )
       : projects;
 
