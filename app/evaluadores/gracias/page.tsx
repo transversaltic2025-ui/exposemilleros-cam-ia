@@ -4,7 +4,22 @@ import { CheckCircle2 } from "lucide-react";
 import { SiteShell } from "@/components/site-shell";
 import { Card, CardContent } from "@/components/ui/card";
 
-export default function GraciasEvaluadorPage() {
+export default async function GraciasEvaluadorPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    token?: string;
+    count?: string;
+    url?: string;
+    message?: string;
+  }>;
+}) {
+  const params = await searchParams;
+  const token = params.token ?? "";
+  const accessUrl = params.url || (token ? `/evaluadores/mis-asignaciones/${token}` : "");
+  const assignmentsCount = Number(params.count ?? 0);
+  const message = params.message || "Evaluador registrado.";
+
   return (
     <SiteShell>
       <Card className="mx-auto max-w-2xl">
@@ -12,11 +27,22 @@ export default function GraciasEvaluadorPage() {
           <CheckCircle2 className="mx-auto mb-4 size-12 text-[var(--color-success)]" />
           <h1 className="font-heading text-3xl font-black text-[var(--color-text)]">Evaluador registrado</h1>
           <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">
-            Se crearan enlaces tokenizados para evaluar maximo 3 proyectos del area registrada.
+            {message}
           </p>
-          <Link className="mt-6 inline-flex h-11 items-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]" href="/admin/asignaciones">
-            Ver asignaciones
-          </Link>
+          <p className="mt-3 text-sm font-semibold text-[var(--color-text)]">
+            Proyectos asignados: {Number.isFinite(assignmentsCount) ? assignmentsCount : 0}
+          </p>
+          {accessUrl ? (
+            <>
+              <Link className="mt-6 inline-flex h-11 items-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]" href={accessUrl}>
+                Ver mis proyectos asignados
+              </Link>
+              <div className="mt-5 rounded-xl border border-[var(--color-border)] bg-white/60 p-4 text-left">
+                <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[var(--color-muted)]">Enlace privado</p>
+                <p className="mt-2 break-all text-sm font-semibold text-[var(--color-text)]">{accessUrl}</p>
+              </div>
+            </>
+          ) : null}
         </CardContent>
       </Card>
     </SiteShell>

@@ -11,6 +11,8 @@ export interface Evaluator {
   area_conocimiento: LineaTematica;
   estado_evaluador?: "Activo" | "Inactivo";
   cantidad_proyectos_asignados?: number;
+  token_acceso?: string | null;
+  fecha_ultimo_acceso?: string | null;
   url_certificado_evaluador?: string | null;
   observaciones_admin?: string | null;
   created_at?: string;

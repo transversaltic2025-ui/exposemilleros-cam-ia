@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { MetricCard } from "@/components/metric-card";
 import { SiteShell } from "@/components/site-shell";
 import { StatusPill } from "@/components/status-pill";
@@ -51,6 +53,7 @@ export default async function AdminEvaluadoresPage() {
                 <TableHead>Registro</TableHead>
                 <TableHead>Asignados</TableHead>
                 <TableHead>Estado</TableHead>
+                <TableHead>Asignaciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -66,6 +69,15 @@ export default async function AdminEvaluadoresPage() {
                   </TableCell>
                   <TableCell>
                     <StatusPill status={evaluador.estado_evaluador ?? evaluador.estado ?? "Activo"} />
+                  </TableCell>
+                  <TableCell>
+                    {evaluador.token_acceso ? (
+                      <Link className="inline-flex h-9 items-center rounded-xl bg-white/70 px-3 text-xs font-bold text-[var(--color-primary)] hover:bg-white" href={`/evaluadores/mis-asignaciones/${evaluador.token_acceso}`}>
+                        Ver asignaciones
+                      </Link>
+                    ) : (
+                      <span className="text-sm text-[var(--color-muted)]">Sin enlace</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

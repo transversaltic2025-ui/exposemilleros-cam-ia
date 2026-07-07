@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { SiteShell } from "@/components/site-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getEvaluators } from "@/lib/supabase/queries";
@@ -25,6 +27,9 @@ export default async function RegistroEvaluadorPage() {
           </CardHeader>
           <CardContent>
             <EvaluadorForm />
+            <Link className="mt-5 inline-flex text-sm font-bold text-[var(--color-primary)] hover:text-[var(--color-secondary)]" href="/evaluadores/recuperar">
+              ¿Ya estás registrado? Recupera tus proyectos asignados
+            </Link>
           </CardContent>
         </Card>
         <Card>

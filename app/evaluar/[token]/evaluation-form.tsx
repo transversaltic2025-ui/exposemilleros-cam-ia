@@ -2,7 +2,8 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
@@ -23,7 +24,6 @@ const schema = z.object({
   observaciones: z.string().min(10),
   fortalezas: z.string().min(10),
   oportunidades: z.string().min(10),
-  recomendacion_final: z.string().min(1),
   concepto_evaluador: z.string().min(20),
   detalles: z.array(z.object({
     criterio_id: z.string(),
@@ -42,6 +42,8 @@ export function EvaluationForm({
   criterios: EvaluationCriterion[];
 }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [evaluatorAccessUrl, setEvaluatorAccessUrl] = useState<string | null>(null);
   const hasCriteria = criterios.length > 0;
   const normalizedCriteria = criterios.map((criterio) => ({
     ...criterio,
@@ -73,6 +75,18 @@ export function EvaluationForm({
 
   const archivoAbierto = useWatch({ control, name: "archivo_abierto" });
 
+  useEffect(() => {
+    if (!evaluatorAccessUrl) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      window.location.href = evaluatorAccessUrl;
+    }, 3000);
+
+    return () => window.clearTimeout(timeout);
+  }, [evaluatorAccessUrl]);
+
   async function onSubmit(values: FormValues) {
     setSubmitError(null);
     const response = await fetch(`/api/evaluations/${token}`, {
@@ -86,6 +100,10 @@ export function EvaluationForm({
       setSubmitError(payload?.error ?? "No se pudo enviar la evaluacion.");
       return;
     }
+
+    const payload = await response.json();
+    setSuccessMessage(payload.message ?? "Evaluación registrada correctamente.");
+    setEvaluatorAccessUrl(payload.evaluatorAccessUrl ?? null);
   }
 
   if (isSubmitSuccessful && !submitError) {
@@ -93,11 +111,16 @@ export function EvaluationForm({
       <div className="rounded-2xl border border-[#2E7D5B]/20 bg-[#2E7D5B]/10 p-5 text-[#2E7D5B]">
         <div className="flex items-center gap-2 font-semibold">
           <CheckCircle2 className="size-5" />
-          Evaluacion registrada correctamente
+          {successMessage ?? "Evaluación registrada correctamente"}
         </div>
         <p className="mt-2 text-sm">
-          La evaluacion humana quedo guardada y lista para comparar con el analisis IA cuando este disponible.
+          Volverás a tus proyectos asignados en unos segundos para continuar con las evaluaciones pendientes.
         </p>
+        {evaluatorAccessUrl ? (
+          <Link className="mt-4 inline-flex h-11 items-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]" href={evaluatorAccessUrl}>
+            Volver a mis proyectos asignados
+          </Link>
+        ) : null}
       </div>
     );
   }
@@ -185,20 +208,6 @@ export function EvaluationForm({
       <div className="grid gap-2">
         <Label htmlFor="oportunidades">Oportunidades de mejora</Label>
         <Textarea id="oportunidades" rows={3} {...register("oportunidades")} />
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="recomendacion_final">Recomendacion final</Label>
-        <select
-          id="recomendacion_final"
-          className="h-11 rounded-xl border border-[var(--color-border)] bg-white/70 px-3 text-sm"
-          {...register("recomendacion_final")}
-        >
-          <option value="">Seleccionar</option>
-          <option value="Destacado">Destacado</option>
-          <option value="Aprobar">Aprobar</option>
-          <option value="Ajustar">Ajustar</option>
-          <option value="No recomendado">No recomendado</option>
-        </select>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="concepto_evaluador">Concepto del evaluador</Label>

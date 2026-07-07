@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
+import Link from "next/link";
 
 import { ScoreOrb } from "@/components/score-orb";
 import { SiteShell } from "@/components/site-shell";
@@ -17,7 +18,7 @@ export default async function EvaluarTokenPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const { asignacion, proyecto, criterios } = await getEvaluationByToken(token);
+  const { asignacion, proyecto, evaluador, criterios } = await getEvaluationByToken(token);
 
   if (!asignacion || !proyecto) {
     notFound();
@@ -26,6 +27,30 @@ export default async function EvaluarTokenPage({
   const fileUrl = proyecto.archivo_storage_path && !shouldUseMockData()
     ? await createProjectFileSignedUrl(proyecto.archivo_storage_path)
     : proyecto.archivo_url ?? "#";
+  const evaluatorAccessUrl = evaluador?.token_acceso
+    ? `/evaluadores/mis-asignaciones/${evaluador.token_acceso}`
+    : "/evaluadores/registro";
+  const evaluationCompleted = asignacion.estado_asignacion === "Completada" || asignacion.estado === "Completada";
+
+  if (evaluationCompleted && asignacion.permitir_edicion !== true) {
+    return (
+      <SiteShell>
+        <Card className="mx-auto max-w-2xl">
+          <CardContent className="py-10 text-center">
+            <h1 className="font-heading text-3xl font-black text-[var(--color-text)]">
+              Esta evaluación ya fue registrada.
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">
+              Puedes volver a tu módulo de proyectos asignados para revisar el estado de tus evaluaciones.
+            </p>
+            <Link className="mt-6 inline-flex h-11 items-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]" href={evaluatorAccessUrl}>
+              Volver a mis proyectos asignados
+            </Link>
+          </CardContent>
+        </Card>
+      </SiteShell>
+    );
+  }
 
   return (
     <SiteShell>

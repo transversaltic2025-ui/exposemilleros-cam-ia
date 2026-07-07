@@ -47,7 +47,15 @@ export function EvaluadorForm() {
       return;
     }
 
-    router.push("/evaluadores/gracias");
+    const payload = await response.json();
+    const params = new URLSearchParams({
+      token: String(payload.evaluator?.token_acceso ?? payload.evaluador?.token_acceso ?? ""),
+      count: String(payload.assignmentsCount ?? payload.assignments?.length ?? 0),
+      url: String(payload.evaluatorAccessUrl ?? ""),
+      message: String(payload.message ?? "Evaluador registrado."),
+    });
+
+    router.push(`/evaluadores/gracias?${params.toString()}`);
   }
 
   return (

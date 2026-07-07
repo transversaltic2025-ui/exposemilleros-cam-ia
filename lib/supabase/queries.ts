@@ -58,12 +58,25 @@ function normalizeEmail(value: unknown) {
   return String(value).trim().toLowerCase();
 }
 
-function normalizeDocument(value: unknown) {
+export function normalizeDocument(value: unknown) {
   if (value === null || value === undefined) {
     return "";
   }
 
   return String(value).trim().replace(/[\s.,-]+/g, "");
+}
+
+function normalizeArea(value: unknown) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
 }
 
 type InstructorProjectFields = Pick<
@@ -323,6 +336,174 @@ export async function getAssignments() {
         : undefined,
       evaluador_codigo: evaluator ? toStringValue(evaluator.codigo_evaluador) : assignment.evaluador_id,
       evaluador_nombre: evaluator ? toStringValue(evaluator.nombre_evaluador) : assignment.evaluador_id,
+    };
+  });
+}
+
+export async function getAssignmentsForEvaluator(evaluatorId: string) {
+  if (!evaluatorId) {
+    return [];
+  }
+  if (shouldUseMockData()) {
+    return asignacionesMock.filter((assignment) => assignment.evaluador_id === evaluatorId);
+  }
+
+  const client = supabase();
+  const { data: assignmentRows, error } = await client
+    .from("asignaciones")
+    .select("*")
+    .eq("evaluador_id", evaluatorId)
+    .order("fecha_asignacion", { ascending: false });
+
+  if (error) {
+    console.error("[evaluators/assignments] error exacto consultando asignaciones del evaluador", error);
+    throw error;
+  }
+
+  const assignments = (assignmentRows ?? []) as Assignment[];
+  const projectIds = [...new Set(assignments.map((item) => item.proyecto_id).filter(Boolean))];
+  const { data: projectRows, error: projectsError } = projectIds.length > 0
+    ? await client
+        .from("proyectos")
+        .select("id,codigo_proyecto,nombre_proyecto,linea_tematica")
+        .in("id", projectIds)
+    : { data: [], error: null };
+
+  if (projectsError) {
+    console.error("[evaluators/assignments] error exacto consultando proyectos asignados", projectsError);
+    throw projectsError;
+  }
+
+  const projectsById = new Map(
+    ((projectRows ?? []) as Record<string, unknown>[]).map((project) => [
+      String(project.id),
+      project,
+    ]),
+  );
+
+  return assignments.map((assignment) => {
+    const project = assignment.proyecto_id ? projectsById.get(assignment.proyecto_id) : undefined;
+    return {
+      ...assignment,
+      proyecto_codigo: project ? toStringValue(project.codigo_proyecto) : assignment.proyecto_id,
+      proyecto_nombre: project ? toStringValue(project.nombre_proyecto) : "",
+      proyecto_area: project
+        ? (toStringValue(project.linea_tematica) as Assignment["proyecto_area"])
+        : undefined,
+    };
+  });
+}
+
+async function updateEvaluatorAssignmentCount(evaluador: Evaluator, count: number) {
+  if (!evaluador.id) {
+    return evaluador;
+  }
+
+  const { data, error } = await supabase()
+    .from("evaluadores")
+    .update({ cantidad_proyectos_asignados: count })
+    .eq("id", evaluador.id)
+    .select("*")
+    .single();
+
+  if (error) {
+    console.error("[evaluators/register] error exacto actualizando cantidad_proyectos_asignados", error);
+    throw error;
+  }
+
+  return data as Evaluator;
+}
+
+export async function getEvaluatorAssignmentsByAccessToken(token: string) {
+  if (shouldUseMockData()) {
+    const evaluator = evaluadoresMock[0];
+    const assignments = evaluator ? asignacionesMock.filter((assignment) => assignment.evaluador_id === evaluator.evaluador_id) : [];
+    return {
+      evaluator: evaluator ? { ...evaluator, token_acceso: token } : null,
+      assignments,
+      evaluations: evaluacionesMock.filter((evaluation) => assignments.some((assignment) => assignment.asignacion_id === evaluation.asignacion_id)),
+    };
+  }
+
+  const client = supabase();
+  const { data: evaluatorRow, error } = await client
+    .from("evaluadores")
+    .select("*")
+    .eq("token_acceso", token)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[evaluators/assignments] error exacto buscando evaluador por token", error);
+    throw error;
+  }
+
+  if (!evaluatorRow) {
+    return { evaluator: null, assignments: [] };
+  }
+
+  const evaluator = evaluatorRow as Evaluator;
+  const { error: updateError } = await client
+    .from("evaluadores")
+    .update({ fecha_ultimo_acceso: new Date().toISOString() })
+    .eq("id", evaluator.id);
+
+  if (updateError) {
+    console.error("[evaluators/assignments] error exacto actualizando fecha_ultimo_acceso", updateError);
+    throw updateError;
+  }
+
+  return {
+    evaluator,
+    assignments: await getAssignmentsForEvaluator(evaluator.id ?? ""),
+    evaluations: await getEvaluationsForEvaluator(evaluator.id ?? ""),
+  };
+}
+
+async function getEvaluationsForEvaluator(evaluatorId: string) {
+  if (!evaluatorId) {
+    return [];
+  }
+
+  const client = supabase();
+  const { data, error } = await client
+    .from("evaluaciones")
+    .select("*")
+    .eq("evaluador_id", evaluatorId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[evaluators/assignments] error exacto consultando evaluaciones del evaluador", error);
+    throw error;
+  }
+
+  const evaluations = (data ?? []) as HumanEvaluation[];
+  const projectIds = [...new Set(evaluations.map((evaluation) => evaluation.proyecto_id).filter(Boolean))];
+  const { data: projects, error: projectsError } = projectIds.length > 0
+    ? await client
+        .from("proyectos")
+        .select("id,codigo_proyecto,nombre_proyecto,linea_tematica")
+        .in("id", projectIds)
+    : { data: [], error: null };
+
+  if (projectsError) {
+    console.error("[evaluators/assignments] error exacto consultando proyectos evaluados", projectsError);
+    throw projectsError;
+  }
+
+  const projectsById = new Map(
+    ((projects ?? []) as Record<string, unknown>[]).map((project) => [
+      String(project.id),
+      project,
+    ]),
+  );
+
+  return evaluations.map((evaluation) => {
+    const project = projectsById.get(evaluation.proyecto_id);
+    return {
+      ...evaluation,
+      proyecto_codigo: project ? toStringValue(project.codigo_proyecto) : evaluation.proyecto_id,
+      proyecto_nombre: project ? toStringValue(project.nombre_proyecto) : "Proyecto evaluado",
+      proyecto_area: project ? toStringValue(project.linea_tematica) : "",
     };
   });
 }
@@ -716,6 +897,169 @@ export async function generateEvaluatorCode() {
   return `EVAL-2026-${String(max + 1).padStart(4, "0")}`;
 }
 
+function generateEvaluatorAccessToken() {
+  return crypto.randomBytes(24).toString("hex");
+}
+
+function evaluatorAccessUrl(token: string) {
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  return `${appUrl}/evaluadores/mis-asignaciones/${token}`;
+}
+
+function isActiveAssignment(assignment: Pick<Assignment, "estado_asignacion" | "estado">) {
+  const status = assignment.estado_asignacion ?? assignment.estado ?? "Pendiente";
+  return !["Completada", "Cancelada"].includes(status);
+}
+
+async function findExistingEvaluator(input: {
+  documento_evaluador: string;
+  correo_evaluador: string;
+}) {
+  const client = supabase();
+  const normalizedEmail = normalizeEmail(input.correo_evaluador);
+  const normalizedDocument = normalizeDocument(input.documento_evaluador);
+  const { data, error } = await client
+    .from("evaluadores")
+    .select("*");
+
+  if (error) {
+    console.error("[evaluators/register] error exacto buscando evaluadores existentes", error);
+    throw error;
+  }
+
+  return ((data ?? []) as Evaluator[]).find((evaluador) => {
+    const sameEmail = normalizedEmail && normalizeEmail(evaluador.correo_evaluador) === normalizedEmail;
+    const sameDocument = normalizedDocument && normalizeDocument(evaluador.documento_evaluador) === normalizedDocument;
+    return sameEmail || sameDocument;
+  }) ?? null;
+}
+
+async function ensureEvaluatorAccessToken(evaluador: Evaluator) {
+  if (!evaluador.id) {
+    throw new Error("Evaluator id missing.");
+  }
+  if (evaluador.token_acceso) {
+    return evaluador;
+  }
+
+  const token = generateEvaluatorAccessToken();
+  console.log("[evaluators/register] token_acceso generado", {
+    evaluador_id: evaluador.id,
+    codigo_evaluador: evaluador.codigo_evaluador,
+  });
+
+  const { data, error } = await supabase()
+    .from("evaluadores")
+    .update({ token_acceso: token })
+    .eq("id", evaluador.id)
+    .select("*")
+    .single();
+
+  if (error) {
+    console.error("[evaluators/register] error exacto actualizando token_acceso", error);
+    throw error;
+  }
+
+  return data as Evaluator;
+}
+
+export async function recoverEvaluatorAccessByDocument(documentoEvaluador: string) {
+  const normalizedDocument = normalizeDocument(documentoEvaluador);
+  console.log("[evaluators/recover-access] documento recibido", documentoEvaluador);
+  console.log("[evaluators/recover-access] documento normalizado", normalizedDocument);
+
+  if (!normalizedDocument) {
+    return {
+      success: false,
+      error: "No encontramos un evaluador registrado con ese documento.",
+    };
+  }
+
+  if (shouldUseMockData()) {
+    const evaluator = evaluadoresMock
+      .filter((item) => normalizeDocument(item.documento_evaluador ?? item.documento) === normalizedDocument)
+      .sort((a, b) => String(b.created_at ?? b.fecha_registro ?? "").localeCompare(String(a.created_at ?? a.fecha_registro ?? "")))[0];
+
+    console.log("[evaluators/recover-access] evaluador encontrado", Boolean(evaluator));
+    if (!evaluator) {
+      return {
+        success: false,
+        error: "No encontramos un evaluador registrado con ese documento.",
+      };
+    }
+
+    const token = evaluator.token_acceso ?? "mock-evaluator-token";
+    const url = evaluatorAccessUrl(token);
+    console.log("[evaluators/recover-access] token_acceso generado", evaluator.token_acceso ? "no" : "si");
+    console.log("[evaluators/recover-access] URL de acceso generada", url);
+
+    return {
+      success: true,
+      evaluator: {
+        id: evaluator.id ?? evaluator.evaluador_id,
+        codigo_evaluador: evaluator.codigo_evaluador ?? evaluator.evaluador_id,
+        nombre_evaluador: evaluator.nombre_evaluador ?? evaluator.nombre,
+        documento_evaluador: evaluator.documento_evaluador ?? evaluator.documento,
+        area_conocimiento: evaluator.area_conocimiento,
+      },
+      evaluatorAccessUrl: url,
+      message: "Acceso encontrado. Puedes continuar con tus proyectos asignados.",
+    };
+  }
+
+  const client = supabase();
+  const { data, error } = await client
+    .from("evaluadores")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[evaluators/recover-access] error exacto consultando evaluadores", error);
+    throw error;
+  }
+
+  const evaluator = ((data ?? []) as Evaluator[]).find((item) => {
+    return normalizeDocument(item.documento_evaluador) === normalizedDocument;
+  });
+
+  console.log("[evaluators/recover-access] evaluador encontrado", Boolean(evaluator));
+  if (!evaluator) {
+    return {
+      success: false,
+      error: "No encontramos un evaluador registrado con ese documento.",
+    };
+  }
+
+  const evaluatorHadToken = Boolean(evaluator.token_acceso);
+  const evaluatorWithToken = await ensureEvaluatorAccessToken(evaluator);
+  const { error: updateError } = await client
+    .from("evaluadores")
+    .update({ fecha_ultimo_acceso: new Date().toISOString() })
+    .eq("id", evaluatorWithToken.id);
+
+  if (updateError) {
+    console.error("[evaluators/recover-access] error exacto actualizando fecha_ultimo_acceso", updateError);
+    throw updateError;
+  }
+
+  const url = evaluatorAccessUrl(evaluatorWithToken.token_acceso ?? "");
+  console.log("[evaluators/recover-access] token_acceso generado", evaluatorHadToken ? "no" : "si");
+  console.log("[evaluators/recover-access] URL de acceso generada", url);
+
+  return {
+    success: true,
+    evaluator: {
+      id: evaluatorWithToken.id,
+      codigo_evaluador: evaluatorWithToken.codigo_evaluador,
+      nombre_evaluador: evaluatorWithToken.nombre_evaluador,
+      documento_evaluador: evaluatorWithToken.documento_evaluador,
+      area_conocimiento: evaluatorWithToken.area_conocimiento,
+    },
+    evaluatorAccessUrl: url,
+    message: "Acceso encontrado. Puedes continuar con tus proyectos asignados.",
+  };
+}
+
 export async function createEvaluatorAndAssignments(input: {
   nombre_evaluador: string;
   documento_evaluador: string;
@@ -724,22 +1068,64 @@ export async function createEvaluatorAndAssignments(input: {
   institucion_evaluador: string;
   area_conocimiento: string;
 }) {
+  const client = supabase();
+  const existingEvaluator = await findExistingEvaluator(input);
+  console.log("[evaluators/register] evaluador existente encontrado", Boolean(existingEvaluator));
+
+  if (existingEvaluator) {
+    console.log("[evaluators/register] evaluador ya existia", {
+      id: existingEvaluator.id,
+      codigo_evaluador: existingEvaluator.codigo_evaluador,
+      correo_normalizado: normalizeEmail(input.correo_evaluador),
+      documento_normalizado: normalizeDocument(input.documento_evaluador),
+    });
+
+    const evaluatorWithToken = await ensureEvaluatorAccessToken(existingEvaluator);
+    const newAssignments = await assignProjectsToEvaluator(evaluatorWithToken);
+    const currentAssignments = await getAssignmentsForEvaluator(evaluatorWithToken.id ?? "");
+    const finalEvaluator = await updateEvaluatorAssignmentCount(evaluatorWithToken, currentAssignments.length);
+    const message = newAssignments.length > 0
+      ? "Ya estabas registrado. Se actualizaron tus proyectos asignados."
+      : "Ya estabas registrado, pero no hay proyectos disponibles para asignarte en este momento.";
+
+    console.log("[evaluators/register] cantidad final de asignaciones", {
+      evaluador_id: finalEvaluator.id,
+      cantidad_proyectos_asignados: currentAssignments.length,
+      nuevas_asignaciones: newAssignments.length,
+    });
+
+    return {
+      success: true,
+      evaluator: finalEvaluator,
+      evaluador: finalEvaluator,
+      assignments: currentAssignments,
+      assignmentsCount: currentAssignments.length,
+      evaluatorAccessUrl: evaluatorAccessUrl(finalEvaluator.token_acceso ?? ""),
+      message,
+      newAssignmentsCount: newAssignments.length,
+    };
+  }
+
   const codigoEvaluador = await generateEvaluatorCode();
+  const tokenAcceso = generateEvaluatorAccessToken();
   const evaluador = {
     codigo_evaluador: codigoEvaluador,
     nombre_evaluador: input.nombre_evaluador,
-    documento_evaluador: input.documento_evaluador,
-    correo_evaluador: input.correo_evaluador,
+    documento_evaluador: normalizeDocument(input.documento_evaluador),
+    correo_evaluador: normalizeEmail(input.correo_evaluador),
     celular_evaluador: input.celular_evaluador,
     institucion_evaluador: input.institucion_evaluador,
     area_conocimiento: input.area_conocimiento,
     estado_evaluador: "Activo",
     cantidad_proyectos_asignados: 0,
+    token_acceso: tokenAcceso,
   };
 
   console.log("[evaluators/register] payload del evaluador", evaluador);
+  console.log("[evaluators/register] token_acceso generado", {
+    codigo_evaluador: codigoEvaluador,
+  });
 
-  const client = supabase();
   const { data, error } = await client
     .from("evaluadores")
     .insert(evaluador)
@@ -752,16 +1138,32 @@ export async function createEvaluatorAndAssignments(input: {
   }
 
   const created = data as Evaluator;
-  const assignments = await assignProjectsToEvaluator(created);
+  console.log("[evaluators/register] evaluador creado", {
+    id: created.id,
+    codigo_evaluador: created.codigo_evaluador,
+  });
+  const newAssignments = await assignProjectsToEvaluator(created);
+  const currentAssignments = await getAssignmentsForEvaluator(created.id ?? "");
+  const finalEvaluator = await updateEvaluatorAssignmentCount(created, currentAssignments.length);
+  const message = newAssignments.length === 0
+    ? "Tu registro fue creado, pero no hay proyectos disponibles para tu área en este momento."
+    : "Evaluador registrado correctamente. Se asignaron proyectos para evaluación.";
+
+  console.log("[evaluators/register] cantidad final de asignaciones", {
+    evaluador_id: finalEvaluator.id,
+    cantidad_proyectos_asignados: currentAssignments.length,
+    nuevas_asignaciones: newAssignments.length,
+  });
 
   return {
-    evaluador: created,
-    assignments,
-    ...(assignments.length === 0
-      ? {
-          message: "El evaluador fue registrado, pero no tiene proyectos elegibles para asignación.",
-        }
-      : {}),
+    success: true,
+    evaluator: finalEvaluator,
+    evaluador: finalEvaluator,
+    assignments: currentAssignments,
+    assignmentsCount: currentAssignments.length,
+    evaluatorAccessUrl: evaluatorAccessUrl(finalEvaluator.token_acceso ?? ""),
+    message,
+    newAssignmentsCount: newAssignments.length,
   };
 }
 
@@ -771,10 +1173,28 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
   }
 
   const client = supabase();
+  const existingEvaluatorAssignments = await getAssignmentsForEvaluator(evaluador.id);
+  const currentAssignmentsCount = existingEvaluatorAssignments.length;
+  const remainingSlots = Math.max(3 - currentAssignmentsCount, 0);
+
+  console.log("[evaluators/register] asignaciones activas actuales", {
+    evaluador_id: evaluador.id,
+    activeAssignmentsCount: existingEvaluatorAssignments.filter(isActiveAssignment).length,
+    currentAssignmentsCount,
+    remainingSlots,
+  });
+
+  if (remainingSlots <= 0) {
+    console.log("[evaluators/register] evaluador ya tiene cupo maximo", {
+      evaluador_id: evaluador.id,
+      cantidad_final: currentAssignmentsCount,
+    });
+    return [];
+  }
+
   const { data: projectRows, error: projectsError } = await client
     .from("proyectos")
     .select("id,codigo_proyecto,nombre_proyecto,linea_tematica,estado_proyecto,instructor_documento,instructor_correo,instructor_2_documento,instructor_2_correo,instructor_3_documento,instructor_3_correo,created_at")
-    .eq("linea_tematica", evaluador.area_conocimiento)
     .order("created_at", { ascending: true });
 
   if (projectsError) {
@@ -782,7 +1202,12 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
     throw projectsError;
   }
 
-  const proyectos = (projectRows ?? []) as Project[];
+  const proyectosEncontrados = ((projectRows ?? []) as Project[])
+    .filter((proyecto) => proyecto.estado_proyecto !== "Cerrado");
+  const evaluatorArea = normalizeArea(evaluador.area_conocimiento);
+  const proyectos = proyectosEncontrados.filter((proyecto) => {
+    return normalizeArea(proyecto.linea_tematica) === evaluatorArea;
+  });
   const evaluadorNormalizado = {
     id: evaluador.id,
     codigo_evaluador: evaluador.codigo_evaluador,
@@ -791,9 +1216,20 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
     correo_evaluador: evaluador.correo_evaluador,
     correo_normalizado: normalizeEmail(evaluador.correo_evaluador),
     area_conocimiento: evaluador.area_conocimiento,
+    area_normalizada: evaluatorArea,
   };
   console.log("[evaluators/register] evaluador normalizado", evaluadorNormalizado);
-  console.log("[evaluators/register] proyectos candidatos encontrados", proyectos.map((proyecto) => ({
+  console.log("[evaluators/register] área del evaluador original", evaluador.area_conocimiento);
+  console.log("[evaluators/register] área normalizada del evaluador", evaluatorArea);
+  console.log("[evaluators/register] proyectos encontrados antes del filtro", proyectosEncontrados.map((proyecto) => ({
+    id: proyecto.id,
+    codigo_proyecto: proyecto.codigo_proyecto,
+    nombre_proyecto: proyecto.nombre_proyecto,
+    linea_tematica: proyecto.linea_tematica,
+    linea_tematica_normalizada: normalizeArea(proyecto.linea_tematica),
+    estado_proyecto: proyecto.estado_proyecto,
+  })));
+  console.log("[evaluators/register] proyectos candidatos después de filtrar por área", proyectos.map((proyecto) => ({
     id: proyecto.id,
     codigo_proyecto: proyecto.codigo_proyecto,
     nombre_proyecto: proyecto.nombre_proyecto,
@@ -813,6 +1249,12 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
     console.log("[evaluators/register] proyectos excluidos por asignacion duplicada", []);
     console.log("[evaluators/register] proyectos finales asignados", []);
     console.log("[evaluators/register] asignaciones creadas", []);
+    const realAssignments = await getAssignmentsForEvaluator(evaluador.id);
+    await updateEvaluatorAssignmentCount(evaluador, realAssignments.length);
+    console.log("[evaluators/register] total real de asignaciones del evaluador después del proceso", {
+      evaluador_id: evaluador.id,
+      total_real: realAssignments.length,
+    });
     return [];
   }
 
@@ -902,7 +1344,7 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
     evaluador_id: evaluador.id,
   })));
 
-  const proyectosDisponibles = proyectosDisponiblesSinDuplicado.slice(0, 3);
+  const proyectosDisponibles = proyectosDisponiblesSinDuplicado.slice(0, remainingSlots);
   console.log("[evaluators/register] proyectos finales asignados", proyectosDisponibles.map((proyecto) => ({
     id: proyecto.id,
     codigo_proyecto: proyecto.codigo_proyecto,
@@ -925,6 +1367,12 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
 
   if (rows.length === 0) {
     console.log("[evaluators/register] asignaciones creadas", []);
+    const realAssignments = await getAssignmentsForEvaluator(evaluador.id);
+    await updateEvaluatorAssignmentCount(evaluador, realAssignments.length);
+    console.log("[evaluators/register] total real de asignaciones del evaluador después del proceso", {
+      evaluador_id: evaluador.id,
+      total_real: realAssignments.length,
+    });
     return [];
   }
 
@@ -951,17 +1399,13 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
     throw projectsUpdateError;
   }
 
-  const { error: evaluatorUpdateError } = await client
-    .from("evaluadores")
-    .update({
-      cantidad_proyectos_asignados: rows.length,
-    })
-    .eq("id", evaluador.id);
+  const realAssignments = await getAssignmentsForEvaluator(evaluador.id);
+  await updateEvaluatorAssignmentCount(evaluador, realAssignments.length);
 
-  if (evaluatorUpdateError) {
-    console.error("[evaluators/register] error exacto de Supabase al actualizar evaluador", evaluatorUpdateError);
-    throw evaluatorUpdateError;
-  }
+  console.log("[evaluators/register] total real de asignaciones del evaluador después del proceso", {
+    evaluador_id: evaluador.id,
+    total_real: realAssignments.length,
+  });
 
   return (assignments ?? []) as Assignment[];
 }
@@ -979,17 +1423,25 @@ export async function saveHumanEvaluation(
     fortalezas: string;
     oportunidades?: string;
     oportunidades_mejora?: string;
-    recomendacion_final: "Destacado" | "Aprobar" | "Ajustar" | "No recomendado";
+    recomendacion_final?: string | null;
     concepto_evaluador: string;
     detalles?: EvaluationDetailInput[];
   },
 ) {
   console.log("[evaluations] token recibido", token);
-  const { asignacion, proyecto, criterios } = await getEvaluationByToken(token);
+  const { asignacion, proyecto, evaluador, criterios } = await getEvaluationByToken(token);
   if (!asignacion) {
     throw new Error("Assignment token not found.");
   }
   console.log("[evaluations] asignacion encontrada", asignacion);
+  console.log("[evaluations] evaluador encontrado", evaluador ? {
+    id: evaluador.id,
+    codigo_evaluador: evaluador.codigo_evaluador,
+  } : null);
+  console.log("[evaluations] token_acceso del evaluador", evaluador?.token_acceso ? "disponible" : "faltante");
+  if ((asignacion.estado_asignacion === "Completada" || asignacion.estado === "Completada") && asignacion.permitir_edicion !== true) {
+    throw new Error("Esta evaluación ya fue registrada.");
+  }
   if (!proyecto?.id) {
     throw new Error("Project not found for assignment token.");
   }
@@ -1028,7 +1480,7 @@ export async function saveHumanEvaluation(
     concepto_evaluador: input.concepto_evaluador,
     fortalezas: input.fortalezas,
     oportunidades_mejora: input.oportunidades_mejora ?? input.oportunidades ?? "",
-    recomendacion_final: input.recomendacion_final,
+    recomendacion_final: input.recomendacion_final ?? "No aplica",
     puntaje_total,
     promedio,
     porcentaje,
@@ -1048,6 +1500,10 @@ export async function saveHumanEvaluation(
     throw error;
   }
   console.log("[evaluations] evaluacion creada correctamente", data);
+  console.log("[evaluations] evaluación guardada", {
+    evaluacion_id: data.id,
+    asignacion_id: asignacion.id,
+  });
 
   if (details.length > 0) {
     const detailRows = details.map((detail) => ({
@@ -1079,6 +1535,10 @@ export async function saveHumanEvaluation(
     throw assignmentUpdateError;
   }
   console.log("[evaluations] asignacion actualizada correctamente", asignacion.id);
+  console.log("[evaluations] asignación actualizada", {
+    asignacion_id: asignacion.id,
+    estado_asignacion: "Completada",
+  });
 
   return data as HumanEvaluation;
 }

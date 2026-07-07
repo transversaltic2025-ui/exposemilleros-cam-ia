@@ -22,7 +22,7 @@ export interface HumanEvaluation {
   concepto_evaluador: string;
   fortalezas?: string;
   oportunidades_mejora?: string;
-  recomendacion_final: "Destacado" | "Aprobar" | "Ajustar" | "No recomendado";
+  recomendacion_final?: string | null;
   puntaje_total: number;
   promedio?: number;
   porcentaje?: number;
@@ -39,6 +39,9 @@ export interface HumanEvaluation {
   observaciones?: string;
   oportunidades?: string;
   fecha_envio?: string;
+  proyecto_codigo?: string;
+  proyecto_nombre?: string;
+  proyecto_area?: string;
 }
 
 export interface EvaluationDetailInput {

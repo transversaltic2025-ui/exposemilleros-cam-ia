@@ -35,16 +35,25 @@ export async function POST(request: Request) {
       area_conocimiento: textAlias(rawValues, ["area_conocimiento"]),
     });
     if (shouldUseMockData()) {
+      const tokenAcceso = "mock-evaluator-token";
+      const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+      const evaluator = {
+        ...values,
+        id: "EVAL-MOCK",
+        codigo_evaluador: "EVAL-2026-0001",
+        estado_evaluador: "Activo",
+        cantidad_proyectos_asignados: 0,
+        token_acceso: tokenAcceso,
+      };
       return NextResponse.json(
         {
-          evaluador: {
-            ...values,
-            id: "EVAL-MOCK",
-            codigo_evaluador: "EVAL-2026-0001",
-            estado_evaluador: "Activo",
-            cantidad_proyectos_asignados: 0,
-          },
+          success: true,
+          evaluator,
+          evaluador: evaluator,
           assignments: [],
+          assignmentsCount: 0,
+          evaluatorAccessUrl: `${appUrl}/evaluadores/mis-asignaciones/${tokenAcceso}`,
+          message: "Tu registro fue creado, pero no hay proyectos disponibles para tu area en este momento.",
         },
         { status: 201 },
       );
