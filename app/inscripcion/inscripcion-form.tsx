@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  CATEGORIAS_PRESENTACION,
   LINEAS_INVESTIGACION,
   LINEAS_TEMATICAS,
   MODALIDADES_PARTICIPACION,
@@ -30,7 +29,7 @@ const schema = z.object({
   linea_investigacion: z.string().min(1, "Selecciona la linea de investigacion."),
   modalidad_participacion: z.string().min(1, "Selecciona una modalidad."),
   semillero: z.string().min(1, "Selecciona un semillero."),
-  categoria_presentacion: z.string().min(1, "Selecciona una categoria."),
+  categoria_presentacion: z.literal("Poster"),
   institucion: z.string().min(2, "Indica la institucion."),
   municipio: z.string().min(2, "Indica el municipio."),
   aprendiz_1_nombre: z.string().min(3, "Indica el nombre del aprendiz 1."),
@@ -186,6 +185,7 @@ export function InscripcionForm() {
       requiere_mesa_mobiliario: false,
       presenta_prototipo_funcional: false,
       requiere_otro_elemento: false,
+      categoria_presentacion: "Poster",
     },
   });
   const requiereOtroElemento = watch("requiere_otro_elemento");
@@ -357,6 +357,7 @@ export function InscripcionForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-5">
       <input type="hidden" value="Si" {...register("requiere_certificado")} />
+      <input type="hidden" value="Poster" {...register("categoria_presentacion")} />
 
       <div className="grid gap-2">
         <Label htmlFor="titulo">Titulo del proyecto</Label>
@@ -404,7 +405,10 @@ export function InscripcionForm() {
       <div className="grid gap-4 md:grid-cols-3">
         <SelectField id="modalidad" label="Modalidad" options={MODALIDADES_PARTICIPACION} register={register("modalidad_participacion")} />
         <SelectField id="semillero" label="Semillero" options={SEMILLEROS} register={register("semillero")} />
-        <SelectField id="categoria" label="Categoria" options={CATEGORIAS_PRESENTACION} register={register("categoria_presentacion")} />
+        <div className="grid gap-2 rounded-xl border border-[var(--color-border)] bg-white/55 p-4">
+          <p className="text-sm font-semibold text-[var(--color-muted)]">Categoria de participacion</p>
+          <p className="font-sans text-lg font-extrabold text-[var(--color-text)]">Poster</p>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

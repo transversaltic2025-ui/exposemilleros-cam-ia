@@ -38,8 +38,6 @@ export const SEMILLEROS = [
 
 export const CATEGORIAS_PRESENTACION = [
   "Poster",
-  "Prototipo",
-  "Ponencia oral",
 ] as const;
 
 export const OPCIONES_SI_NO = ["Sí", "No"] as const;

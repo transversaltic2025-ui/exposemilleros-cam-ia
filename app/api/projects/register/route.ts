@@ -11,6 +11,7 @@ import {
 } from "@/lib/upload-limits";
 
 const optionalEmail = z.union([z.string().email(), z.literal("")]).optional();
+const DEFAULT_PRESENTATION_CATEGORY = "Poster" as const;
 
 const schema = z.object({
   nombre_proyecto: z.string().min(5),
@@ -48,7 +49,7 @@ const schema = z.object({
   aprendiz_3_correo: optionalEmail,
   aprendiz_3_celular: z.string().optional(),
   aprendiz_3_ficha: z.string().optional(),
-  categoria_presentacion: z.string().min(1),
+  categoria_presentacion: z.literal(DEFAULT_PRESENTATION_CATEGORY),
   requiere_conexion_electrica: z.boolean().optional(),
   requiere_mesa_mobiliario: z.boolean().optional(),
   presenta_prototipo_funcional: z.boolean().optional(),
@@ -237,10 +238,7 @@ function normalizeRegistrationPayload(source: Record<string, unknown>) {
     aprendiz_3_correo: textAlias(source, ["aprendiz_3_correo", "aprendiz3Correo"]),
     aprendiz_3_celular: textAlias(source, ["aprendiz_3_celular", "aprendiz3Celular"]),
     aprendiz_3_ficha: textAlias(source, ["aprendiz_3_ficha", "aprendiz3Ficha"]),
-    categoria_presentacion: textAlias(source, [
-      "categoria_presentacion",
-      "categoriaPresentacion",
-    ]),
+    categoria_presentacion: DEFAULT_PRESENTATION_CATEGORY,
     requiere_conexion_electrica: booleanAlias(source, [
       "requiere_conexion_electrica",
       "requiereConexionElectrica",

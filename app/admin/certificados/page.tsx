@@ -32,7 +32,7 @@ export default async function AdminCertificadosPage() {
 
   const participantes = proyectos.reduce((total, proyecto) => total + proyecto.integrantes.length, 0);
   const ponentes = proyectos
-    .filter((proyecto) => proyecto.categoria_presentacion === "Ponencia oral")
+    .filter((proyecto) => String(proyecto.categoria_presentacion) === "Ponencia oral")
     .reduce((total, proyecto) => total + proyecto.integrantes.length, 0);
   const instructores = new Set(
     proyectos.flatMap((proyecto) => [

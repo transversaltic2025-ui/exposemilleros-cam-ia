@@ -95,7 +95,7 @@ export default async function ProyectoDetallePage({
             <Info label="Linea tematica" value={proyecto.linea_tematica} />
             <Info label="Modalidad" value={proyecto.modalidad_participacion} />
             <Info label="Semillero" value={proyecto.semillero} />
-            <Info label="Categoria" value={proyecto.categoria_presentacion} />
+            <Info label="Categoria" value="Poster" />
             <Info label="Institucion" value={proyecto.institucion} />
             <Info label="Municipio" value={proyecto.municipio} />
             <Info label="Archivo del proyecto" value={proyecto.archivo_nombre ?? proyecto.archivo_proyecto_nombre ?? "Sin archivo"} />
