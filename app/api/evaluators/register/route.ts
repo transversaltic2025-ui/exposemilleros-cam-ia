@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import {
+  EVALUATOR_REGISTRATION_OPEN_DATE,
+  EVENT_DATE_LABEL,
+  getColombiaDateString,
+  isEvaluatorRegistrationOpen,
+} from "@/lib/event-config";
 import { createEvaluatorAndAssignments, shouldUseMockData } from "@/lib/supabase/queries";
 
 const schema = z.object({
@@ -24,6 +30,26 @@ function textAlias(data: Record<string, FormDataEntryValue>, names: string[]) {
 
 export async function POST(request: Request) {
   try {
+    const now = new Date();
+    const currentColombiaDate = getColombiaDateString(now);
+
+    if (!isEvaluatorRegistrationOpen(now)) {
+      console.info("[evaluators/register] intento de registro antes de fecha permitida", {
+        currentDate: currentColombiaDate,
+        openDate: EVALUATOR_REGISTRATION_OPEN_DATE,
+      });
+
+      return NextResponse.json(
+        { error: `La inscripción de evaluadores estará disponible a partir del ${EVENT_DATE_LABEL}.` },
+        { status: 403 },
+      );
+    }
+
+    console.info("[evaluators/register] registro permitido después de fecha permitida", {
+      currentDate: currentColombiaDate,
+      openDate: EVALUATOR_REGISTRATION_OPEN_DATE,
+    });
+
     const formData = await request.formData();
     const rawValues = Object.fromEntries(formData.entries());
     const values = schema.parse({

@@ -1,5 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
-import { ClipboardCheck, FileText, ShieldCheck, Users } from "lucide-react";
+import { CalendarDays, ClipboardCheck, FileText, MapPin, ShieldCheck, Users } from "lucide-react";
 
 import { SiteShell } from "@/components/site-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,32 +8,51 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 const publicActions = [
   {
     href: "/inscripcion",
-    title: "Inscripcion de proyectos",
-    detail: "Registro institucional de proyectos en modalidad poster.",
+    title: "Inscripción de proyectos",
+    detail: "Registro institucional de proyectos participantes en modalidad póster.",
     icon: FileText,
     label: "Inscribir proyecto",
   },
   {
     href: "/evaluadores/registro",
-    title: "Registro de evaluadores",
-    detail: "Vinculacion de evaluadores por area de conocimiento.",
+    title: "Acceso evaluadores",
+    detail: "Registro de evaluadores y acceso a recuperación de proyectos asignados.",
     icon: Users,
-    label: "Registrar evaluador",
+    label: "Acceso evaluadores",
   },
 ];
 
 export default function Home() {
   return (
     <SiteShell>
-      <section className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
+      <section className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
         <div className="space-y-6">
-          <p className="expo-eyebrow">ExpoInnovacion y CampeSENA</p>
+          <p className="expo-eyebrow">ExpoInnovación y CampeSENA</p>
           <div className="space-y-4">
-            <h1 className="expo-page-title max-w-4xl">ExpoSemilleros CAM IA</h1>
+            <h1 className="expo-page-title max-w-4xl">IX Encuentro de Semilleros de Investigación CAM 2026</h1>
             <p className="max-w-2xl text-base leading-8 text-[var(--color-muted)]">
-              Sistema web para el Encuentro de Semilleros de Investigacion CAM 2026. Desde aqui puede registrar
-              proyectos y vincular evaluadores al proceso del evento.
+              ExpoSemilleros CAM IA acompaña la inscripción, evaluación y gestión institucional del encuentro
+              presencial del Centro Agroindustrial del Meta.
             </p>
+          </div>
+          <div className="grid max-w-2xl gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-[var(--color-border)] bg-white/65 p-4">
+              <CalendarDays className="mb-3 size-5 text-[var(--color-primary)]" />
+              <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-muted)]">Fecha</p>
+              <p className="mt-1 text-sm font-extrabold text-[var(--color-text)]">5 de agosto de 2026</p>
+            </div>
+            <div className="rounded-2xl border border-[var(--color-border)] bg-white/65 p-4">
+              <MapPin className="mb-3 size-5 text-[var(--color-primary)]" />
+              <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-muted)]">Lugar</p>
+              <p className="mt-1 text-sm font-extrabold text-[var(--color-text)]">
+                Centro Agroindustrial del Meta, Sede Hachón
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[var(--color-border)] bg-white/65 p-4">
+              <ShieldCheck className="mb-3 size-5 text-[var(--color-primary)]" />
+              <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-muted)]">Modalidad</p>
+              <p className="mt-1 text-sm font-extrabold text-[var(--color-text)]">Presencial</p>
+            </div>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
@@ -47,24 +67,22 @@ export default function Home() {
               className="inline-flex h-12 items-center gap-2 rounded-xl border border-[var(--color-border)] bg-white/70 px-5 text-sm font-bold text-[var(--color-text)] hover:bg-white"
             >
               <Users className="size-4" />
-              Registrar evaluador
+              Acceso evaluadores
             </Link>
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="size-5 text-[var(--color-primary)]" />
-              Proceso del evento
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3 text-sm leading-6 text-[var(--color-muted)]">
-            <p>Los proyectos se registran desde el formulario oficial de ExpoSemilleros IA.</p>
-            <p>Los evaluadores reciben enlaces seguros por token para realizar sus evaluaciones.</p>
-            <p>La informacion registrada sera revisada por el equipo organizador del evento.</p>
-          </CardContent>
-        </Card>
+        <div className="rounded-3xl bg-white/55 p-3 shadow-[0_18px_45px_rgba(30,41,59,0.12)] ring-1 ring-[var(--color-border)]">
+          <Image
+            src="/images/post-ix-encuentro-semilleros-cam.jpeg"
+            alt="IX Encuentro de Semilleros de Investigación CAM 2026 ExpoInnovación y CampeSENA"
+            width={1200}
+            height={1600}
+            priority
+            sizes="(min-width: 1024px) 44vw, 100vw"
+            className="h-auto w-full rounded-2xl object-contain"
+          />
+        </div>
       </section>
 
       <section className="mt-12 grid gap-5 md:grid-cols-2">
