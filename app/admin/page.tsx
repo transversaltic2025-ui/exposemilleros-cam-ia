@@ -7,7 +7,7 @@ import { SiteShell } from "@/components/site-shell";
 import { StatusPill } from "@/components/status-pill";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireAdmin } from "@/lib/admin-auth";
-import { getAIAnalyses, getAssignments, getHumanEvaluations, getLogisticsSummary, getProjects } from "@/lib/supabase/queries";
+import { getAIAnalyses, getAssignments, getEvaluators, getHumanEvaluations, getLogisticsSummary, getProjects } from "@/lib/supabase/queries";
 import { AdminLogoutButton } from "./logout-button";
 
 export const dynamic = "force-dynamic";
@@ -54,12 +54,13 @@ const adminLinks = [
 export default async function AdminPage() {
   await requireAdmin();
 
-  const [resumenLogistica, proyectos, asignaciones, evaluaciones, analisisIA] = await Promise.all([
+  const [resumenLogistica, proyectos, asignaciones, evaluaciones, analisisIA, evaluadores] = await Promise.all([
     getLogisticsSummary(),
     getProjects(),
     getAssignments(),
     getHumanEvaluations(),
     getAIAnalyses(),
+    getEvaluators(),
   ]);
   const recientes = proyectos.slice(0, 4);
   const pendientes = asignaciones
@@ -74,6 +75,10 @@ export default async function AdminPage() {
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 4);
+  const evaluadoresConAsignacion = evaluadores.filter((evaluador) => {
+    return (evaluador.cantidad_proyectos_asignados ?? evaluador.proyectos_asignados ?? 0) > 0;
+  }).length;
+  const evaluadoresSinAsignacion = Math.max(evaluadores.length - evaluadoresConAsignacion, 0);
 
   return (
     <SiteShell>
@@ -100,6 +105,17 @@ export default async function AdminPage() {
         <MetricCard label="Prototipos" value={resumenLogistica.proyectosConPrototipoFuncional ?? 0} detail="Funcionales" accent="success" />
         <MetricCard label="Otro elemento" value={resumenLogistica.proyectosRequierenOtroElemento ?? 0} detail="Requerido" />
       </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Evaluadores registrados</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-3">
+          <MetricCard label="Total registrados" value={evaluadores.length} detail="Evaluadores" accent="secondary" />
+          <MetricCard label="Con asignación" value={evaluadoresConAsignacion} detail="Tienen proyectos" accent="success" />
+          <MetricCard label="Sin asignación" value={evaluadoresSinAsignacion} detail="Pendientes" accent="mint" />
+        </CardContent>
+      </Card>
 
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {adminLinks.map((item) => {

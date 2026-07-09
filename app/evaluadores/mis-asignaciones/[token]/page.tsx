@@ -22,7 +22,7 @@ export default async function MisAsignacionesEvaluadorPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const { evaluator, assignments, evaluations } = await getEvaluatorAssignmentsByAccessToken(token);
+  const { evaluator, assignments, evaluations, assignmentOpen } = await getEvaluatorAssignmentsByAccessToken(token);
 
   if (!evaluator) {
     return (
@@ -60,6 +60,17 @@ export default async function MisAsignacionesEvaluadorPage({
           <Info label="Área" value={evaluator.area_conocimiento ?? "Sin área"} />
         </div>
       </div>
+
+      {assignmentOpen === false ? (
+        <Card className="mb-6 border-[#2E7D5B]/25 bg-[#2E7D5B]/10">
+          <CardContent className="py-6">
+            <p className="text-sm leading-6 text-[var(--color-text)]">
+              Su registro como evaluador está activo. Los proyectos serán asignados automáticamente a partir del 5 de
+              agosto de 2026 a las 00:00, hora Colombia, de acuerdo con su área de conocimiento.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {allCompleted ? (
         <Card className="mb-6 border-[#2E7D5B]/25 bg-[#2E7D5B]/10">
@@ -111,7 +122,9 @@ export default async function MisAsignacionesEvaluadorPage({
         <CardContent>
           {assignments.length === 0 ? (
             <p className="text-sm leading-6 text-[var(--color-muted)]">
-              No tienes proyectos disponibles asignados en este momento.
+              {assignmentOpen === false
+                ? "Aún no tienes proyectos asignados porque la asignación automática no ha sido habilitada."
+                : "No tienes proyectos disponibles asignados en este momento."}
             </p>
           ) : (
             <Table>

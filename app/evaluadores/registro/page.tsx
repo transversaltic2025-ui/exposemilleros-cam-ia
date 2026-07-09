@@ -2,51 +2,12 @@ import Link from "next/link";
 
 import { SiteShell } from "@/components/site-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { EVENT_DATE_LABEL, isEvaluatorRegistrationOpen } from "@/lib/event-config";
 import { getEvaluators } from "@/lib/supabase/queries";
 import { EvaluadorForm } from "./evaluador-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function RegistroEvaluadorPage() {
-  if (!isEvaluatorRegistrationOpen()) {
-    return (
-      <SiteShell>
-        <div className="mx-auto max-w-3xl">
-          <Card>
-            <CardHeader>
-              <CardTitle>Inscripción de evaluadores no disponible todavía</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5 text-sm leading-6 text-[var(--color-muted)]">
-              <p>
-                La inscripción de evaluadores se habilitará el {EVENT_DATE_LABEL}, día del evento, para permitir la
-                asignación automática de proyectos disponibles.
-              </p>
-              <p>Por favor regrese en la fecha indicada para registrar su participación como evaluador.</p>
-              <div className="flex flex-wrap items-center gap-3 pt-1">
-                <Link
-                  href="/"
-                  className="inline-flex h-11 items-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]"
-                >
-                  Volver al inicio
-                </Link>
-                <Link
-                  href="/evaluadores/recuperar"
-                  className="inline-flex h-11 items-center rounded-xl border border-[var(--color-border)] bg-white/70 px-4 text-sm font-bold text-[var(--color-text)] hover:bg-white"
-                >
-                  Recuperar proyectos asignados
-                </Link>
-              </div>
-              <p className="pt-2 font-semibold text-[var(--color-text)]">
-                Si ya está registrado, puede recuperar sus proyectos asignados.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </SiteShell>
-    );
-  }
-
   const evaluadores = await getEvaluators();
 
   return (
@@ -59,6 +20,29 @@ export default async function RegistroEvaluadorPage() {
             Los evaluadores no tendrán login. Recibirán enlaces de evaluación por token según su área de conocimiento.
           </p>
         </div>
+
+        <Card className="mb-6 border-[#2E7D5B]/25 bg-[#2E7D5B]/10">
+          <CardHeader>
+            <CardTitle>Registro de evaluadores habilitado</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm leading-6 text-[var(--color-muted)]">
+            <p>
+              Puede registrar sus datos como evaluador desde este momento. Los proyectos serán asignados automáticamente
+              según el perfil y área seleccionada a partir del 5 de agosto de 2026 a las 00:00, hora Colombia, día del
+              evento.
+            </p>
+            <p>
+              Una vez habilitada la asignación, podrá ingresar con su documento para consultar los proyectos asignados.
+            </p>
+            <Link
+              href="/evaluadores/recuperar"
+              className="inline-flex h-11 items-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]"
+            >
+              Recuperar acceso a mis proyectos
+            </Link>
+          </CardContent>
+        </Card>
+
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <Card>
             <CardHeader>
@@ -79,7 +63,7 @@ export default async function RegistroEvaluadorPage() {
               <CardTitle>Disponibilidad por área</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              {evaluadores.map((evaluador) => (
+              {evaluadores.length > 0 ? evaluadores.map((evaluador) => (
                 <div
                   key={evaluador.id ?? evaluador.evaluador_id}
                   className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-white/45 p-3"
@@ -89,7 +73,11 @@ export default async function RegistroEvaluadorPage() {
                     {evaluador.cantidad_proyectos_asignados ?? evaluador.proyectos_asignados ?? 0}/3
                   </span>
                 </div>
-              ))}
+              )) : (
+                <p className="text-sm leading-6 text-[var(--color-muted)]">
+                  Aún no hay evaluadores registrados.
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
-  EVALUATOR_REGISTRATION_OPEN_DATE,
-  EVENT_DATE_LABEL,
+  EVALUATOR_ASSIGNMENT_OPEN_AT_CO,
   getColombiaDateString,
-  isEvaluatorRegistrationOpen,
+  isEvaluatorAssignmentOpen,
 } from "@/lib/event-config";
 import { createEvaluatorAndAssignments, shouldUseMockData } from "@/lib/supabase/queries";
 
@@ -31,23 +30,11 @@ function textAlias(data: Record<string, FormDataEntryValue>, names: string[]) {
 export async function POST(request: Request) {
   try {
     const now = new Date();
-    const currentColombiaDate = getColombiaDateString(now);
-
-    if (!isEvaluatorRegistrationOpen(now)) {
-      console.info("[evaluators/register] intento de registro antes de fecha permitida", {
-        currentDate: currentColombiaDate,
-        openDate: EVALUATOR_REGISTRATION_OPEN_DATE,
-      });
-
-      return NextResponse.json(
-        { error: `La inscripción de evaluadores estará disponible a partir del ${EVENT_DATE_LABEL}.` },
-        { status: 403 },
-      );
-    }
-
-    console.info("[evaluators/register] registro permitido después de fecha permitida", {
-      currentDate: currentColombiaDate,
-      openDate: EVALUATOR_REGISTRATION_OPEN_DATE,
+    const assignmentOpen = isEvaluatorAssignmentOpen(now);
+    console.info("[evaluators/register] registro de evaluador recibido", {
+      currentDate: getColombiaDateString(now),
+      assignmentOpenAt: EVALUATOR_ASSIGNMENT_OPEN_AT_CO,
+      assignmentOpen,
     });
 
     const formData = await request.formData();
@@ -60,6 +47,7 @@ export async function POST(request: Request) {
       institucion_evaluador: textAlias(rawValues, ["institucion_evaluador", "entidad"]),
       area_conocimiento: textAlias(rawValues, ["area_conocimiento"]),
     });
+
     if (shouldUseMockData()) {
       const tokenAcceso = "mock-evaluator-token";
       const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
@@ -77,9 +65,14 @@ export async function POST(request: Request) {
           evaluator,
           evaluador: evaluator,
           assignments: [],
+          asignaciones: [],
           assignmentsCount: 0,
+          cantidad_proyectos_asignados: 0,
           evaluatorAccessUrl: `${appUrl}/evaluadores/mis-asignaciones/${tokenAcceso}`,
-          message: "Tu registro fue creado, pero no hay proyectos disponibles para tu area en este momento.",
+          assignmentOpen,
+          message: assignmentOpen
+            ? "Tu registro fue creado, pero no hay proyectos disponibles para tu area en este momento."
+            : "Registro recibido correctamente. Los proyectos serán asignados automáticamente a partir del 5 de agosto de 2026 a las 00:00, hora Colombia, según el perfil y área seleccionada.",
         },
         { status: 201 },
       );

@@ -15,6 +15,7 @@ interface RecoverResult {
     area_conocimiento?: string;
   };
   evaluatorAccessUrl?: string;
+  assignmentOpen?: boolean;
   message?: string;
   error?: string;
 }
@@ -76,13 +77,17 @@ export function RecoverAccessForm() {
       {result?.success && result.evaluatorAccessUrl ? (
         <div className="rounded-2xl border border-[#2E7D5B]/20 bg-[#2E7D5B]/10 p-5">
           <p className="font-sans text-lg font-extrabold text-[#2E7D5B]">
-            Hola, {result.evaluator?.nombre_evaluador ?? "evaluador"}. Encontramos tus proyectos asignados.
+            Hola, {result.evaluator?.nombre_evaluador ?? "evaluador"}.{" "}
+            {result.assignmentOpen === false ? "Tu registro está activo." : "Encontramos tu acceso."}
           </p>
           <p className="mt-2 text-sm text-[var(--color-muted)]">
             {result.message ?? "Acceso encontrado. Puedes continuar con tus proyectos asignados."}
           </p>
-          <Link className="mt-4 inline-flex h-11 items-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]" href={result.evaluatorAccessUrl}>
-            Entrar a mis proyectos asignados
+          <Link
+            className="mt-4 inline-flex h-11 items-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]"
+            href={result.evaluatorAccessUrl}
+          >
+            {result.assignmentOpen === false ? "Consultar mi panel" : "Entrar a mis proyectos asignados"}
           </Link>
         </div>
       ) : null}

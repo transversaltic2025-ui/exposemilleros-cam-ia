@@ -1,5 +1,6 @@
-export const EVALUATOR_REGISTRATION_OPEN_DATE = "2026-08-05" as const;
+export const EVALUATOR_ASSIGNMENT_OPEN_AT_CO = "2026-08-05T00:00:00-05:00" as const;
 export const EVENT_DATE_LABEL = "5 de agosto de 2026" as const;
+export const EVALUATOR_ASSIGNMENT_OPEN_LABEL = "5 de agosto de 2026 a las 00:00, hora Colombia" as const;
 export const COLOMBIA_TIME_ZONE = "America/Bogota" as const;
 
 export function getColombiaDateString(date = new Date()) {
@@ -15,6 +16,10 @@ export function getColombiaDateString(date = new Date()) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-export function isEvaluatorRegistrationOpen(date = new Date()) {
-  return getColombiaDateString(date) >= EVALUATOR_REGISTRATION_OPEN_DATE;
+export function isEvaluatorRegistrationOpen() {
+  return true;
+}
+
+export function isEvaluatorAssignmentOpen(date = new Date()) {
+  return date.getTime() >= new Date(EVALUATOR_ASSIGNMENT_OPEN_AT_CO).getTime();
 }

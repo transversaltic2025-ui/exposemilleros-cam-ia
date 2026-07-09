@@ -10,7 +10,7 @@ export default function RecuperarEvaluadorPage() {
           <p className="expo-eyebrow">Evaluadores</p>
           <h1 className="expo-page-title mt-2">Recuperar mis proyectos asignados</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
-            Ingresa tu número de documento para volver a tus evaluaciones asignadas.
+            Ingresa tu número de documento para consultar tu registro y tus proyectos asignados cuando estén disponibles.
           </p>
         </div>
         <Card>

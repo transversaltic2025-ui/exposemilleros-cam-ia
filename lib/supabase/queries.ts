@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 import { LINEAS_TEMATICAS } from "@/lib/constants";
+import { isEvaluatorAssignmentOpen } from "@/lib/event-config";
 import {
   analisisIAMock,
   asignacionesMock,
@@ -593,6 +594,7 @@ export async function getEvaluatorAssignmentsByAccessToken(token: string) {
       evaluator: evaluator ? { ...evaluator, token_acceso: token } : null,
       assignments,
       evaluations: evaluacionesMock.filter((evaluation) => assignments.some((assignment) => assignment.asignacion_id === evaluation.asignacion_id)),
+      assignmentOpen: isEvaluatorAssignmentOpen(),
     };
   }
 
@@ -623,10 +625,20 @@ export async function getEvaluatorAssignmentsByAccessToken(token: string) {
     throw updateError;
   }
 
+  const currentAssignments = await getAssignmentsForEvaluator(evaluator.id ?? "");
+  const assignmentOpen = isEvaluatorAssignmentOpen();
+  if (assignmentOpen && currentAssignments.length < 3) {
+    await assignProjectsToEvaluator(evaluator);
+  }
+  const assignments = assignmentOpen
+    ? await getAssignmentsForEvaluator(evaluator.id ?? "")
+    : currentAssignments;
+
   return {
     evaluator,
-    assignments: await getAssignmentsForEvaluator(evaluator.id ?? ""),
+    assignments,
     evaluations: await getEvaluationsForEvaluator(evaluator.id ?? ""),
+    assignmentOpen,
   };
 }
 
@@ -1107,6 +1119,12 @@ function evaluatorAccessUrl(token: string) {
   return `${appUrl}/evaluadores/mis-asignaciones/${token}`;
 }
 
+const ASSIGNMENT_PENDING_MESSAGE =
+  "Registro recibido correctamente. Los proyectos serán asignados automáticamente a partir del 5 de agosto de 2026 a las 00:00, hora Colombia, según el perfil y área seleccionada.";
+
+const RECOVERY_PENDING_MESSAGE =
+  "Su registro está activo. Los proyectos serán asignados a partir del 5 de agosto de 2026 a las 00:00, hora Colombia.";
+
 function isActiveAssignment(assignment: Pick<Assignment, "estado_asignacion" | "estado">) {
   const status = assignment.estado_asignacion ?? assignment.estado ?? "Pendiente";
   return !["Completada", "Cancelada"].includes(status);
@@ -1164,6 +1182,44 @@ async function ensureEvaluatorAccessToken(evaluador: Evaluator) {
   return data as Evaluator;
 }
 
+async function updateExistingEvaluatorProfile(
+  evaluador: Evaluator,
+  input: {
+    nombre_evaluador: string;
+    documento_evaluador: string;
+    correo_evaluador: string;
+    celular_evaluador: string;
+    institucion_evaluador: string;
+    area_conocimiento: string;
+  },
+) {
+  if (!evaluador.id) {
+    return evaluador;
+  }
+
+  const { data, error } = await supabase()
+    .from("evaluadores")
+    .update({
+      nombre_evaluador: input.nombre_evaluador,
+      documento_evaluador: normalizeDocument(input.documento_evaluador),
+      correo_evaluador: normalizeEmail(input.correo_evaluador),
+      celular_evaluador: input.celular_evaluador,
+      institucion_evaluador: input.institucion_evaluador,
+      area_conocimiento: input.area_conocimiento,
+      estado_evaluador: "Activo",
+    })
+    .eq("id", evaluador.id)
+    .select("*")
+    .single();
+
+  if (error) {
+    console.error("[evaluators/register] error exacto actualizando evaluador existente", error);
+    throw error;
+  }
+
+  return data as Evaluator;
+}
+
 export async function recoverEvaluatorAccessByDocument(documentoEvaluador: string) {
   const normalizedDocument = normalizeDocument(documentoEvaluador);
   console.log("[evaluators/recover-access] documento recibido", documentoEvaluador);
@@ -1204,7 +1260,10 @@ export async function recoverEvaluatorAccessByDocument(documentoEvaluador: strin
         area_conocimiento: evaluator.area_conocimiento,
       },
       evaluatorAccessUrl: url,
-      message: "Acceso encontrado. Puedes continuar con tus proyectos asignados.",
+      assignmentOpen: isEvaluatorAssignmentOpen(),
+      message: isEvaluatorAssignmentOpen()
+        ? "Acceso encontrado. Puedes continuar con tus proyectos asignados."
+        : RECOVERY_PENDING_MESSAGE,
     };
   }
 
@@ -1243,6 +1302,11 @@ export async function recoverEvaluatorAccessByDocument(documentoEvaluador: strin
     throw updateError;
   }
 
+  const currentAssignments = await getAssignmentsForEvaluator(evaluatorWithToken.id ?? "");
+  const assignmentOpen = isEvaluatorAssignmentOpen();
+  const newAssignments = assignmentOpen && currentAssignments.length < 3
+    ? await assignProjectsToEvaluator(evaluatorWithToken)
+    : [];
   const url = evaluatorAccessUrl(evaluatorWithToken.token_acceso ?? "");
   console.log("[evaluators/recover-access] token_acceso generado", evaluatorHadToken ? "no" : "si");
   console.log("[evaluators/recover-access] URL de acceso generada", url);
@@ -1257,7 +1321,11 @@ export async function recoverEvaluatorAccessByDocument(documentoEvaluador: strin
       area_conocimiento: evaluatorWithToken.area_conocimiento,
     },
     evaluatorAccessUrl: url,
-    message: "Acceso encontrado. Puedes continuar con tus proyectos asignados.",
+    assignmentOpen,
+    newAssignmentsCount: newAssignments.length,
+    message: assignmentOpen
+      ? "Acceso encontrado. Puedes continuar con tus proyectos asignados."
+      : RECOVERY_PENDING_MESSAGE,
   };
 }
 
@@ -1281,13 +1349,17 @@ export async function createEvaluatorAndAssignments(input: {
       documento_normalizado: normalizeDocument(input.documento_evaluador),
     });
 
-    const evaluatorWithToken = await ensureEvaluatorAccessToken(existingEvaluator);
-    const newAssignments = await assignProjectsToEvaluator(evaluatorWithToken);
+    const updatedEvaluator = await updateExistingEvaluatorProfile(existingEvaluator, input);
+    const evaluatorWithToken = await ensureEvaluatorAccessToken(updatedEvaluator);
+    const assignmentOpen = isEvaluatorAssignmentOpen();
+    const newAssignments = assignmentOpen ? await assignProjectsToEvaluator(evaluatorWithToken) : [];
     const currentAssignments = await getAssignmentsForEvaluator(evaluatorWithToken.id ?? "");
     const finalEvaluator = await updateEvaluatorAssignmentCount(evaluatorWithToken, currentAssignments.length);
-    const message = newAssignments.length > 0
-      ? "Ya estabas registrado. Se actualizaron tus proyectos asignados."
-      : "Ya estabas registrado, pero no hay proyectos disponibles para asignarte en este momento.";
+    const message = assignmentOpen
+      ? newAssignments.length > 0
+        ? "Ya estabas registrado. Se actualizaron tus proyectos asignados."
+        : "Ya estabas registrado, pero no hay proyectos disponibles para asignarte en este momento."
+      : ASSIGNMENT_PENDING_MESSAGE;
 
     console.log("[evaluators/register] cantidad final de asignaciones", {
       evaluador_id: finalEvaluator.id,
@@ -1299,9 +1371,12 @@ export async function createEvaluatorAndAssignments(input: {
       success: true,
       evaluator: finalEvaluator,
       evaluador: finalEvaluator,
-      assignments: currentAssignments,
+      assignments: assignmentOpen ? currentAssignments : [],
+      asignaciones: assignmentOpen ? currentAssignments : [],
       assignmentsCount: currentAssignments.length,
+      cantidad_proyectos_asignados: currentAssignments.length,
       evaluatorAccessUrl: evaluatorAccessUrl(finalEvaluator.token_acceso ?? ""),
+      assignmentOpen,
       message,
       newAssignmentsCount: newAssignments.length,
     };
@@ -1343,7 +1418,8 @@ export async function createEvaluatorAndAssignments(input: {
     id: created.id,
     codigo_evaluador: created.codigo_evaluador,
   });
-  const newAssignments = await assignProjectsToEvaluator(created);
+  const assignmentOpen = isEvaluatorAssignmentOpen();
+  const newAssignments = assignmentOpen ? await assignProjectsToEvaluator(created) : [];
   const currentAssignments = await getAssignmentsForEvaluator(created.id ?? "");
   const finalEvaluator = await updateEvaluatorAssignmentCount(created, currentAssignments.length);
   const message = newAssignments.length === 0
@@ -1360,10 +1436,13 @@ export async function createEvaluatorAndAssignments(input: {
     success: true,
     evaluator: finalEvaluator,
     evaluador: finalEvaluator,
-    assignments: currentAssignments,
+    assignments: assignmentOpen ? currentAssignments : [],
+    asignaciones: assignmentOpen ? currentAssignments : [],
     assignmentsCount: currentAssignments.length,
+    cantidad_proyectos_asignados: currentAssignments.length,
     evaluatorAccessUrl: evaluatorAccessUrl(finalEvaluator.token_acceso ?? ""),
-    message,
+    assignmentOpen,
+    message: assignmentOpen ? message : ASSIGNMENT_PENDING_MESSAGE,
     newAssignmentsCount: newAssignments.length,
   };
 }
