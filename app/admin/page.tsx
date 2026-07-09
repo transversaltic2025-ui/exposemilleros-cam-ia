@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowUpRight, BarChart3, ClipboardCheck, ClipboardList, FileBadge, GitBranch, Users } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BarChart3, ClipboardCheck, ClipboardList, FileBadge, GitBranch, GraduationCap, Users } from "lucide-react";
 
 import { MetricCard } from "@/components/metric-card";
 import { SectionShell } from "@/components/section-shell";
@@ -42,6 +42,12 @@ const adminLinks = [
     title: "Certificados",
     detail: "Ponentes, instructores lideres y evaluadores.",
     icon: FileBadge,
+  },
+  {
+    href: "/admin/capacitacion-evaluadores",
+    title: "Capacitacion evaluadores",
+    detail: "Evaluaciones de practica sin efecto oficial.",
+    icon: GraduationCap,
   },
 ];
 

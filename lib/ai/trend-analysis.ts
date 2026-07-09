@@ -99,6 +99,13 @@ function projectValue(project: Project, key: keyof Project) {
   return typeof value === "string" && value.trim() ? value.trim() : "No registrado";
 }
 
+function projectList(project: Project, key: keyof Project) {
+  const value = project[key];
+  return Array.isArray(value) && value.length > 0
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).join(", ")
+    : "No registrado";
+}
+
 function cleanStringArray(values: unknown) {
   return Array.isArray(values)
     ? values.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
@@ -179,8 +186,21 @@ Instrucciones para inclusion, genero y enfoque diferencial:
 Datos del proyecto:
 - Nombre: ${projectValue(project, "nombre_proyecto") || projectValue(project, "titulo")}
 - Linea tematica: ${projectValue(project, "linea_tematica")}
-- Modalidad de participacion: ${projectValue(project, "modalidad_participacion")}
+- Otra linea tematica: ${projectValue(project, "linea_tematica_otro")}
+- Resumen cientifico - Problema: ${projectValue(project, "resumen_problema")}
+- Resumen cientifico - Objetivo: ${projectValue(project, "resumen_objetivo")}
+- Resumen cientifico - Metodologia: ${projectValue(project, "resumen_metodologia")}
+- Resumen cientifico - Resultados: ${projectValue(project, "resumen_resultados")}
+- Resumen cientifico - Conclusiones: ${projectValue(project, "resumen_conclusiones")}
+- Modalidades: ${projectList(project, "modalidades_proyecto")}
+- Modalidad de participacion legacy: ${projectValue(project, "modalidad_participacion")}
+- Otra modalidad: ${projectValue(project, "modalidad_otro")}
+- Estado del proyecto: ${projectValue(project, "estado_desarrollo_proyecto")}
+- Productos obtenidos: ${projectList(project, "productos_obtenidos")}
+- Otro producto obtenido: ${projectValue(project, "productos_obtenidos_otro")}
+- Nivel de madurez: ${projectValue(project, "nivel_madurez")}
 - Semillero: ${projectValue(project, "semillero")}
+- Otro semillero: ${projectValue(project, "semillero_otro")}
 - Institucion: ${projectValue(project, "institucion")}
 - Municipio: ${projectValue(project, "municipio")}
 - Categoria de presentacion: ${projectValue(project, "categoria_presentacion")}

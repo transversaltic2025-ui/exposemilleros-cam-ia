@@ -40,6 +40,20 @@ export default async function ProyectoDetallePage({
   const posterUrl = proyecto.poster_proyecto_path && !shouldUseMockData()
     ? await createProjectFileSignedUrl(proyecto.poster_proyecto_path)
     : "#";
+  const equipo = proyecto.equipo ?? [];
+  const autorPrincipal = equipo.filter((member) => member.rol_integrante === "Autor principal");
+  const aprendices = equipo.filter((member) => member.rol_integrante === "Aprendiz participante");
+  const instructoresInvestigadores = equipo.filter((member) => member.rol_integrante === "Instructor" || member.rol_integrante === "Investigador asociado");
+  const minorConsentUrls = Object.fromEntries(
+    await Promise.all(
+      equipo
+        .filter((member) => member.tratamiento_datos_menor_path && !shouldUseMockData())
+        .map(async (member) => [
+          member.tratamiento_datos_menor_path ?? "",
+          await createProjectFileSignedUrl(member.tratamiento_datos_menor_path ?? ""),
+        ]),
+    ),
+  );
 
   return (
     <SiteShell>
@@ -53,7 +67,7 @@ export default async function ProyectoDetallePage({
             {proyecto.nombre_proyecto ?? proyecto.titulo}
           </h1>
           <p className="mt-4 max-w-3xl text-base leading-8 text-[var(--color-muted)]">
-            {displayText(proyecto.resumen)}
+            {displayText(proyecto.resumen_problema ?? proyecto.resumen)}
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             {proyecto.id ? <AnalyzeProjectButton proyectoId={proyecto.id} /> : null}
@@ -95,13 +109,13 @@ export default async function ProyectoDetallePage({
             <CardTitle>Ficha del proyecto</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
-            <Info label="Linea tematica" value={proyecto.linea_tematica} />
+            <Info label="Linea tematica" value={projectLine(proyecto)} />
             <Info label="Modalidad" value={proyecto.modalidad_participacion} />
-            <Info label="Semillero" value={proyecto.semillero} />
+            <Info label="Semillero" value={projectSeedbed(proyecto)} />
             <Info label="Categoria" value="Poster" />
             <Info label="Institucion" value={proyecto.institucion} />
             <Info label="Municipio" value={proyecto.municipio} />
-            <Info label="Archivo del proyecto" value={proyecto.archivo_nombre ?? proyecto.archivo_proyecto_nombre ?? "Sin archivo"} />
+            <Info label="Archivo historico del proyecto" value={proyecto.archivo_nombre ?? proyecto.archivo_proyecto_nombre ?? "Sin archivo historico"} />
             <Info label="Poster del proyecto" value={proyecto.poster_proyecto_nombre ?? "Sin poster"} />
           </CardContent>
         </Card>
@@ -122,37 +136,45 @@ export default async function ProyectoDetallePage({
         </Card>
       </section>
 
+      <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Resumen científico</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <Info label="Problema" value={proyecto.resumen_problema ?? proyecto.resumen} />
+            <Info label="Objetivo" value={proyecto.resumen_objetivo} />
+            <Info label="Metodología" value={proyecto.resumen_metodologia} />
+            <Info label="Resultados" value={proyecto.resumen_resultados} />
+            <Info label="Conclusiones" value={proyecto.resumen_conclusiones} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Modalidad y estado</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <Info label="Línea temática" value={projectLine(proyecto)} />
+            <Info label="Modalidades" value={displayList(proyecto.modalidades_proyecto, proyecto.modalidad_participacion)} />
+            {proyecto.modalidad_otro ? <Info label="Otra modalidad" value={proyecto.modalidad_otro} /> : null}
+            <Info label="Estado del proyecto" value={proyecto.estado_desarrollo_proyecto} />
+            <Info label="Productos obtenidos" value={displayList(proyecto.productos_obtenidos)} />
+            {proyecto.productos_obtenidos_otro ? <Info label="Otro producto" value={proyecto.productos_obtenidos_otro} /> : null}
+            <Info label="Nivel de madurez" value={proyecto.nivel_madurez} />
+          </CardContent>
+        </Card>
+      </section>
+
       <section className="mt-6">
         <Card>
           <CardHeader>
-            <CardTitle>Instructores líderes</CardTitle>
+            <CardTitle>Equipo del proyecto</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-3 lg:grid-cols-3">
-            <InstructorInfo
-              label="Instructor líder 1"
-              nombre={proyecto.instructor_nombre}
-              documento={proyecto.instructor_documento}
-              correo={proyecto.instructor_correo}
-              celular={proyecto.instructor_celular}
-            />
-            {proyecto.instructor_2_nombre ? (
-              <InstructorInfo
-                label="Instructor líder 2"
-                nombre={proyecto.instructor_2_nombre}
-                documento={proyecto.instructor_2_documento}
-                correo={proyecto.instructor_2_correo}
-                celular={proyecto.instructor_2_celular}
-              />
-            ) : null}
-            {proyecto.instructor_3_nombre ? (
-              <InstructorInfo
-                label="Instructor líder 3"
-                nombre={proyecto.instructor_3_nombre}
-                documento={proyecto.instructor_3_documento}
-                correo={proyecto.instructor_3_correo}
-                celular={proyecto.instructor_3_celular}
-              />
-            ) : null}
+          <CardContent className="grid gap-5">
+            <TeamGroup title="Autor principal" members={autorPrincipal} minorConsentUrls={minorConsentUrls} />
+            <TeamGroup title="Aprendices participantes" members={aprendices} minorConsentUrls={minorConsentUrls} />
+            <TeamGroup title="Instructores o investigadores asociados" members={instructoresInvestigadores} minorConsentUrls={minorConsentUrls} emptyText="No registrados" />
           </CardContent>
         </Card>
       </section>
@@ -203,13 +225,12 @@ export default async function ProyectoDetallePage({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="size-5 text-[var(--color-success)]" />
-              Integrantes
+              Archivos y trazabilidad
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            {proyecto.integrantes.length > 0
-              ? proyecto.integrantes.map((integrante) => <StatusPill key={integrante} tone="neutral">{integrante}</StatusPill>)
-              : <p className="text-sm text-[var(--color-muted)]">Sin integrantes registrados.</p>}
+          <CardContent className="grid gap-3">
+            <Info label="Documento histórico" value={proyecto.archivo_nombre ?? proyecto.archivo_proyecto_nombre ?? "Sin archivo histórico"} />
+            <Info label="Poster" value={proyecto.poster_proyecto_nombre ?? "Sin poster"} />
           </CardContent>
         </Card>
       </section>
@@ -282,34 +303,80 @@ function ComparisonBlock({ label, score, concept }: { label: string; score?: num
   );
 }
 
-function InstructorInfo({
-  label,
-  nombre,
-  documento,
-  correo,
-  celular,
+function TeamGroup({
+  title,
+  members,
+  minorConsentUrls,
+  emptyText = "Sin registros.",
 }: {
-  label: string;
-  nombre?: string;
-  documento?: string;
-  correo?: string;
-  celular?: string;
+  title: string;
+  members: NonNullable<Awaited<ReturnType<typeof getProjectDetail>>["proyecto"]>["equipo"];
+  minorConsentUrls: Record<string, string>;
+  emptyText?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-[var(--color-border)] bg-white/45 p-4">
-      <p className="expo-eyebrow">{label}</p>
-      <p className="mt-2 text-sm font-extrabold leading-6 text-[var(--color-text)]">{displayText(nombre)}</p>
-      <div className="mt-3 grid gap-2 text-sm leading-6 text-[var(--color-muted)]">
-        <p>Documento: {displayText(documento)}</p>
-        <p>Correo: {displayText(correo)}</p>
-        <p>Celular: {displayText(celular)}</p>
-      </div>
+    <div className="grid gap-3">
+      <p className="expo-eyebrow">{title}</p>
+      {members && members.length > 0 ? (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {members.map((member) => (
+            <div key={`${member.rol_integrante}-${member.orden}-${member.nombre_completo}`} className="rounded-2xl border border-[var(--color-border)] bg-white/45 p-4">
+              <p className="text-sm font-extrabold leading-6 text-[var(--color-text)]">{displayText(member.nombre_completo)}</p>
+              <div className="mt-3 grid gap-2 text-sm leading-6 text-[var(--color-muted)]">
+                <p>Rol: {member.rol_integrante}</p>
+                {member.documento ? <p>Documento: {member.documento}</p> : null}
+                {member.correo ? <p>Correo: {member.correo}</p> : null}
+                {member.celular ? <p>Celular: {member.celular}</p> : null}
+                {member.ficha ? <p>Ficha: {member.ficha}</p> : null}
+                <p>Menor de edad: {member.es_menor_edad ? "Si" : "No"}</p>
+                {member.tratamiento_datos_menor_path ? (
+                  <Link
+                    href={minorConsentUrls[member.tratamiento_datos_menor_path] ?? "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex w-fit items-center gap-2 text-sm font-bold text-[var(--color-primary)] hover:text-[var(--color-secondary)]"
+                  >
+                    <ExternalLink className="size-4" />
+                    Ver autorización
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-[var(--color-muted)]">{emptyText}</p>
+      )}
     </div>
   );
 }
 
 function displayText(value?: string | null) {
   return value?.trim() || "Pendiente";
+}
+
+function displayList(values?: string[], fallback?: string) {
+  if (values?.length) {
+    return values.join(", ");
+  }
+
+  return fallback ?? "";
+}
+
+function projectLine(project: NonNullable<Awaited<ReturnType<typeof getProjectDetail>>["proyecto"]>) {
+  if (project.linea_tematica === "Otra" && project.linea_tematica_otro) {
+    return `Otra: ${project.linea_tematica_otro}`;
+  }
+
+  return project.linea_tematica;
+}
+
+function projectSeedbed(project: NonNullable<Awaited<ReturnType<typeof getProjectDetail>>["proyecto"]>) {
+  if (project.semillero === "Otro" && project.semillero_otro) {
+    return `Otro: ${project.semillero_otro}`;
+  }
+
+  return project.semillero;
 }
 
 function booleanText(value?: boolean) {

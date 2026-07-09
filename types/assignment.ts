@@ -14,14 +14,14 @@ export interface Assignment {
   observaciones_admin?: string | null;
   proyecto_codigo?: string;
   proyecto_nombre?: string;
-  proyecto_area?: LineaTematica;
+  proyecto_area?: LineaTematica | string;
   evaluador_codigo?: string;
   evaluador_nombre?: string;
 
   asignacion_id?: string;
   codigo_proyecto?: string;
   titulo_proyecto?: string;
-  area_conocimiento?: LineaTematica;
+  area_conocimiento?: LineaTematica | string;
   token?: string;
   estado?: EstadoAsignacion;
   archivo_abierto?: boolean;

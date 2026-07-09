@@ -6,6 +6,7 @@ import type {
   OpcionSiNo,
   Semillero,
 } from "@/lib/constants";
+import type { ProjectTeamPayload } from "./project";
 
 export interface ProjectParticipantRegistration {
   nombre: string;
@@ -21,9 +22,22 @@ export interface ProjectRegistrationInput {
   linea_tematica: LineaTematica;
   linea_investigacion?: LineaInvestigacion | string;
   modalidad_participacion: ModalidadParticipacion;
-  semillero: Semillero;
+  semillero: Semillero | string;
+  semillero_otro?: string;
   institucion: string;
   municipio: string;
+  linea_tematica_otro?: string;
+  resumen_problema?: string;
+  resumen_objetivo?: string;
+  resumen_metodologia?: string;
+  resumen_resultados?: string;
+  resumen_conclusiones?: string;
+  modalidades_proyecto?: string[];
+  modalidad_otro?: string;
+  estado_desarrollo_proyecto?: string;
+  productos_obtenidos?: string[];
+  productos_obtenidos_otro?: string;
+  nivel_madurez?: string;
   instructor_nombre: string;
   instructor_documento?: string;
   instructor_correo: string;
@@ -37,6 +51,7 @@ export interface ProjectRegistrationInput {
   instructor_3_correo?: string;
   instructor_3_celular?: string;
   rol_proyecto?: string;
+  integrantes?: ProjectTeamPayload;
   participantes: ProjectParticipantRegistration[];
   aprendiz_1_nombre?: string;
   aprendiz_1_documento?: string;

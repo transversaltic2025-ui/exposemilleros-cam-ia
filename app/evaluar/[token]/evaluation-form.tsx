@@ -8,10 +8,12 @@ import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { calculateEvaluationSimulation } from "@/lib/evaluation-simulation";
 import type { EvaluationCriterion } from "@/types";
 
 const schema = z.object({
@@ -37,14 +39,24 @@ type FormValues = z.infer<typeof schema>;
 export function EvaluationForm({
   token,
   criterios,
+  mode = "official",
 }: {
-  token: string;
+  token?: string;
   criterios: EvaluationCriterion[];
+  mode?: "official" | "training";
 }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [evaluatorAccessUrl, setEvaluatorAccessUrl] = useState<string | null>(null);
+  const [simulationResult, setSimulationResult] = useState<{
+    puntaje_total: number;
+    promedio: number;
+    porcentaje: number;
+    nivel_tendencia: string;
+    concepto_evaluador: string;
+  } | null>(null);
   const hasCriteria = criterios.length > 0;
+  const isTraining = mode === "training";
   const normalizedCriteria = criterios.map((criterio) => ({
     ...criterio,
     id: criterio.id ?? criterio.criterio_id ?? "",
@@ -89,6 +101,17 @@ export function EvaluationForm({
 
   async function onSubmit(values: FormValues) {
     setSubmitError(null);
+
+    if (isTraining) {
+      setSimulationResult(calculateEvaluationSimulation(values, normalizedCriteria));
+      return;
+    }
+
+    if (!token) {
+      setSubmitError("No se pudo enviar la evaluacion.");
+      return;
+    }
+
     const response = await fetch(`/api/evaluations/${token}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -102,19 +125,19 @@ export function EvaluationForm({
     }
 
     const payload = await response.json();
-    setSuccessMessage(payload.message ?? "Evaluación registrada correctamente.");
+    setSuccessMessage(payload.message ?? "EvaluaciИn registrada correctamente.");
     setEvaluatorAccessUrl(payload.evaluatorAccessUrl ?? null);
   }
 
-  if (isSubmitSuccessful && !submitError) {
+  if (!isTraining && isSubmitSuccessful && !submitError) {
     return (
       <div className="rounded-2xl border border-[#2E7D5B]/20 bg-[#2E7D5B]/10 p-5 text-[#2E7D5B]">
         <div className="flex items-center gap-2 font-semibold">
           <CheckCircle2 className="size-5" />
-          {successMessage ?? "Evaluación registrada correctamente"}
+          {successMessage ?? "EvaluaciИn registrada correctamente"}
         </div>
         <p className="mt-2 text-sm">
-          Volverás a tus proyectos asignados en unos segundos para continuar con las evaluaciones pendientes.
+          Volverケs a tus proyectos asignados en unos segundos para continuar con las evaluaciones pendientes.
         </p>
         {evaluatorAccessUrl ? (
           <Link className="mt-4 inline-flex h-11 items-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]" href={evaluatorAccessUrl}>
@@ -127,6 +150,17 @@ export function EvaluationForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-5">
+      {isTraining ? (
+        <Card className="border-amber-400/40 bg-amber-50/80">
+          <CardContent className="py-4">
+            <p className="text-sm font-black uppercase tracking-wide text-amber-700">Modo capacitaciИn</p>
+            <p className="mt-2 text-sm leading-6 text-amber-900">
+              Esta evaluacion es solo para practica y capacitacion. No se guardara como evaluacion oficial del proyecto.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <label className="flex items-start gap-3 rounded-2xl border border-[var(--color-border)] bg-white/48 p-4 text-sm">
         <Checkbox
           checked={archivoAbierto}
@@ -214,11 +248,40 @@ export function EvaluationForm({
         <Textarea id="concepto_evaluador" rows={4} {...register("concepto_evaluador")} />
       </div>
 
+      {isTraining && simulationResult ? (
+        <Card className="border-[var(--color-primary)]/20 bg-white/80">
+          <CardContent className="grid gap-3 py-5">
+            <p className="text-sm font-black uppercase tracking-wide text-[var(--color-primary)]">EvaluaciИn de practica completada</p>
+            <p className="text-sm leading-6 text-[var(--color-muted)]">
+              Este resultado no fue guardado como evaluaciИn oficial.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <ResultStat label="Puntaje total simulado" value={`${simulationResult.puntaje_total}`} />
+              <ResultStat label="Porcentaje simulado" value={`${simulationResult.porcentaje}%`} />
+              <ResultStat label="Nivel de tendencia simulado" value={simulationResult.nivel_tendencia} />
+            </div>
+            <div className="rounded-2xl border border-[var(--color-border)] bg-white/60 p-4">
+              <p className="expo-eyebrow">Concepto escrito</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--color-text)]">{simulationResult.concepto_evaluador}</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {submitError ? <p className="text-sm font-semibold text-red-700">{submitError}</p> : null}
 
       <Button type="submit" size="lg">
-        Enviar evaluacion
+        {isTraining ? "Simular envio de evaluacion" : "Enviar evaluacion"}
       </Button>
     </form>
+  );
+}
+
+function ResultStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-[var(--color-border)] bg-white/60 p-4">
+      <p className="expo-eyebrow">{label}</p>
+      <p className="mt-2 font-sans text-lg font-extrabold text-[var(--color-text)]">{value}</p>
+    </div>
   );
 }

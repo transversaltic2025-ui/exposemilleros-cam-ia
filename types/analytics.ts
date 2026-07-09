@@ -1,7 +1,7 @@
 import type { LineaTematica } from "@/lib/constants";
 
 export interface TrendByArea {
-  area: LineaTematica;
+  area: LineaTematica | string;
   proyectos: number;
   puntajePromedio: number;
   puntajePromedioIA?: number;

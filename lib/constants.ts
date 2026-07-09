@@ -2,13 +2,17 @@ export const SYSTEM_NAME = "ExpoSemilleros CAM IA" as const;
 export const SYSTEM_SHORT_NAME = "ExpoSemilleros IA" as const;
 
 export const LINEAS_TEMATICAS = [
-  "Pecuaria",
-  "Agrícola",
-  "Apícola",
-  "Ambiental",
-  "Tecnología e innovación",
-  "Administrativa",
   "Agroindustria",
+  "Agricultura",
+  "Pecuaria",
+  "Ambiental",
+  "Biotecnología",
+  "TIC",
+  "Automatización",
+  "Energías renovables",
+  "Economía circular",
+  "Emprendimiento",
+  "Otra",
 ] as const;
 
 export const LINEAS_INVESTIGACION = [
@@ -17,9 +21,39 @@ export const LINEAS_INVESTIGACION = [
 ] as const;
 
 export const MODALIDADES_PARTICIPACION = [
-  "Propuesta de investigación",
-  "Proyecto en ejecución",
-  "Proyecto terminado",
+  "Innovación",
+  "Emprendimiento",
+  "Investigación aplicada",
+  "Desarrollo tecnológico",
+  "Otro",
+] as const;
+
+export const ESTADOS_DESARROLLO_PROYECTO = [
+  "Formulado",
+  "En ejecución",
+  "Finalizado",
+  "Transferencia tecnológica",
+] as const;
+
+export const PRODUCTOS_OBTENIDOS = [
+  "Prototipo",
+  "Software",
+  "Bioproducto",
+  "Artículo",
+  "Ponencia",
+  "Poster",
+  "Patente",
+  "Diseño industrial",
+  "Marca",
+  "Otro",
+] as const;
+
+export const NIVELES_MADUREZ = [
+  "Idea",
+  "Prototipo funcional",
+  "Validado",
+  "Transferencia tecnológica",
+  "Comercializado",
 ] as const;
 
 export const SEMILLEROS = [
@@ -34,6 +68,7 @@ export const SEMILLEROS = [
   "Ambiental",
   "Napecam",
   "Sibari",
+  "Otro",
 ] as const;
 
 export const CATEGORIAS_PRESENTACION = [
@@ -77,6 +112,9 @@ export const ESTADOS_ASIGNACION = [
 export type LineaTematica = (typeof LINEAS_TEMATICAS)[number];
 export type LineaInvestigacion = (typeof LINEAS_INVESTIGACION)[number];
 export type ModalidadParticipacion = (typeof MODALIDADES_PARTICIPACION)[number];
+export type EstadoDesarrolloProyecto = (typeof ESTADOS_DESARROLLO_PROYECTO)[number];
+export type ProductoObtenido = (typeof PRODUCTOS_OBTENIDOS)[number];
+export type NivelMadurez = (typeof NIVELES_MADUREZ)[number];
 export type Semillero = (typeof SEMILLEROS)[number];
 export type CategoriaPresentacion = (typeof CATEGORIAS_PRESENTACION)[number];
 export type OpcionSiNo = (typeof OPCIONES_SI_NO)[number];

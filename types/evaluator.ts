@@ -8,7 +8,7 @@ export interface Evaluator {
   correo_evaluador?: string;
   celular_evaluador?: string;
   institucion_evaluador?: string;
-  area_conocimiento: LineaTematica;
+  area_conocimiento: LineaTematica | string;
   estado_evaluador?: "Activo" | "Inactivo";
   cantidad_proyectos_asignados?: number;
   token_acceso?: string | null;

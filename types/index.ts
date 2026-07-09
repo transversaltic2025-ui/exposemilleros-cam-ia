@@ -21,6 +21,7 @@ export type {
   ProjectRegistrationInput,
 } from "./project-registration";
 export type { Project, ProjectParticipant } from "./project";
+export type { ProjectMember, ProjectMemberRole, ProjectTeamPayload } from "./project";
 export type { Evaluator } from "./evaluator";
 export type { Assignment } from "./assignment";
 export type { EvaluationCriterion, EvaluationDetailInput, HumanEvaluation } from "./evaluation";

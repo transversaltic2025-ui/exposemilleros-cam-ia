@@ -39,6 +39,15 @@ interface EvaluatorRow {
   area_conocimiento: string;
 }
 
+interface ProjectMemberRow {
+  id: string;
+  proyecto_id: string;
+  rol_integrante: "Autor principal" | "Aprendiz participante" | "Instructor" | "Investigador asociado";
+  nombre_completo: string;
+  documento?: string | null;
+  orden: number;
+}
+
 interface CertificateCandidate {
   tipo_certificado: CertificateType;
   nombre_persona: string;
@@ -59,9 +68,12 @@ interface ExistingCertificate {
 }
 
 function certificateKey(row: ExistingCertificate | CertificateCandidate) {
+  const personKey = row.documento_persona.trim()
+    ? row.documento_persona.trim().toLowerCase()
+    : row.nombre_persona.trim().toLowerCase();
   return [
     row.tipo_certificado,
-    row.documento_persona.trim().toLowerCase(),
+    personKey,
     row.proyecto_id ?? "",
   ].join("|");
 }
@@ -147,9 +159,36 @@ async function getProjectCandidates(tipoCertificado: CertificateType) {
   }
 
   const projects = (data ?? []) as unknown as ProjectRow[];
+  const projectIds = projects.map((project) => project.id).filter(Boolean);
+  const { data: memberRows, error: membersError } = projectIds.length > 0
+    ? await supabase
+        .from("proyecto_integrantes")
+        .select("id,proyecto_id,rol_integrante,nombre_completo,documento,orden")
+        .in("proyecto_id", projectIds)
+        .order("orden", { ascending: true })
+    : { data: [], error: null };
+
+  if (membersError) {
+    console.error("[certificates/generate] error Supabase consultando integrantes", membersError);
+    throw membersError;
+  }
+
+  const membersByProjectId = new Map<string, ProjectMemberRow[]>();
+  ((memberRows ?? []) as unknown as ProjectMemberRow[]).forEach((member) => {
+    const current = membersByProjectId.get(member.proyecto_id) ?? [];
+    current.push(member);
+    membersByProjectId.set(member.proyecto_id, current);
+  });
+
   if (tipoCertificado === "Instructor") {
     return projects.flatMap((project) =>
-      projectInstructors(project).map((instructor) => ({
+      (
+        membersByProjectId.has(project.id)
+          ? (membersByProjectId.get(project.id) ?? [])
+              .filter((member) => member.rol_integrante === "Instructor")
+              .map((member) => ({ nombre: member.nombre_completo, documento: member.documento }))
+          : projectInstructors(project)
+      ).map((instructor) => ({
         tipo_certificado: tipoCertificado,
         nombre_persona: String(instructor.nombre),
         documento_persona: String(instructor.documento ?? ""),
@@ -162,11 +201,17 @@ async function getProjectCandidates(tipoCertificado: CertificateType) {
   }
 
   return projects.flatMap((project) =>
-    projectLearners(project).map((learner) => ({
+    (
+      membersByProjectId.has(project.id)
+        ? (membersByProjectId.get(project.id) ?? [])
+            .filter((member) => member.rol_integrante === "Autor principal" || member.rol_integrante === "Aprendiz participante")
+            .map((member) => ({ nombre: member.nombre_completo, documento: member.documento, rol: member.rol_integrante }))
+        : projectLearners(project).map((learner) => ({ ...learner, rol: "Aprendiz participante" }))
+    ).map((learner) => ({
       tipo_certificado: tipoCertificado,
       nombre_persona: String(learner.nombre),
       documento_persona: String(learner.documento ?? ""),
-      rol_certificado: "Ponente",
+      rol_certificado: learner.rol === "Autor principal" ? "Autor principal" : "Ponente",
       proyecto_id: project.id,
       evaluador_id: null,
       proyecto: project,

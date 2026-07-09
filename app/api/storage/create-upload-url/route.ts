@@ -4,13 +4,14 @@ import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PROJECT_FILES_BUCKET } from "@/lib/supabase/storage";
 import {
+  validateMinorConsentMetadata,
   validatePosterMetadata,
   validateProjectDocumentMetadata,
 } from "@/lib/upload-limits";
 
 const schema = z.object({
   codigoTemporal: z.string().min(8),
-  tipo: z.enum(["archivo", "poster"]),
+  tipo: z.enum(["archivo", "poster", "minor-consent", "tratamiento-menor"]),
   fileName: z.string().min(1),
   contentType: z.string().min(1),
   fileSize: z.coerce.number().nonnegative(),
@@ -35,15 +36,21 @@ export async function POST(request: Request) {
     const values = schema.parse(await request.json());
     const validation = values.tipo === "archivo"
       ? validateProjectDocumentMetadata({
-        fileName: values.fileName,
-        contentType: values.contentType,
-        fileSize: values.fileSize,
-      })
-      : validatePosterMetadata({
-        fileName: values.fileName,
-        contentType: values.contentType,
-        fileSize: values.fileSize,
-      });
+          fileName: values.fileName,
+          contentType: values.contentType,
+          fileSize: values.fileSize,
+        })
+      : values.tipo === "poster"
+        ? validatePosterMetadata({
+            fileName: values.fileName,
+            contentType: values.contentType,
+            fileSize: values.fileSize,
+          })
+        : validateMinorConsentMetadata({
+            fileName: values.fileName,
+            contentType: values.contentType,
+            fileSize: values.fileSize,
+          });
 
     console.log("[storage/create-upload-url] validacion de metadatos", {
       tipo: values.tipo,
@@ -68,7 +75,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const path = `proyectos/tmp/${values.codigoTemporal}/${values.tipo}/${Date.now()}-${safeFileName(values.fileName)}`;
+    const folder = values.tipo === "minor-consent" || values.tipo === "tratamiento-menor"
+      ? "tratamiento-menores"
+      : values.tipo;
+    const path = `proyectos/tmp/${values.codigoTemporal}/${folder}/${Date.now()}-${safeFileName(values.fileName)}`;
 
     console.log("[storage/create-upload-url] creando signed upload URL", {
       bucket: PROJECT_FILES_BUCKET,

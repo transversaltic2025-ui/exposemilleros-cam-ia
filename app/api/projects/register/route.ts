@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { createProject, generateProjectCode, shouldUseMockData } from "@/lib/supabase/queries";
+import { createProject, createProjectMembers, generateProjectCode, shouldUseMockData } from "@/lib/supabase/queries";
 import { uploadProjectFile } from "@/lib/supabase/storage";
 import {
+  validateMinorConsentMetadata,
   validatePosterFile,
   validatePosterMetadata,
   validateProjectDocumentFile,
@@ -13,18 +14,59 @@ import {
 const optionalEmail = z.union([z.string().email(), z.literal("")]).optional();
 const DEFAULT_PRESENTATION_CATEGORY = "Poster" as const;
 
+const projectTeamSchema = z.object({
+  autorPrincipal: z.object({
+    nombreCompleto: z.string().min(3, "El autor principal debe tener nombre completo."),
+    documento: z.string().optional(),
+    correo: z.string().email("El autor principal debe tener correo valido."),
+    celular: z.string().min(7, "El autor principal debe tener celular."),
+  }),
+  aprendices: z.array(z.object({
+    nombreCompleto: z.string().min(3, "Cada aprendiz debe tener nombre completo."),
+    documento: z.string().min(5, "Cada aprendiz debe tener documento."),
+    correo: z.string().email("Cada aprendiz debe tener correo valido."),
+    celular: z.string().min(7, "Cada aprendiz debe tener celular."),
+    ficha: z.string().optional(),
+    esMenorEdad: z.boolean().optional().default(false),
+    tratamientoDatosMenorPath: z.string().optional(),
+    tratamientoDatosMenorNombre: z.string().optional(),
+    tratamientoDatosMenorTipo: z.string().optional(),
+    tratamientoDatosMenorSize: z.coerce.number().optional(),
+  })).min(1, "Debe registrar al menos un aprendiz participante."),
+  instructoresInvestigadores: z.array(z.object({
+    nombreCompleto: z.string().min(3, "Cada instructor debe tener nombre completo."),
+    documento: z.string().min(5, "Cada instructor debe tener documento."),
+    correo: z.string().email("Cada instructor debe tener correo valido."),
+    celular: z.string().min(7, "Cada instructor debe tener celular."),
+    rol: z.enum(["Instructor", "Investigador asociado"]),
+  })),
+});
+
 const schema = z.object({
   nombre_proyecto: z.string().min(5),
   linea_tematica: z.string().min(1),
-  linea_investigacion: z.string().min(1),
+  linea_tematica_otro: z.string().optional(),
+  linea_investigacion: z.string().optional(),
+  resumen_problema: z.string().min(1),
+  resumen_objetivo: z.string().min(1),
+  resumen_metodologia: z.string().min(1),
+  resumen_resultados: z.string().min(1),
+  resumen_conclusiones: z.string().min(1),
+  modalidades_proyecto: z.array(z.string()).min(1),
+  modalidad_otro: z.string().optional(),
   modalidad_participacion: z.string().min(1),
+  estado_desarrollo_proyecto: z.string().min(1),
+  productos_obtenidos: z.array(z.string()).min(1),
+  productos_obtenidos_otro: z.string().optional(),
+  nivel_madurez: z.string().min(1),
   semillero: z.string().min(1),
+  semillero_otro: z.string().optional(),
   institucion: z.string().min(2),
   municipio: z.string().min(2),
-  instructor_nombre: z.string().min(3),
-  instructor_documento: z.string().min(5),
-  instructor_correo: z.string().email(),
-  instructor_celular: z.string().min(7),
+  instructor_nombre: z.string().optional(),
+  instructor_documento: z.string().optional(),
+  instructor_correo: optionalEmail,
+  instructor_celular: z.string().optional(),
   instructor_2_nombre: z.string().optional(),
   instructor_2_documento: z.string().optional(),
   instructor_2_correo: optionalEmail,
@@ -56,7 +98,64 @@ const schema = z.object({
   requiere_otro_elemento: z.boolean().optional(),
   otro_elemento_descripcion: z.string().optional(),
   observaciones_adicionales: z.string().optional(),
+  integrantes: projectTeamSchema,
 }).superRefine((values, ctx) => {
+  if (values.linea_tematica === "Otra" && !values.linea_tematica_otro?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Debe indicar cual linea tematica.",
+      path: ["linea_tematica_otro"],
+    });
+  }
+
+  if (values.semillero === "Otro" && !values.semillero_otro?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Debe indicar cual semillero.",
+      path: ["semillero_otro"],
+    });
+  }
+
+  if (values.modalidades_proyecto.includes("Otro") && !values.modalidad_otro?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Debe indicar cual modalidad.",
+      path: ["modalidad_otro"],
+    });
+  }
+
+  if (values.productos_obtenidos.includes("Otro") && !values.productos_obtenidos_otro?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Debe indicar cual producto obtenido.",
+      path: ["productos_obtenidos_otro"],
+    });
+  }
+
+  values.integrantes.aprendices.forEach((aprendiz, index) => {
+    if (aprendiz.esMenorEdad && !aprendiz.tratamientoDatosMenorPath?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El aprendiz menor de edad debe tener autorizacion PDF cargada.",
+        path: ["integrantes", "aprendices", index, "tratamientoDatosMenorPath"],
+      });
+    }
+    if (aprendiz.esMenorEdad && aprendiz.tratamientoDatosMenorPath?.trim()) {
+      const validation = validateMinorConsentMetadata({
+        fileName: aprendiz.tratamientoDatosMenorNombre ?? "",
+        contentType: aprendiz.tratamientoDatosMenorTipo ?? "",
+        fileSize: aprendiz.tratamientoDatosMenorSize ?? 0,
+      });
+      if (!validation.valid) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: validation.error ?? "La autorizacion para menor de edad debe ser PDF.",
+          path: ["integrantes", "aprendices", index, "tratamientoDatosMenorPath"],
+        });
+      }
+    }
+  });
+
   if (
     !values.aprendiz_1_nombre ||
     !values.aprendiz_1_documento ||
@@ -178,6 +277,129 @@ function numberAlias(source: Record<string, unknown>, keys: string[]) {
   return 0;
 }
 
+function objectAlias(source: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = source[key];
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+    const text = stringValue(value);
+    if (text) {
+      try {
+        const parsed = JSON.parse(text) as unknown;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          return parsed as Record<string, unknown>;
+        }
+      } catch {
+        return {};
+      }
+    }
+  }
+
+  return {};
+}
+
+function arrayAlias(source: Record<string, unknown>, key: string) {
+  const value = source[key];
+  return Array.isArray(value) ? value.filter((item) => item && typeof item === "object") as Record<string, unknown>[] : [];
+}
+
+function stringArrayAlias(source: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = source[key];
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => stringValue(item))
+        .filter(Boolean);
+    }
+    const text = stringValue(value);
+    if (text) {
+      try {
+        const parsed = JSON.parse(text) as unknown;
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) => stringValue(item)).filter(Boolean);
+        }
+      } catch {
+        return text.split(",").map((item) => item.trim()).filter(Boolean);
+      }
+    }
+  }
+
+  return [];
+}
+
+function normalizeProjectTeam(source: Record<string, unknown>) {
+  const team = objectAlias(source, ["integrantes", "equipo"]);
+  const autorPrincipal = objectAlias(team, ["autorPrincipal", "autor_principal"]);
+  const aprendices = arrayAlias(team, "aprendices");
+  const instructoresInvestigadores = arrayAlias(team, "instructoresInvestigadores");
+  const legacyInstructores = arrayAlias(team, "instructores").map((instructor) => ({
+    ...instructor,
+    rol: "Instructor",
+  }));
+  const legacyInvestigadores = arrayAlias(team, "investigadoresAsociados").map((investigador) => ({
+    ...investigador,
+    rol: "Investigador asociado",
+  }));
+  const hasExplicitCombinedTeam = Object.prototype.hasOwnProperty.call(team, "instructoresInvestigadores");
+  const combinedInstructorsResearchers = hasExplicitCombinedTeam
+    ? instructoresInvestigadores
+    : [...legacyInstructores, ...legacyInvestigadores];
+
+  return {
+    autorPrincipal: {
+      nombreCompleto: textAlias(autorPrincipal, ["nombreCompleto", "nombre_completo", "nombre"]),
+      documento: textAlias(autorPrincipal, ["documento"]),
+      correo: textAlias(autorPrincipal, ["correo"]),
+      celular: textAlias(autorPrincipal, ["celular", "telefono"]),
+    },
+    aprendices: aprendices.map((aprendiz) => ({
+      nombreCompleto: textAlias(aprendiz, ["nombreCompleto", "nombre_completo", "nombre"]),
+      documento: textAlias(aprendiz, ["documento"]),
+      correo: textAlias(aprendiz, ["correo"]),
+      celular: textAlias(aprendiz, ["celular", "telefono"]),
+      ficha: textAlias(aprendiz, ["ficha"]),
+      esMenorEdad: booleanAlias(aprendiz, ["esMenorEdad", "es_menor_edad"]),
+      tratamientoDatosMenorPath: textAlias(aprendiz, ["tratamientoDatosMenorPath", "tratamiento_datos_menor_path"]),
+      tratamientoDatosMenorNombre: textAlias(aprendiz, ["tratamientoDatosMenorNombre", "tratamiento_datos_menor_nombre"]),
+      tratamientoDatosMenorTipo: textAlias(aprendiz, ["tratamientoDatosMenorTipo", "tratamiento_datos_menor_tipo"]),
+      tratamientoDatosMenorSize: numberAlias(aprendiz, ["tratamientoDatosMenorSize", "tratamiento_datos_menor_size"]),
+    })),
+    instructoresInvestigadores: combinedInstructorsResearchers.map((member) => ({
+      rol: textAlias(member, ["rol", "rol_integrante"]) === "Investigador asociado"
+        ? "Investigador asociado"
+        : "Instructor",
+      nombreCompleto: textAlias(member, ["nombreCompleto", "nombre_completo", "nombre"]),
+      documento: textAlias(member, ["documento"]),
+      correo: textAlias(member, ["correo"]),
+      celular: textAlias(member, ["celular", "telefono"]),
+    })),
+  };
+}
+
+function legacyTeamFromDynamicTeam(team: z.infer<typeof projectTeamSchema>) {
+  const legacy: Record<string, string> = {};
+  const instructores = team.instructoresInvestigadores.filter((member) => member.rol === "Instructor");
+  ([0, 1, 2] as const).forEach((index) => {
+    const aprendiz = team.aprendices[index];
+    const legacyIndex = index + 1;
+    legacy[`aprendiz_${legacyIndex}_nombre`] = aprendiz?.nombreCompleto ?? "";
+    legacy[`aprendiz_${legacyIndex}_documento`] = aprendiz?.documento ?? "";
+    legacy[`aprendiz_${legacyIndex}_correo`] = aprendiz?.correo ?? "";
+    legacy[`aprendiz_${legacyIndex}_celular`] = aprendiz?.celular ?? "";
+    legacy[`aprendiz_${legacyIndex}_ficha`] = aprendiz?.ficha ?? "";
+  });
+  ([0, 1, 2] as const).forEach((index) => {
+    const instructor = instructores[index];
+    const prefix = index === 0 ? "instructor" : `instructor_${index + 1}`;
+    legacy[`${prefix}_nombre`] = instructor?.nombreCompleto ?? "";
+    legacy[`${prefix}_documento`] = instructor?.documento ?? "";
+    legacy[`${prefix}_correo`] = instructor?.correo ?? "";
+    legacy[`${prefix}_celular`] = instructor?.celular ?? "";
+  });
+  return legacy;
+}
+
 function fileAlias(formData: FormData, keys: string[]) {
   for (const key of keys) {
     const value = formData.get(key);
@@ -198,46 +420,62 @@ function normalizeRegistrationPayload(source: Record<string, unknown>) {
     "requiere_otro_elemento",
     "requiereOtroElemento",
   ]);
+  const normalizedTeam = normalizeProjectTeam(source);
+  const parsedTeam = projectTeamSchema.safeParse(normalizedTeam);
+  const legacyTeam = parsedTeam.success ? legacyTeamFromDynamicTeam(parsedTeam.data) : {};
 
   return {
     nombre_proyecto: textAlias(source, ["nombre_proyecto", "nombreProyecto", "titulo"]),
     linea_tematica: textAlias(source, ["linea_tematica", "lineaTematica", "area_conocimiento"]),
+    linea_tematica_otro: textAlias(source, ["linea_tematica_otro", "lineaTematicaOtro"]),
     linea_investigacion: textAlias(source, ["linea_investigacion", "lineaInvestigacion"]),
+    resumen_problema: textAlias(source, ["resumen_problema", "resumenProblema"]),
+    resumen_objetivo: textAlias(source, ["resumen_objetivo", "resumenObjetivo"]),
+    resumen_metodologia: textAlias(source, ["resumen_metodologia", "resumenMetodologia"]),
+    resumen_resultados: textAlias(source, ["resumen_resultados", "resumenResultados"]),
+    resumen_conclusiones: textAlias(source, ["resumen_conclusiones", "resumenConclusiones"]),
+    modalidades_proyecto: stringArrayAlias(source, ["modalidades_proyecto", "modalidadesProyecto"]),
+    modalidad_otro: textAlias(source, ["modalidad_otro", "modalidadOtro"]),
     modalidad_participacion: textAlias(source, [
       "modalidad_participacion",
       "modalidadParticipacion",
     ]),
+    estado_desarrollo_proyecto: textAlias(source, ["estado_desarrollo_proyecto", "estadoDesarrolloProyecto"]),
+    productos_obtenidos: stringArrayAlias(source, ["productos_obtenidos", "productosObtenidos"]),
+    productos_obtenidos_otro: textAlias(source, ["productos_obtenidos_otro", "productosObtenidosOtro"]),
+    nivel_madurez: textAlias(source, ["nivel_madurez", "nivelMadurez"]),
     semillero: textAlias(source, ["semillero"]),
+    semillero_otro: textAlias(source, ["semillero_otro", "semilleroOtro"]),
     institucion: textAlias(source, ["institucion"]),
     municipio: textAlias(source, ["municipio"]),
-    instructor_nombre: textAlias(source, ["instructor_nombre", "instructorNombre"]),
-    instructor_documento: textAlias(source, ["instructor_documento", "instructorDocumento"]),
-    instructor_correo: textAlias(source, ["instructor_correo", "instructorCorreo"]),
-    instructor_celular: textAlias(source, ["instructor_celular", "instructorCelular"]),
-    instructor_2_nombre: textAlias(source, ["instructor_2_nombre", "instructor2Nombre"]),
-    instructor_2_documento: textAlias(source, ["instructor_2_documento", "instructor2Documento"]),
-    instructor_2_correo: textAlias(source, ["instructor_2_correo", "instructor2Correo"]),
-    instructor_2_celular: textAlias(source, ["instructor_2_celular", "instructor2Celular"]),
-    instructor_3_nombre: textAlias(source, ["instructor_3_nombre", "instructor3Nombre"]),
-    instructor_3_documento: textAlias(source, ["instructor_3_documento", "instructor3Documento"]),
-    instructor_3_correo: textAlias(source, ["instructor_3_correo", "instructor3Correo"]),
-    instructor_3_celular: textAlias(source, ["instructor_3_celular", "instructor3Celular"]),
+    instructor_nombre: legacyTeam.instructor_nombre || textAlias(source, ["instructor_nombre", "instructorNombre"]),
+    instructor_documento: legacyTeam.instructor_documento || textAlias(source, ["instructor_documento", "instructorDocumento"]),
+    instructor_correo: legacyTeam.instructor_correo || textAlias(source, ["instructor_correo", "instructorCorreo"]),
+    instructor_celular: legacyTeam.instructor_celular || textAlias(source, ["instructor_celular", "instructorCelular"]),
+    instructor_2_nombre: legacyTeam.instructor_2_nombre || textAlias(source, ["instructor_2_nombre", "instructor2Nombre"]),
+    instructor_2_documento: legacyTeam.instructor_2_documento || textAlias(source, ["instructor_2_documento", "instructor2Documento"]),
+    instructor_2_correo: legacyTeam.instructor_2_correo || textAlias(source, ["instructor_2_correo", "instructor2Correo"]),
+    instructor_2_celular: legacyTeam.instructor_2_celular || textAlias(source, ["instructor_2_celular", "instructor2Celular"]),
+    instructor_3_nombre: legacyTeam.instructor_3_nombre || textAlias(source, ["instructor_3_nombre", "instructor3Nombre"]),
+    instructor_3_documento: legacyTeam.instructor_3_documento || textAlias(source, ["instructor_3_documento", "instructor3Documento"]),
+    instructor_3_correo: legacyTeam.instructor_3_correo || textAlias(source, ["instructor_3_correo", "instructor3Correo"]),
+    instructor_3_celular: legacyTeam.instructor_3_celular || textAlias(source, ["instructor_3_celular", "instructor3Celular"]),
     rol_proyecto: textAlias(source, ["rol_proyecto", "rolProyecto"]),
-    aprendiz_1_nombre: textAlias(source, ["aprendiz_1_nombre", "aprendiz1Nombre"]) || integrantes[0],
-    aprendiz_1_documento: textAlias(source, ["aprendiz_1_documento", "aprendiz1Documento"]),
-    aprendiz_1_correo: textAlias(source, ["aprendiz_1_correo", "aprendiz1Correo"]),
-    aprendiz_1_celular: textAlias(source, ["aprendiz_1_celular", "aprendiz1Celular"]),
-    aprendiz_1_ficha: textAlias(source, ["aprendiz_1_ficha", "aprendiz1Ficha"]),
-    aprendiz_2_nombre: textAlias(source, ["aprendiz_2_nombre", "aprendiz2Nombre"]) || integrantes[1],
-    aprendiz_2_documento: textAlias(source, ["aprendiz_2_documento", "aprendiz2Documento"]),
-    aprendiz_2_correo: textAlias(source, ["aprendiz_2_correo", "aprendiz2Correo"]),
-    aprendiz_2_celular: textAlias(source, ["aprendiz_2_celular", "aprendiz2Celular"]),
-    aprendiz_2_ficha: textAlias(source, ["aprendiz_2_ficha", "aprendiz2Ficha"]),
-    aprendiz_3_nombre: textAlias(source, ["aprendiz_3_nombre", "aprendiz3Nombre"]) || integrantes[2],
-    aprendiz_3_documento: textAlias(source, ["aprendiz_3_documento", "aprendiz3Documento"]),
-    aprendiz_3_correo: textAlias(source, ["aprendiz_3_correo", "aprendiz3Correo"]),
-    aprendiz_3_celular: textAlias(source, ["aprendiz_3_celular", "aprendiz3Celular"]),
-    aprendiz_3_ficha: textAlias(source, ["aprendiz_3_ficha", "aprendiz3Ficha"]),
+    aprendiz_1_nombre: legacyTeam.aprendiz_1_nombre || textAlias(source, ["aprendiz_1_nombre", "aprendiz1Nombre"]) || integrantes[0],
+    aprendiz_1_documento: legacyTeam.aprendiz_1_documento || textAlias(source, ["aprendiz_1_documento", "aprendiz1Documento"]),
+    aprendiz_1_correo: legacyTeam.aprendiz_1_correo || textAlias(source, ["aprendiz_1_correo", "aprendiz1Correo"]),
+    aprendiz_1_celular: legacyTeam.aprendiz_1_celular || textAlias(source, ["aprendiz_1_celular", "aprendiz1Celular"]),
+    aprendiz_1_ficha: legacyTeam.aprendiz_1_ficha || textAlias(source, ["aprendiz_1_ficha", "aprendiz1Ficha"]),
+    aprendiz_2_nombre: legacyTeam.aprendiz_2_nombre || textAlias(source, ["aprendiz_2_nombre", "aprendiz2Nombre"]) || integrantes[1],
+    aprendiz_2_documento: legacyTeam.aprendiz_2_documento || textAlias(source, ["aprendiz_2_documento", "aprendiz2Documento"]),
+    aprendiz_2_correo: legacyTeam.aprendiz_2_correo || textAlias(source, ["aprendiz_2_correo", "aprendiz2Correo"]),
+    aprendiz_2_celular: legacyTeam.aprendiz_2_celular || textAlias(source, ["aprendiz_2_celular", "aprendiz2Celular"]),
+    aprendiz_2_ficha: legacyTeam.aprendiz_2_ficha || textAlias(source, ["aprendiz_2_ficha", "aprendiz2Ficha"]),
+    aprendiz_3_nombre: legacyTeam.aprendiz_3_nombre || textAlias(source, ["aprendiz_3_nombre", "aprendiz3Nombre"]) || integrantes[2],
+    aprendiz_3_documento: legacyTeam.aprendiz_3_documento || textAlias(source, ["aprendiz_3_documento", "aprendiz3Documento"]),
+    aprendiz_3_correo: legacyTeam.aprendiz_3_correo || textAlias(source, ["aprendiz_3_correo", "aprendiz3Correo"]),
+    aprendiz_3_celular: legacyTeam.aprendiz_3_celular || textAlias(source, ["aprendiz_3_celular", "aprendiz3Celular"]),
+    aprendiz_3_ficha: legacyTeam.aprendiz_3_ficha || textAlias(source, ["aprendiz_3_ficha", "aprendiz3Ficha"]),
     categoria_presentacion: DEFAULT_PRESENTATION_CATEGORY,
     requiere_conexion_electrica: booleanAlias(source, [
       "requiere_conexion_electrica",
@@ -260,6 +498,7 @@ function normalizeRegistrationPayload(source: Record<string, unknown>) {
       "observacionesAdicionales",
       "resumen",
     ]),
+    integrantes: normalizedTeam,
   };
 }
 
@@ -285,7 +524,7 @@ function validateRegisteredFileMetadata(fileMetadata: z.infer<typeof fileMetadat
   });
 
   if (!fileMetadata.archivo_proyecto_path) {
-    return "El archivo del proyecto es obligatorio.";
+    return null;
   }
   if (!fileMetadata.archivo_proyecto_nombre) {
     return "El nombre del archivo del proyecto es obligatorio.";
@@ -494,19 +733,12 @@ export async function POST(request: Request) {
       posterProyectoPath,
     });
 
-    if (!archivoProyectoPath) {
-      return NextResponse.json(
-        { error: "El archivo del proyecto es obligatorio." },
-        { status: 400 },
-      );
-    }
-
     const projectPayload = {
       codigo_proyecto: codigoProyecto,
       ...values,
       archivo_proyecto_path: archivoProyectoPath,
       archivo_proyecto_nombre: archivoProyectoNombre,
-      archivo_proyecto_tipo: archivoProyectoTipo || "application/octet-stream",
+      archivo_proyecto_tipo: archivoProyectoPath ? archivoProyectoTipo || "application/octet-stream" : "",
       archivo_proyecto_size: archivoProyectoSize,
       poster_proyecto_path: posterProyectoPath,
       poster_proyecto_nombre: posterProyectoNombre,
@@ -531,6 +763,15 @@ export async function POST(request: Request) {
 
     console.log("[projects/register] payload final aceptado", projectPayload);
     const project = await createProject(projectPayload);
+    if (!project.id) {
+      throw new Error("El proyecto fue creado, pero no se recibio su identificador para guardar integrantes.");
+    }
+    try {
+      await createProjectMembers(project.id, values.integrantes);
+    } catch (error) {
+      console.error("[projects/register] error guardando integrantes del proyecto", error);
+      throw new Error("El proyecto se registro, pero fallo el guardado del equipo del proyecto. Revise la tabla proyecto_integrantes.");
+    }
 
     return NextResponse.json({ project }, { status: 201 });
   } catch (error) {

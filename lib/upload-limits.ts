@@ -1,7 +1,9 @@
 export const PROJECT_DOCUMENT_MAX_BYTES = 8 * 1024 * 1024;
 export const PROJECT_POSTER_MAX_BYTES = 3 * 1024 * 1024;
+export const MINOR_CONSENT_MAX_BYTES = 5 * 1024 * 1024;
 
 export const allowedProjectDocumentMimeTypes = ["application/pdf"] as const;
+export const allowedMinorConsentMimeTypes = ["application/pdf"] as const;
 export const allowedPosterMimeTypes = [
   "application/pdf",
   "image/jpeg",
@@ -10,6 +12,7 @@ export const allowedPosterMimeTypes = [
 ] as const;
 
 export const allowedProjectDocumentExtensions = [".pdf"] as const;
+export const allowedMinorConsentExtensions = [".pdf"] as const;
 export const allowedPosterExtensions = [".pdf", ".jpg", ".jpeg", ".png", ".webp"] as const;
 
 const editableDocumentExtensions = new Set([
@@ -87,6 +90,14 @@ export function validatePosterFile(file: File) {
   });
 }
 
+export function validateMinorConsentFile(file: File) {
+  return validateMinorConsentMetadata({
+    fileName: file.name,
+    contentType: file.type,
+    fileSize: file.size,
+  });
+}
+
 export function validateProjectDocumentMetadata({
   fileName,
   contentType,
@@ -122,6 +133,48 @@ export function validateProjectDocumentMetadata({
     return {
       valid: false,
       error: "El documento del proyecto debe estar en PDF.",
+      reason: "extension",
+    };
+  }
+
+  return { valid: true };
+}
+
+export function validateMinorConsentMetadata({
+  fileName,
+  contentType,
+  fileSize,
+}: FileMetadataInput): FileValidationResult {
+  const extension = getFileExtension(fileName);
+
+  if (fileSize > MINOR_CONSENT_MAX_BYTES) {
+    return {
+      valid: false,
+      error: "La autorizacion para menor de edad supera el limite de 5 MB.",
+      reason: "size",
+    };
+  }
+
+  if (editableDocumentExtensions.has(extension)) {
+    return {
+      valid: false,
+      error: "La autorizacion para menor de edad debe estar en PDF.",
+      reason: "editable",
+    };
+  }
+
+  if (!allowedMinorConsentMimeTypes.includes(contentType as typeof allowedMinorConsentMimeTypes[number])) {
+    return {
+      valid: false,
+      error: "La autorizacion para menor de edad debe estar en PDF.",
+      reason: "mime",
+    };
+  }
+
+  if (!allowedMinorConsentExtensions.includes(extension as typeof allowedMinorConsentExtensions[number])) {
+    return {
+      valid: false,
+      error: "La autorizacion para menor de edad debe estar en PDF.",
       reason: "extension",
     };
   }

@@ -25,6 +25,8 @@ import type {
   HumanEvaluation,
   LogisticsSummary,
   Project,
+  ProjectMember,
+  ProjectTeamPayload,
   TrendByArea,
 } from "@/types";
 import { createSupabaseServerClient } from "./server";
@@ -113,6 +115,162 @@ export function isEvaluatorInstructorOfProject(
   );
 }
 
+function normalizeProjectMember(row: Record<string, unknown>): ProjectMember {
+  return {
+    id: toStringValue(row.id),
+    proyecto_id: toStringValue(row.proyecto_id),
+    rol_integrante: toStringValue(row.rol_integrante) as ProjectMember["rol_integrante"],
+    nombre_completo: toStringValue(row.nombre_completo),
+    documento: toStringValue(row.documento),
+    correo: toStringValue(row.correo),
+    celular: toStringValue(row.celular),
+    ficha: toStringValue(row.ficha),
+    es_menor_edad: Boolean(row.es_menor_edad),
+    tratamiento_datos_menor_path: toStringValue(row.tratamiento_datos_menor_path),
+    tratamiento_datos_menor_nombre: toStringValue(row.tratamiento_datos_menor_nombre),
+    tratamiento_datos_menor_tipo: toStringValue(row.tratamiento_datos_menor_tipo),
+    tratamiento_datos_menor_size: toNumberValue(row.tratamiento_datos_menor_size),
+    orden: toNumberValue(row.orden),
+    created_at: toStringValue(row.created_at),
+  };
+}
+
+function legacyProjectMembers(project: Project): ProjectMember[] {
+  const aprendices = ([1, 2, 3] as const)
+    .map((index) => ({
+      rol_integrante: "Aprendiz participante" as const,
+      nombre_completo: project[`aprendiz_${index}_nombre`] ?? "",
+      documento: project[`aprendiz_${index}_documento`] ?? "",
+      correo: project[`aprendiz_${index}_correo`] ?? "",
+      celular: project[`aprendiz_${index}_celular`] ?? "",
+      ficha: project[`aprendiz_${index}_ficha`] ?? "",
+      es_menor_edad: false,
+      tratamiento_datos_menor_path: "",
+      tratamiento_datos_menor_nombre: "",
+      tratamiento_datos_menor_tipo: "",
+      tratamiento_datos_menor_size: 0,
+      orden: index,
+    }))
+    .filter((member) => member.nombre_completo.trim());
+
+  const instructores = ([1, 2, 3] as const)
+    .map((index) => {
+      const prefix = index === 1 ? "instructor" : `instructor_${index}`;
+      return {
+        rol_integrante: "Instructor" as const,
+        nombre_completo: String(project[`${prefix}_nombre` as keyof Project] ?? ""),
+        documento: String(project[`${prefix}_documento` as keyof Project] ?? ""),
+        correo: String(project[`${prefix}_correo` as keyof Project] ?? ""),
+      celular: String(project[`${prefix}_celular` as keyof Project] ?? ""),
+      es_menor_edad: false,
+      tratamiento_datos_menor_path: "",
+      tratamiento_datos_menor_nombre: "",
+      tratamiento_datos_menor_tipo: "",
+      tratamiento_datos_menor_size: 0,
+      orden: index,
+      };
+    })
+    .filter((member) => member.nombre_completo.trim());
+
+  return [...aprendices, ...instructores];
+}
+
+export async function getProjectMembers(projectId: string) {
+  if (!projectId || shouldUseMockData()) {
+    return [];
+  }
+
+  const { data, error } = await supabase()
+    .from("proyecto_integrantes")
+    .select("*")
+    .eq("proyecto_id", projectId)
+    .order("rol_integrante", { ascending: true })
+    .order("orden", { ascending: true });
+
+  if (error) {
+    console.error("[projects/members] error exacto consultando integrantes", error);
+    throw error;
+  }
+
+  return ((data ?? []) as Record<string, unknown>[]).map(normalizeProjectMember);
+}
+
+export async function createProjectMembers(projectId: string, team: ProjectTeamPayload) {
+  const rows = [
+    {
+      proyecto_id: projectId,
+      rol_integrante: "Autor principal",
+      nombre_completo: team.autorPrincipal.nombreCompleto,
+      documento: team.autorPrincipal.documento ?? "",
+      correo: team.autorPrincipal.correo,
+      celular: team.autorPrincipal.celular,
+      ficha: "",
+      orden: 1,
+    },
+    ...team.aprendices.map((aprendiz, index) => ({
+      proyecto_id: projectId,
+      rol_integrante: "Aprendiz participante",
+      nombre_completo: aprendiz.nombreCompleto,
+      documento: aprendiz.documento,
+      correo: aprendiz.correo,
+      celular: aprendiz.celular,
+      ficha: aprendiz.ficha ?? "",
+      es_menor_edad: aprendiz.esMenorEdad ?? false,
+      tratamiento_datos_menor_path: aprendiz.esMenorEdad ? aprendiz.tratamientoDatosMenorPath ?? "" : null,
+      tratamiento_datos_menor_nombre: aprendiz.esMenorEdad ? aprendiz.tratamientoDatosMenorNombre ?? "" : null,
+      tratamiento_datos_menor_tipo: aprendiz.esMenorEdad ? aprendiz.tratamientoDatosMenorTipo ?? "" : null,
+      tratamiento_datos_menor_size: aprendiz.esMenorEdad ? aprendiz.tratamientoDatosMenorSize ?? 0 : null,
+      orden: index + 1,
+    })),
+    ...team.instructoresInvestigadores.map((member, index) => ({
+      proyecto_id: projectId,
+      rol_integrante: member.rol,
+      nombre_completo: member.nombreCompleto,
+      documento: member.documento,
+      correo: member.correo,
+      celular: member.celular,
+      ficha: "",
+      es_menor_edad: false,
+      tratamiento_datos_menor_path: null,
+      tratamiento_datos_menor_nombre: null,
+      tratamiento_datos_menor_tipo: null,
+      tratamiento_datos_menor_size: null,
+      orden: index + 1,
+    })),
+  ];
+
+  const { data, error } = await supabase()
+    .from("proyecto_integrantes")
+    .insert(rows)
+    .select("*");
+
+  if (error) {
+    console.error("[projects/register] error exacto insertando integrantes", error);
+    throw error;
+  }
+
+  return ((data ?? []) as Record<string, unknown>[]).map(normalizeProjectMember);
+}
+
+function isEvaluatorProjectMember(
+  evaluador: Pick<Evaluator, "documento_evaluador" | "correo_evaluador">,
+  proyecto: Project,
+  members: ProjectMember[],
+) {
+  const evaluatorDocument = normalizeDocument(evaluador.documento_evaluador);
+  const evaluatorEmail = normalizeEmail(evaluador.correo_evaluador);
+  const candidates = members.length > 0 ? members : legacyProjectMembers(proyecto);
+
+  return candidates.some((member) => {
+    const memberDocument = normalizeDocument(member.documento);
+    const memberEmail = normalizeEmail(member.correo);
+    return (
+      Boolean(evaluatorDocument && memberDocument && evaluatorDocument === memberDocument) ||
+      Boolean(evaluatorEmail && memberEmail && evaluatorEmail === memberEmail)
+    );
+  });
+}
+
 function normalizeProject(row: Record<string, unknown>): Project {
   const aprendizNombres = [
     toStringValue(row.aprendiz_1_nombre),
@@ -133,8 +291,21 @@ function normalizeProject(row: Record<string, unknown>): Project {
     linea_tematica: linea,
     modalidad_participacion: toStringValue(row.modalidad_participacion) as Project["modalidad_participacion"],
     semillero: toStringValue(row.semillero) as Project["semillero"],
+    semillero_otro: toStringValue(row.semillero_otro),
     institucion: toStringValue(row.institucion),
     municipio: toStringValue(row.municipio),
+    linea_tematica_otro: toStringValue(row.linea_tematica_otro),
+    resumen_problema: toStringValue(row.resumen_problema),
+    resumen_objetivo: toStringValue(row.resumen_objetivo),
+    resumen_metodologia: toStringValue(row.resumen_metodologia),
+    resumen_resultados: toStringValue(row.resumen_resultados),
+    resumen_conclusiones: toStringValue(row.resumen_conclusiones),
+    modalidades_proyecto: toStringArray(row.modalidades_proyecto),
+    modalidad_otro: toStringValue(row.modalidad_otro),
+    estado_desarrollo_proyecto: toStringValue(row.estado_desarrollo_proyecto),
+    productos_obtenidos: toStringArray(row.productos_obtenidos),
+    productos_obtenidos_otro: toStringValue(row.productos_obtenidos_otro),
+    nivel_madurez: toStringValue(row.nivel_madurez),
     instructor_nombre: toStringValue(row.instructor_nombre),
     instructor_documento: toStringValue(row.instructor_documento),
     instructor_correo: toStringValue(row.instructor_correo),
@@ -606,7 +777,7 @@ export async function getProjectDetail(codigo: string) {
 
   if (shouldUseMockData()) {
     return {
-      proyecto,
+      proyecto: { ...proyecto, equipo: legacyProjectMembers(proyecto) },
       evaluaciones: evaluacionesMock.filter((item) => item.proyecto_id === codigo),
       analisis: analisisIAMock.find((item) => item.proyecto_id === codigo) ?? null,
     };
@@ -614,13 +785,14 @@ export async function getProjectDetail(codigo: string) {
 
   const proyectoId = proyecto.id;
   if (!proyectoId) {
-    return { proyecto, evaluaciones: [], analisis: null };
+    return { proyecto: { ...proyecto, equipo: legacyProjectMembers(proyecto) }, evaluaciones: [], analisis: null };
   }
 
   const client = supabase();
-  const [evaluacionesResult, analisisResult] = await Promise.all([
+  const [evaluacionesResult, analisisResult, members] = await Promise.all([
     client.from("evaluaciones").select("*").eq("proyecto_id", proyectoId),
     client.from("analisis_ia").select("*").eq("proyecto_id", proyectoId).maybeSingle(),
+    getProjectMembers(proyectoId),
   ]);
 
   if (evaluacionesResult.error) {
@@ -631,7 +803,10 @@ export async function getProjectDetail(codigo: string) {
   }
 
   return {
-    proyecto,
+    proyecto: {
+      ...proyecto,
+      equipo: members.length > 0 ? members : legacyProjectMembers(proyecto),
+    },
     evaluaciones: (evaluacionesResult.data ?? []) as HumanEvaluation[],
     analisis: analisisResult.data
       ? normalizeAIAnalysis(analisisResult.data as Record<string, unknown>)
@@ -734,12 +909,25 @@ export async function createProject(input: {
   linea_investigacion?: string;
   modalidad_participacion: string;
   semillero: string;
+  semillero_otro?: string;
   institucion: string;
   municipio: string;
-  instructor_nombre: string;
+  linea_tematica_otro?: string;
+  resumen_problema?: string;
+  resumen_objetivo?: string;
+  resumen_metodologia?: string;
+  resumen_resultados?: string;
+  resumen_conclusiones?: string;
+  modalidades_proyecto?: string[];
+  modalidad_otro?: string;
+  estado_desarrollo_proyecto?: string;
+  productos_obtenidos?: string[];
+  productos_obtenidos_otro?: string;
+  nivel_madurez?: string;
+  instructor_nombre?: string;
   instructor_documento?: string;
-  instructor_correo: string;
-  instructor_celular: string;
+  instructor_correo?: string;
+  instructor_celular?: string;
   instructor_2_nombre?: string;
   instructor_2_documento?: string;
   instructor_2_correo?: string;
@@ -789,12 +977,25 @@ export async function createProject(input: {
     linea_investigacion: input.linea_investigacion ?? "",
     modalidad_participacion: input.modalidad_participacion,
     semillero: input.semillero,
+    semillero_otro: input.semillero_otro ?? "",
     institucion: input.institucion,
     municipio: input.municipio,
-    instructor_nombre: input.instructor_nombre,
+    linea_tematica_otro: input.linea_tematica_otro ?? "",
+    resumen_problema: input.resumen_problema ?? "",
+    resumen_objetivo: input.resumen_objetivo ?? "",
+    resumen_metodologia: input.resumen_metodologia ?? "",
+    resumen_resultados: input.resumen_resultados ?? "",
+    resumen_conclusiones: input.resumen_conclusiones ?? "",
+    modalidades_proyecto: input.modalidades_proyecto ?? [],
+    modalidad_otro: input.modalidad_otro ?? "",
+    estado_desarrollo_proyecto: input.estado_desarrollo_proyecto ?? "",
+    productos_obtenidos: input.productos_obtenidos ?? [],
+    productos_obtenidos_otro: input.productos_obtenidos_otro ?? "",
+    nivel_madurez: input.nivel_madurez ?? "",
+    instructor_nombre: input.instructor_nombre ?? "",
     instructor_documento: input.instructor_documento ?? "",
-    instructor_correo: input.instructor_correo,
-    instructor_celular: input.instructor_celular,
+    instructor_correo: input.instructor_correo ?? "",
+    instructor_celular: input.instructor_celular ?? "",
     instructor_2_nombre: input.instructor_2_nombre ?? "",
     instructor_2_documento: input.instructor_2_documento ?? "",
     instructor_2_correo: input.instructor_2_correo ?? "",
@@ -1194,7 +1395,7 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
 
   const { data: projectRows, error: projectsError } = await client
     .from("proyectos")
-    .select("id,codigo_proyecto,nombre_proyecto,linea_tematica,estado_proyecto,instructor_documento,instructor_correo,instructor_2_documento,instructor_2_correo,instructor_3_documento,instructor_3_correo,created_at")
+    .select("id,codigo_proyecto,nombre_proyecto,linea_tematica,estado_proyecto,instructor_documento,instructor_correo,instructor_2_documento,instructor_2_correo,instructor_3_documento,instructor_3_correo,aprendiz_1_nombre,aprendiz_1_documento,aprendiz_1_correo,aprendiz_1_celular,aprendiz_1_ficha,aprendiz_2_nombre,aprendiz_2_documento,aprendiz_2_correo,aprendiz_2_celular,aprendiz_2_ficha,aprendiz_3_nombre,aprendiz_3_documento,aprendiz_3_correo,aprendiz_3_celular,aprendiz_3_ficha,created_at")
     .order("created_at", { ascending: true });
 
   if (projectsError) {
@@ -1268,6 +1469,27 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
     throw assignmentsError;
   }
 
+  const { data: memberRows, error: membersError } = await client
+    .from("proyecto_integrantes")
+    .select("*")
+    .in("proyecto_id", projectIds);
+
+  if (membersError) {
+    console.error("[evaluators/register] error exacto de Supabase al consultar integrantes para conflicto de interes", membersError);
+    throw membersError;
+  }
+
+  const membersByProjectId = new Map<string, ProjectMember[]>();
+  ((memberRows ?? []) as Record<string, unknown>[]).forEach((row) => {
+    const member = normalizeProjectMember(row);
+    if (!member.proyecto_id) {
+      return;
+    }
+    const current = membersByProjectId.get(member.proyecto_id) ?? [];
+    current.push(member);
+    membersByProjectId.set(member.proyecto_id, current);
+  });
+
   const asignacionesPorProyecto = new Map<string, number>();
   const proyectosYaAsignadosAlEvaluador = new Set<string>();
   (asignacionesExistentes ?? []).forEach((asignacion) => {
@@ -1302,10 +1524,10 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
   })));
 
   const proyectosSinInstructor = proyectosConCupo.filter((proyecto) => {
-    return !isEvaluatorInstructorOfProject(evaluador, proyecto);
+    return !isEvaluatorProjectMember(evaluador, proyecto, proyecto.id ? membersByProjectId.get(proyecto.id) ?? [] : []);
   });
   const proyectosExcluidosPorInstructor = proyectosConCupo.filter((proyecto) => {
-    return isEvaluatorInstructorOfProject(evaluador, proyecto);
+    return isEvaluatorProjectMember(evaluador, proyecto, proyecto.id ? membersByProjectId.get(proyecto.id) ?? [] : []);
   });
   console.log("[evaluators/register] proyectos excluidos porque el evaluador es instructor del proyecto", proyectosExcluidosPorInstructor.map((proyecto) => ({
     id: proyecto.id,
