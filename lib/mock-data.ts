@@ -575,7 +575,7 @@ export const logisticaMock: EventLogistics = {
   mesas_evaluacion: 12,
   franjas: [
     {
-      nombre: "Apertura y posters",
+      nombre: "Apertura y pósteres",
       hora_inicio: "08:00",
       hora_fin: "10:00",
       proyectos_programados: 12,

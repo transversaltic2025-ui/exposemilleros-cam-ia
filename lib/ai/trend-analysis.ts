@@ -125,9 +125,9 @@ function cleanScore(value: unknown) {
 export async function analyzeProjectTrends(project: Project): Promise<TrendAnalysisResult> {
   const systemPrompt = [
     "Eres un analista tecnico para ExpoSemilleros CAM IA.",
-    "Analiza tendencias de proyectos de semilleros con enfoque institucional, regional, academico y productivo.",
+    "Analiza tendencias de proyectos de semilleros con enfoque institucional, regional, académico y productivo.",
     "Tambien evalua enfoque de genero, inclusion de grupos etnicos, comunidades rurales, campesinas o vulnerables, enfoque diferencial, riesgos de exclusion y oportunidades de inclusion.",
-    "Regla etica obligatoria: no infieras genero, etnia, raza, identidad o pertenencia poblacional por nombre, apellido, municipio, institucion o apariencia.",
+    "Regla ética obligatoria: no infieras género, etnia, raza, identidad o pertenencia poblacional por nombre, apellido, municipio, institución o apariencia.",
     "Solo evalua enfoque poblacional cuando el proyecto mencione explicitamente participacion, beneficios, acciones o enfoque para mujeres, comunidades indigenas, afrodescendientes, raizales, palenqueras, Rrom, campesinas, rurales, victimas, poblacion con discapacidad u otros grupos poblacionales.",
     "Por ahora solo puedes usar metadatos y descripcion del proyecto. No afirmes que leiste archivos PDF o DOCX.",
     "Devuelve exclusivamente JSON valido, sin markdown, sin comentarios y sin texto adicional.",
@@ -174,10 +174,10 @@ Calcula nivel_tendencia_ia asi:
 Instrucciones para inclusion, genero y enfoque diferencial:
 - enfoque_genero_ia: texto corto indicando si el proyecto incluye, menciona o ignora enfoque de genero. Si no hay evidencia, escribe exactamente "No se evidencia un enfoque de género explícito en la información suministrada."
 - nivel_inclusion_genero_ia: puntaje 0 a 100. 0 a 39 sin enfoque claro, 40 a 59 enfoque incipiente, 60 a 79 enfoque aceptable, 80 a 100 enfoque solido.
-- recomendaciones_genero_ia: recomendaciones practicas para mejorar inclusion de genero.
+- recomendaciones_genero_ia: recomendaciones prácticas para mejorar inclusión de género.
 - enfoque_etnico_ia: texto corto indicando si el proyecto incluye, menciona o ignora comunidades etnicas. Si no hay evidencia, escribe exactamente "No se evidencia un enfoque étnico explícito en la información suministrada."
 - nivel_inclusion_etnica_ia: puntaje 0 a 100. 0 a 39 sin enfoque claro, 40 a 59 enfoque incipiente, 60 a 79 enfoque aceptable, 80 a 100 enfoque solido.
-- recomendaciones_etnicas_ia: recomendaciones practicas para incluir comunidades indigenas, afrodescendientes, raizales, palenqueras, Rrom o comunidades locales cuando aplique.
+- recomendaciones_etnicas_ia: recomendaciones prácticas para incluir comunidades indígenas, afrodescendientes, raizales, palenqueras, Rrom o comunidades locales cuando aplique.
 - enfoque_diferencial_ia: analiza si el proyecto reconoce diferencias por territorio, ruralidad, discapacidad, edad, genero, pertenencia etnica, poblacion victima u otras condiciones.
 - riesgos_exclusion_ia: lista posibles riesgos de exclusion del proyecto.
 - oportunidades_inclusion_ia: lista oportunidades para que el proyecto sea mas incluyente.
@@ -185,13 +185,13 @@ Instrucciones para inclusion, genero y enfoque diferencial:
 
 Datos del proyecto:
 - Nombre: ${projectValue(project, "nombre_proyecto") || projectValue(project, "titulo")}
-- Linea tematica: ${projectValue(project, "linea_tematica")}
-- Otra linea tematica: ${projectValue(project, "linea_tematica_otro")}
-- Resumen cientifico - Problema: ${projectValue(project, "resumen_problema")}
-- Resumen cientifico - Objetivo: ${projectValue(project, "resumen_objetivo")}
-- Resumen cientifico - Metodologia: ${projectValue(project, "resumen_metodologia")}
-- Resumen cientifico - Resultados: ${projectValue(project, "resumen_resultados")}
-- Resumen cientifico - Conclusiones: ${projectValue(project, "resumen_conclusiones")}
+- Línea temática: ${projectValue(project, "linea_tematica")}
+- Otra línea temática: ${projectValue(project, "linea_tematica_otro")}
+- Resumen científico - Problema: ${projectValue(project, "resumen_problema")}
+- Resumen científico - Objetivo: ${projectValue(project, "resumen_objetivo")}
+- Resumen científico - Metodología: ${projectValue(project, "resumen_metodologia")}
+- Resumen científico - Resultados: ${projectValue(project, "resumen_resultados")}
+- Resumen científico - Conclusiones: ${projectValue(project, "resumen_conclusiones")}
 - Modalidades: ${projectList(project, "modalidades_proyecto")}
 - Modalidad de participacion legacy: ${projectValue(project, "modalidad_participacion")}
 - Otra modalidad: ${projectValue(project, "modalidad_otro")}
@@ -201,7 +201,7 @@ Datos del proyecto:
 - Nivel de madurez: ${projectValue(project, "nivel_madurez")}
 - Semillero: ${projectValue(project, "semillero")}
 - Otro semillero: ${projectValue(project, "semillero_otro")}
-- Institucion: ${projectValue(project, "institucion")}
+- Institución: ${projectValue(project, "institucion")}
 - Municipio: ${projectValue(project, "municipio")}
 - Categoria de presentacion: ${projectValue(project, "categoria_presentacion")}
 - Observaciones adicionales: ${projectValue(project, "observaciones_adicionales") || projectValue(project, "resumen")}`;

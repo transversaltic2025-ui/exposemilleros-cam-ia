@@ -108,7 +108,7 @@ export function EvaluationForm({
     }
 
     if (!token) {
-      setSubmitError("No se pudo enviar la evaluacion.");
+      setSubmitError("No se pudo enviar la evaluación.");
       return;
     }
 
@@ -120,12 +120,12 @@ export function EvaluationForm({
 
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
-      setSubmitError(payload?.error ?? "No se pudo enviar la evaluacion.");
+      setSubmitError(payload?.error ?? "No se pudo enviar la evaluación.");
       return;
     }
 
     const payload = await response.json();
-    setSuccessMessage(payload.message ?? "EvaluaciИn registrada correctamente.");
+    setSuccessMessage(payload.message ?? "Evaluación registrada correctamente.");
     setEvaluatorAccessUrl(payload.evaluatorAccessUrl ?? null);
   }
 
@@ -134,10 +134,10 @@ export function EvaluationForm({
       <div className="rounded-2xl border border-[#2E7D5B]/20 bg-[#2E7D5B]/10 p-5 text-[#2E7D5B]">
         <div className="flex items-center gap-2 font-semibold">
           <CheckCircle2 className="size-5" />
-          {successMessage ?? "EvaluaciИn registrada correctamente"}
+          {successMessage ?? "Evaluación registrada correctamente."}
         </div>
         <p className="mt-2 text-sm">
-          Volverケs a tus proyectos asignados en unos segundos para continuar con las evaluaciones pendientes.
+          Volverá a sus proyectos asignados en unos segundos para continuar con las evaluaciones pendientes.
         </p>
         {evaluatorAccessUrl ? (
           <Link className="mt-4 inline-flex h-11 items-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]" href={evaluatorAccessUrl}>
@@ -153,9 +153,9 @@ export function EvaluationForm({
       {isTraining ? (
         <Card className="border-amber-400/40 bg-amber-50/80">
           <CardContent className="py-4">
-            <p className="text-sm font-black uppercase tracking-wide text-amber-700">Modo capacitaciИn</p>
+            <p className="text-sm font-black uppercase tracking-wide text-amber-700">MODO CAPACITACIÓN</p>
             <p className="mt-2 text-sm leading-6 text-amber-900">
-              Esta evaluacion es solo para practica y capacitacion. No se guardara como evaluacion oficial del proyecto.
+              Esta evaluación es solo para práctica y capacitación. No se guardará como evaluación oficial del proyecto.
             </p>
           </CardContent>
         </Card>
@@ -167,7 +167,7 @@ export function EvaluationForm({
           onCheckedChange={(checked) => setValue("archivo_abierto", checked === true)}
         />
         <span>
-          Confirmo que abri y lei el archivo del proyecto antes de evaluar.
+          Confirmo que abrí y leí el archivo del proyecto antes de evaluar.
           {errors.archivo_abierto ? (
             <span className="block font-semibold text-red-700">{errors.archivo_abierto.message}</span>
           ) : null}
@@ -197,7 +197,7 @@ export function EvaluationForm({
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor={`observacion-${criterio.id}`}>Observacion del criterio</Label>
+                  <Label htmlFor={`observacion-${criterio.id}`}>Observación del criterio</Label>
                   <Textarea
                     id={`observacion-${criterio.id}`}
                     rows={2}
@@ -212,10 +212,10 @@ export function EvaluationForm({
         <div className="grid gap-4 md:grid-cols-5">
           {[
             ["puntaje_pertinencia", "Pertinencia"],
-            ["puntaje_innovacion", "Innovacion"],
-            ["puntaje_metodologia", "Metodologia"],
+            ["puntaje_innovacion", "Innovación"],
+            ["puntaje_metodologia", "Metodología"],
             ["puntaje_impacto", "Impacto"],
-            ["puntaje_comunicacion", "Comunicacion"],
+            ["puntaje_comunicacion", "Comunicación"],
           ].map(([name, label]) => (
             <div key={name} className="grid gap-2">
               <Label htmlFor={name}>{label}</Label>
@@ -251,9 +251,9 @@ export function EvaluationForm({
       {isTraining && simulationResult ? (
         <Card className="border-[var(--color-primary)]/20 bg-white/80">
           <CardContent className="grid gap-3 py-5">
-            <p className="text-sm font-black uppercase tracking-wide text-[var(--color-primary)]">EvaluaciИn de practica completada</p>
+            <p className="text-sm font-black uppercase tracking-wide text-[var(--color-primary)]">Evaluación de práctica completada</p>
             <p className="text-sm leading-6 text-[var(--color-muted)]">
-              Este resultado no fue guardado como evaluaciИn oficial.
+              Este resultado no fue guardado como evaluación oficial.
             </p>
             <div className="grid gap-3 sm:grid-cols-3">
               <ResultStat label="Puntaje total simulado" value={`${simulationResult.puntaje_total}`} />
@@ -271,7 +271,7 @@ export function EvaluationForm({
       {submitError ? <p className="text-sm font-semibold text-red-700">{submitError}</p> : null}
 
       <Button type="submit" size="lg">
-        {isTraining ? "Simular envio de evaluacion" : "Enviar evaluacion"}
+        {isTraining ? "Simular envío de evaluación" : "Enviar evaluación"}
       </Button>
     </form>
   );

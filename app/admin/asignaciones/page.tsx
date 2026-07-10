@@ -32,7 +32,7 @@ export default async function AdminAsignacionesPage() {
         <p className="expo-eyebrow">Admin</p>
         <h1 className="expo-page-title mt-2">Asignaciones</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
-          Control de asignaciones por area, tokens y lectura del archivo.
+          Control de asignaciones por área, enlaces de acceso y lectura del archivo.
         </p>
       </div>
       <div className="mb-6 grid gap-4 md:grid-cols-4">
@@ -71,7 +71,7 @@ export default async function AdminAsignacionesPage() {
                     </div>
                   </TableCell>
                   <TableCell>{asignacion.evaluador_nombre ?? asignacion.evaluador_id}</TableCell>
-                  <TableCell>{asignacion.proyecto_area ?? asignacion.area_conocimiento ?? "Sin area"}</TableCell>
+                  <TableCell>{asignacion.proyecto_area ?? asignacion.area_conocimiento ?? "Sin área"}</TableCell>
                   <TableCell>
                     <Link href={`/evaluar/${asignacion.token_evaluacion ?? asignacion.token}`}>
                       <code className="rounded-full bg-white/70 px-3 py-1 text-xs font-bold text-[var(--color-primary)] hover:bg-white">

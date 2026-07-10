@@ -23,19 +23,19 @@ import {
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { validateMinorConsentFile, validatePosterFile } from "@/lib/upload-limits";
 
-const optionalEmail = z.union([z.string().email("Correo invalido."), z.literal("")]).optional();
+const optionalEmail = z.union([z.string().email("Ingrese un correo electrónico válido."), z.literal("")]).optional();
 
 const autorPrincipalSchema = z.object({
   nombreCompleto: z.string().min(3, "Indica el nombre del autor principal."),
   documento: z.string().optional(),
-  correo: z.string().email("Correo invalido."),
+  correo: z.string().email("Ingrese un correo electrónico válido."),
   celular: z.string().min(7, "Indica el celular del autor principal."),
 });
 
 const aprendizSchema = z.object({
   nombreCompleto: z.string().min(3, "Indica el nombre del aprendiz."),
   documento: z.string().min(5, "Indica el documento del aprendiz."),
-  correo: z.string().email("Correo invalido."),
+  correo: z.string().email("Ingrese un correo electrónico válido."),
   celular: z.string().min(7, "Indica el celular del aprendiz."),
   ficha: z.string().optional(),
   esMenorEdad: z.boolean(),
@@ -48,7 +48,7 @@ const aprendizSchema = z.object({
 const instructorSchema = z.object({
   nombreCompleto: z.string().min(3, "Indica el nombre del instructor."),
   documento: z.string().min(5, "Indica el documento del instructor."),
-  correo: z.string().email("Correo invalido."),
+  correo: z.string().email("Ingrese un correo electrónico válido."),
   celular: z.string().min(7, "Indica el celular del instructor."),
   rol: z.enum(["Instructor", "Investigador asociado"], {
     message: "Selecciona el rol dentro del proyecto.",
@@ -57,12 +57,12 @@ const instructorSchema = z.object({
 
 const schema = z.object({
   titulo: z.string().min(5, "Escribe el titulo del proyecto."),
-  area_conocimiento: z.string().min(1, "Selecciona un area."),
+  area_conocimiento: z.string().min(1, "Seleccione una línea temática."),
   linea_tematica_otro: z.string().optional(),
   linea_investigacion: z.string().optional(),
   resumen_problema: z.string().min(10, "Describe el problema."),
   resumen_objetivo: z.string().min(10, "Describe el objetivo."),
-  resumen_metodologia: z.string().min(10, "Describe la metodologia."),
+  resumen_metodologia: z.string().min(10, "Complete la metodología del resumen científico."),
   resumen_resultados: z.string().min(10, "Describe los resultados."),
   resumen_conclusiones: z.string().min(10, "Describe las conclusiones."),
   modalidades_proyecto: z.array(z.string()).min(1, "Selecciona al menos una modalidad."),
@@ -95,7 +95,7 @@ const schema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["linea_tematica_otro"],
-      message: "Indica cual linea tematica.",
+      message: "Escriba cuál es la línea temática.",
     });
   }
 
@@ -103,7 +103,7 @@ const schema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["semillero_otro"],
-      message: "Indica cual semillero.",
+      message: "Escriba cuál es el semillero.",
     });
   }
 
@@ -111,7 +111,7 @@ const schema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["modalidad_otro"],
-      message: "Indica cual modalidad.",
+      message: "Escriba cuál es la modalidad.",
     });
   }
 
@@ -119,7 +119,7 @@ const schema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["productos_obtenidos_otro"],
-      message: "Indica cual producto obtenido.",
+      message: "Escriba cuál es el producto obtenido.",
     });
   }
 
@@ -208,7 +208,7 @@ function resumenCientifico(values: FormValues) {
   return [
     `Problema:\n${values.resumen_problema}`,
     `Objetivo:\n${values.resumen_objetivo}`,
-    `Metodologia:\n${values.resumen_metodologia}`,
+    `Metodología:\n${values.resumen_metodologia}`,
     `Resultados:\n${values.resumen_resultados}`,
     `Conclusiones:\n${values.resumen_conclusiones}`,
   ].join("\n\n");
@@ -251,13 +251,13 @@ function uploadValidationError(kind: UploadKind, reason?: string, fallback?: str
 
 function minorConsentValidationError(reason?: string, fallback?: string) {
   if (reason === "size") {
-    return "La autorizacion para menor de edad supera el limite de 5 MB.";
+    return "La autorización para tratamiento de datos del menor de edad supera el límite de 5 MB.";
   }
   if (reason === "editable") {
-    return "La autorizacion para menor de edad debe estar en PDF.";
+    return "La autorización para tratamiento de datos del menor de edad debe estar en PDF.";
   }
 
-  return fallback ?? "La autorizacion para menor de edad debe estar en PDF.";
+  return fallback ?? "La autorización para tratamiento de datos del menor de edad debe estar en PDF.";
 }
 
 export function InscripcionForm() {
@@ -472,7 +472,7 @@ export function InscripcionForm() {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error ?? "No se pudo preparar la subida de la autorizacion.");
+        throw new Error(payload?.error ?? "No se pudo preparar la carga de la autorización.");
       }
 
       const uploadTarget = await response.json() as {
@@ -503,7 +503,7 @@ export function InscripcionForm() {
         ...current,
         [fieldId]: {
           status: "error",
-          error: error instanceof Error ? error.message : "No se pudo subir la autorizacion.",
+          error: error instanceof Error ? error.message : "No se pudo cargar la autorización.",
         },
       }));
     }
@@ -520,11 +520,11 @@ export function InscripcionForm() {
       return;
     }
     if (Object.values(minorConsentUploads).some((item) => item.status === "uploading")) {
-      setSubmitError("Espera a que termine la subida de autorizaciones de menores.");
+      setSubmitError("Espere a que termine la carga de autorizaciones de menores de edad.");
       return;
     }
     if (Object.values(minorConsentUploads).some((item) => item.status === "error")) {
-      setSubmitError("Corrige el error de autorizacion de menor antes de registrar.");
+      setSubmitError("Corrija el error de la autorización del menor de edad antes de registrar el proyecto.");
       return;
     }
     const payload = Object.fromEntries(
@@ -612,7 +612,7 @@ export function InscripcionForm() {
         </div>
         <div className="grid gap-2 rounded-xl border border-[var(--color-border)] bg-white/55 p-4">
           <p className="text-sm font-semibold text-[var(--color-muted)]">Categoría de participación</p>
-          <p className="font-sans text-lg font-extrabold text-[var(--color-text)]">Poster</p>
+          <p className="font-sans text-lg font-extrabold text-[var(--color-text)]">Póster</p>
         </div>
       </section>
 

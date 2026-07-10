@@ -169,7 +169,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        error: "No fue posible generar el analisis IA. Intenta nuevamente en unos minutos.",
+        error: "No fue posible generar el análisis IA. Intente nuevamente en unos minutos.",
         detail: message,
       },
       { status: 500 },

@@ -12,12 +12,12 @@ import { Label } from "@/components/ui/label";
 import { LINEAS_TEMATICAS } from "@/lib/constants";
 
 const schema = z.object({
-  nombre_evaluador: z.string().min(3, "Indica tu nombre."),
-  correo_evaluador: z.string().email("Correo invalido."),
-  celular_evaluador: z.string().min(7, "Celular invalido."),
-  documento_evaluador: z.string().min(5, "Documento invalido."),
-  institucion_evaluador: z.string().min(2, "Indica la institucion."),
-  area_conocimiento: z.string().min(1, "Selecciona un area."),
+  nombre_evaluador: z.string().min(3, "Ingrese el nombre completo."),
+  correo_evaluador: z.string().email("Ingrese un correo electrónico válido."),
+  celular_evaluador: z.string().min(7, "Ingrese un número de celular válido."),
+  documento_evaluador: z.string().min(5, "Ingrese un documento válido."),
+  institucion_evaluador: z.string().min(2, "Ingrese la institución."),
+  area_conocimiento: z.string().min(1, "Seleccione un área de conocimiento."),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -68,7 +68,7 @@ export function EvaluadorForm() {
           {errors.nombre_evaluador ? <p className="text-sm font-semibold text-red-700">{errors.nombre_evaluador.message}</p> : null}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="institucion_evaluador">Institucion</Label>
+          <Label htmlFor="institucion_evaluador">Institución</Label>
           <Input id="institucion_evaluador" {...register("institucion_evaluador")} />
           {errors.institucion_evaluador ? <p className="text-sm font-semibold text-red-700">{errors.institucion_evaluador.message}</p> : null}
         </div>
@@ -91,7 +91,7 @@ export function EvaluadorForm() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="grid gap-2">
-          <Label htmlFor="area_conocimiento">Area de conocimiento</Label>
+          <Label htmlFor="area_conocimiento">Área de conocimiento</Label>
           <select
             id="area_conocimiento"
             className="h-11 rounded-xl border border-[var(--color-border)] bg-white/70 px-3 text-sm"

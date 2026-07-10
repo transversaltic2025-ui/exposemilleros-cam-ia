@@ -78,7 +78,7 @@ export function RecoverAccessForm() {
         <div className="rounded-2xl border border-[#2E7D5B]/20 bg-[#2E7D5B]/10 p-5">
           <p className="font-sans text-lg font-extrabold text-[#2E7D5B]">
             Hola, {result.evaluator?.nombre_evaluador ?? "evaluador"}.{" "}
-            {result.assignmentOpen === false ? "Tu registro está activo." : "Encontramos tu acceso."}
+            {result.assignmentOpen === false ? "Su registro como evaluador está activo." : "Encontramos tu acceso."}
           </p>
           <p className="mt-2 text-sm text-[var(--color-muted)]">
             {result.message ?? "Acceso encontrado. Puedes continuar con tus proyectos asignados."}

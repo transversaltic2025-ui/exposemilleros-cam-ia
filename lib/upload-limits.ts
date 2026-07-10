@@ -150,7 +150,7 @@ export function validateMinorConsentMetadata({
   if (fileSize > MINOR_CONSENT_MAX_BYTES) {
     return {
       valid: false,
-      error: "La autorizacion para menor de edad supera el limite de 5 MB.",
+      error: "La autorización para tratamiento de datos del menor de edad supera el límite de 5 MB.",
       reason: "size",
     };
   }
@@ -158,7 +158,7 @@ export function validateMinorConsentMetadata({
   if (editableDocumentExtensions.has(extension)) {
     return {
       valid: false,
-      error: "La autorizacion para menor de edad debe estar en PDF.",
+      error: "La autorización para tratamiento de datos del menor de edad debe estar en PDF.",
       reason: "editable",
     };
   }
@@ -166,7 +166,7 @@ export function validateMinorConsentMetadata({
   if (!allowedMinorConsentMimeTypes.includes(contentType as typeof allowedMinorConsentMimeTypes[number])) {
     return {
       valid: false,
-      error: "La autorizacion para menor de edad debe estar en PDF.",
+      error: "La autorización para tratamiento de datos del menor de edad debe estar en PDF.",
       reason: "mime",
     };
   }
@@ -174,7 +174,7 @@ export function validateMinorConsentMetadata({
   if (!allowedMinorConsentExtensions.includes(extension as typeof allowedMinorConsentExtensions[number])) {
     return {
       valid: false,
-      error: "La autorizacion para menor de edad debe estar en PDF.",
+      error: "La autorización para tratamiento de datos del menor de edad debe estar en PDF.",
       reason: "extension",
     };
   }

@@ -18,13 +18,13 @@ const projectTeamSchema = z.object({
   autorPrincipal: z.object({
     nombreCompleto: z.string().min(3, "El autor principal debe tener nombre completo."),
     documento: z.string().optional(),
-    correo: z.string().email("El autor principal debe tener correo valido."),
+    correo: z.string().email("El autor principal debe tener un correo electrónico válido."),
     celular: z.string().min(7, "El autor principal debe tener celular."),
   }),
   aprendices: z.array(z.object({
     nombreCompleto: z.string().min(3, "Cada aprendiz debe tener nombre completo."),
     documento: z.string().min(5, "Cada aprendiz debe tener documento."),
-    correo: z.string().email("Cada aprendiz debe tener correo valido."),
+    correo: z.string().email("Cada aprendiz debe tener un correo electrónico válido."),
     celular: z.string().min(7, "Cada aprendiz debe tener celular."),
     ficha: z.string().optional(),
     esMenorEdad: z.boolean().optional().default(false),
@@ -36,7 +36,7 @@ const projectTeamSchema = z.object({
   instructoresInvestigadores: z.array(z.object({
     nombreCompleto: z.string().min(3, "Cada instructor debe tener nombre completo."),
     documento: z.string().min(5, "Cada instructor debe tener documento."),
-    correo: z.string().email("Cada instructor debe tener correo valido."),
+    correo: z.string().email("Cada instructor debe tener un correo electrónico válido."),
     celular: z.string().min(7, "Cada instructor debe tener celular."),
     rol: z.enum(["Instructor", "Investigador asociado"]),
   })),
@@ -103,7 +103,7 @@ const schema = z.object({
   if (values.linea_tematica === "Otra" && !values.linea_tematica_otro?.trim()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "Debe indicar cual linea tematica.",
+      message: "Escriba cuál es la línea temática.",
       path: ["linea_tematica_otro"],
     });
   }
@@ -136,7 +136,7 @@ const schema = z.object({
     if (aprendiz.esMenorEdad && !aprendiz.tratamientoDatosMenorPath?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "El aprendiz menor de edad debe tener autorizacion PDF cargada.",
+        message: "Cargue la autorización para tratamiento de datos del menor de edad en PDF.",
         path: ["integrantes", "aprendices", index, "tratamientoDatosMenorPath"],
       });
     }
@@ -149,7 +149,7 @@ const schema = z.object({
       if (!validation.valid) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: validation.error ?? "La autorizacion para menor de edad debe ser PDF.",
+          message: validation.error ?? "La autorización para tratamiento de datos del menor de edad debe estar en PDF.",
           path: ["integrantes", "aprendices", index, "tratamientoDatosMenorPath"],
         });
       }
@@ -164,7 +164,7 @@ const schema = z.object({
   ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "El aprendiz investigador 1 debe tener nombre, documento, correo y telefono.",
+      message: "El aprendiz investigador 1 debe tener nombre, documento, correo y teléfono.",
       path: ["aprendiz_1_nombre"],
     });
   }
@@ -188,7 +188,7 @@ const schema = z.object({
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `El aprendiz investigador ${index} debe tener nombre, documento, correo y telefono si se registra.`,
+        message: `El aprendiz investigador ${index} debe tener nombre, documento, correo y teléfono si se registra.`,
         path: [`aprendiz_${index}_nombre`],
       });
     }
@@ -565,7 +565,7 @@ function validateRegisteredFileMetadata(fileMetadata: z.infer<typeof fileMetadat
     });
 
     if (!fileMetadata.poster_proyecto_nombre) {
-      return "El nombre del poster es obligatorio.";
+      return "El nombre del póster es obligatorio.";
     }
 
     const posterValidation = validatePosterMetadata({
@@ -591,7 +591,7 @@ function validateRegisteredFileMetadata(fileMetadata: z.infer<typeof fileMetadat
         reason: posterValidation.reason,
         error: posterValidation.error,
       });
-      return posterValidation.error ?? "El poster no cumple los requisitos.";
+      return posterValidation.error ?? "El póster no cumple los requisitos.";
     }
   } else {
     console.log("[projects/register] poster no enviado; validacion omitida");
@@ -686,7 +686,7 @@ export async function POST(request: Request) {
           reason: posterValidation.reason,
         });
         return NextResponse.json(
-          { error: posterValidation.error ?? "El poster no cumple los requisitos." },
+          { error: posterValidation.error ?? "El póster no cumple los requisitos." },
           { status: 400 },
         );
       }

@@ -97,7 +97,7 @@ export default async function ProyectoDetallePage({
           <CardContent className="grid place-items-center pt-2">
             <ScoreOrb score={scoreIA ?? scoreHumano} status={estadoAnalisis ?? proyecto.estado} size="lg" />
             <p className="mt-4 text-center text-sm leading-6 text-[var(--color-muted)]">
-              Score IA prioritario. Si aun no existe, se muestra el score de evaluacion humana.
+              Puntaje IA prioritario. Si aún no existe, se muestra el puntaje de evaluación humana.
             </p>
           </CardContent>
         </Card>
@@ -109,14 +109,14 @@ export default async function ProyectoDetallePage({
             <CardTitle>Ficha del proyecto</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
-            <Info label="Linea tematica" value={projectLine(proyecto)} />
+            <Info label="Línea temática" value={projectLine(proyecto)} />
             <Info label="Modalidad" value={proyecto.modalidad_participacion} />
             <Info label="Semillero" value={projectSeedbed(proyecto)} />
-            <Info label="Categoria" value="Poster" />
+            <Info label="Categoría" value="Póster" />
             <Info label="Institucion" value={proyecto.institucion} />
             <Info label="Municipio" value={proyecto.municipio} />
             <Info label="Archivo historico del proyecto" value={proyecto.archivo_nombre ?? proyecto.archivo_proyecto_nombre ?? "Sin archivo historico"} />
-            <Info label="Poster del proyecto" value={proyecto.poster_proyecto_nombre ?? "Sin poster"} />
+            <Info label="Póster del proyecto" value={proyecto.poster_proyecto_nombre ?? "Sin póster"} />
           </CardContent>
         </Card>
 
@@ -128,7 +128,7 @@ export default async function ProyectoDetallePage({
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
-            <CriteriaWeight label="Innovacion IA" value={analisis?.nivel_innovacion_ia ?? scoreIA} />
+            <CriteriaWeight label="Innovación IA" value={analisis?.nivel_innovacion_ia ?? scoreIA} />
             <CriteriaWeight label="Pertinencia IA" value={analisis?.nivel_pertinencia_ia ?? scoreHumano} />
             <CriteriaWeight label="Impacto IA" value={analisis?.nivel_impacto_ia ?? 0} />
             <CriteriaWeight label="Viabilidad IA" value={analisis?.nivel_viabilidad_ia ?? 0} />
@@ -215,7 +215,7 @@ export default async function ProyectoDetallePage({
               </div>
             ) : (
               <p className="text-sm leading-6 text-[var(--color-muted)]">
-                La comparacion aparecera cuando existan evaluacion humana y analisis IA completado.
+                La comparación aparecerá cuando existan una evaluación humana y un análisis IA completados.
               </p>
             )}
           </CardContent>
@@ -230,12 +230,12 @@ export default async function ProyectoDetallePage({
           </CardHeader>
           <CardContent className="grid gap-3">
             <Info label="Documento histórico" value={proyecto.archivo_nombre ?? proyecto.archivo_proyecto_nombre ?? "Sin archivo histórico"} />
-            <Info label="Poster" value={proyecto.poster_proyecto_nombre ?? "Sin poster"} />
+            <Info label="Póster" value={proyecto.poster_proyecto_nombre ?? "Sin póster"} />
           </CardContent>
         </Card>
       </section>
 
-      <SectionShell className="mt-8" eyebrow="Analisis IA" title="Lectura tecnica y tendencias">
+      <SectionShell className="mt-8" eyebrow="Análisis IA" title="Lectura técnica y tendencias">
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
@@ -251,28 +251,28 @@ export default async function ProyectoDetallePage({
                   <ChipList label="Recomendaciones" values={[...(analisis.oportunidades_detectadas ?? []), ...(analisis.palabras_clave_ia ?? [])]} />
                 </>
               ) : (
-                <p>Aun no existe analisis IA completo para este proyecto.</p>
+                <p>Aún no existe un análisis IA completo para este proyecto.</p>
               )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Inclusion, genero y enfoque diferencial</CardTitle>
+              <CardTitle>Inclusión, género y enfoque diferencial</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {analisisCompleto && analisis ? (
                 <>
-                  <CriteriaWeight label="Inclusion de genero" value={analisis.nivel_inclusion_genero_ia ?? 0} />
-                  <CriteriaWeight label="Inclusion etnica" value={analisis.nivel_inclusion_etnica_ia ?? 0} />
-                  <Info label="Enfoque de genero" value={displayText(analisis.enfoque_genero_ia)} />
-                  <Info label="Enfoque etnico" value={displayText(analisis.enfoque_etnico_ia)} />
+                  <CriteriaWeight label="Inclusión de género" value={analisis.nivel_inclusion_genero_ia ?? 0} />
+                  <CriteriaWeight label="Inclusión étnica" value={analisis.nivel_inclusion_etnica_ia ?? 0} />
+                  <Info label="Enfoque de género" value={displayText(analisis.enfoque_genero_ia)} />
+                  <Info label="Enfoque étnico" value={displayText(analisis.enfoque_etnico_ia)} />
                   <Info label="Enfoque diferencial" value={displayText(analisis.enfoque_diferencial_ia)} />
                   <ChipList label="Recomendaciones limpias" values={[...(analisis.recomendaciones_genero_ia ?? []), ...(analisis.recomendaciones_etnicas_ia ?? [])]} />
-                  <ChipList label="Riesgos de exclusion" values={analisis.riesgos_exclusion_ia ?? []} />
+                  <ChipList label="Riesgos de exclusión" values={analisis.riesgos_exclusion_ia ?? []} />
                 </>
               ) : (
-                <p className="text-sm text-[var(--color-muted)]">Pendiente de analisis IA.</p>
+                <p className="text-sm text-[var(--color-muted)]">Pendiente de análisis IA.</p>
               )}
             </CardContent>
           </Card>
@@ -328,7 +328,7 @@ function TeamGroup({
                 {member.correo ? <p>Correo: {member.correo}</p> : null}
                 {member.celular ? <p>Celular: {member.celular}</p> : null}
                 {member.ficha ? <p>Ficha: {member.ficha}</p> : null}
-                <p>Menor de edad: {member.es_menor_edad ? "Si" : "No"}</p>
+                <p>Menor de edad: {member.es_menor_edad ? "Sí" : "No"}</p>
                 {member.tratamiento_datos_menor_path ? (
                   <Link
                     href={minorConsentUrls[member.tratamiento_datos_menor_path] ?? "#"}

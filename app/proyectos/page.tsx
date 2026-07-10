@@ -34,7 +34,7 @@ export default async function ProyectosPage() {
       <SectionShell
         eyebrow="Panel interno"
         title="Proyectos registrados"
-        description="Consulta interna de proyectos registrados, estados de evaluacion y analisis disponibles."
+        description="Consulta interna de proyectos registrados, estados de evaluación y análisis disponibles."
         action={
           <Link
             href="/inscripcion"
@@ -47,8 +47,8 @@ export default async function ProyectosPage() {
       >
         {proyectos.length === 0 ? (
           <EmptyState
-            title="Aun no hay proyectos evaluados"
-            description="Cuando existan registros, apareceran como fichas internas con estado y analisis disponible."
+            title="Aún no hay proyectos evaluados"
+            description="Cuando existan registros, aparecerán como fichas internas con estado y análisis disponible."
             actionLabel="Registrar primer proyecto"
             actionHref="/inscripcion"
           />

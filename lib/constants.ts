@@ -21,9 +21,9 @@ export const LINEAS_INVESTIGACION = [
 ] as const;
 
 export const MODALIDADES_PARTICIPACION = [
+  "Investigación aplicada",
   "Innovación",
   "Emprendimiento",
-  "Investigación aplicada",
   "Desarrollo tecnológico",
   "Otro",
 ] as const;
@@ -71,9 +71,8 @@ export const SEMILLEROS = [
   "Otro",
 ] as const;
 
-export const CATEGORIAS_PRESENTACION = [
-  "Poster",
-] as const;
+// "Poster" se conserva como valor interno; la interfaz lo presenta como "Póster".
+export const CATEGORIAS_PRESENTACION = ["Poster"] as const;
 
 export const OPCIONES_SI_NO = ["Sí", "No"] as const;
 

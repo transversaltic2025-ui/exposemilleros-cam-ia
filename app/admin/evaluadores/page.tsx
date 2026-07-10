@@ -52,7 +52,7 @@ export default async function AdminEvaluadoresPage() {
                 <TableHead>ID</TableHead>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Entidad</TableHead>
-                <TableHead>Area</TableHead>
+                <TableHead>Área</TableHead>
                 <TableHead>Registro</TableHead>
                 <TableHead>Asignados</TableHead>
                 <TableHead>Estado</TableHead>

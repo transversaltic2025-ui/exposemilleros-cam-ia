@@ -71,7 +71,7 @@ export async function POST(
       message: "Evaluación registrada correctamente.",
     }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "No se pudo guardar la evaluacion.";
+    const message = error instanceof Error ? error.message : "No se pudo guardar la evaluación.";
     console.error("[api/evaluations] error exacto", error);
     return NextResponse.json({ error: message }, { status: 400 });
   }

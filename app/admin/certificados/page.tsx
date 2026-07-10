@@ -79,9 +79,9 @@ export default async function AdminCertificadosPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
-        <MetricCard label="Ponentes" value={ponentes} detail="Aprendices en poster" accent="secondary" />
+        <MetricCard label="Ponentes" value={ponentes} detail="Aprendices en póster" accent="secondary" />
         <MetricCard label="Instructores lideres" value={instructores} detail="Responsables unicos" accent="mint" />
-        <MetricCard label="Evaluadores" value={evaluadoresConEvaluacion} detail="Con evaluacion" accent="success" />
+        <MetricCard label="Evaluadores" value={evaluadoresConEvaluacion} detail="Con evaluación" accent="success" />
         <MetricCard label="Generados" value={generados} detail="PDF creados" />
         <MetricCard label="Pendientes" value={pendientes} detail="Estimados" accent="secondary" />
       </div>
@@ -161,7 +161,7 @@ export default async function AdminCertificadosPage() {
             </TableBody>
           </Table>
           {certificadosConUrl.length === 0 ? (
-            <p className="mt-4 text-sm text-[var(--color-muted)]">Aun no hay certificados generados.</p>
+            <p className="mt-4 text-sm text-[var(--color-muted)]">Aún no hay certificados generados.</p>
           ) : null}
         </CardContent>
       </Card>

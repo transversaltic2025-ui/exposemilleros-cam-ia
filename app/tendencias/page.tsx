@@ -55,7 +55,7 @@ export default async function TendenciasPage() {
       <div className="grid gap-4 md:grid-cols-4">
         <MetricCard label="Proyectos" value={resumenLogistica.proyectos} detail="Total inscritos" />
         <MetricCard label="Evaluaciones" value={resumenLogistica.evaluaciones} detail="Humanas recibidas" accent="success" />
-        <MetricCard label="Promedio score" value={`${avgAI}/100`} detail={`${completedAI.length} analisis IA`} accent="secondary" />
+        <MetricCard label="Puntaje promedio" value={`${avgAI}/100`} detail={`${completedAI.length} análisis IA`} accent="secondary" />
         <MetricCard label="Pendientes" value={asignacionesPendientes} detail="Por evaluar" accent="mint" />
       </div>
       <Card className="mt-6">
@@ -69,11 +69,11 @@ export default async function TendenciasPage() {
       <section className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Inclusion y enfoque diferencial</CardTitle>
+            <CardTitle>Inclusión y enfoque diferencial</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <CriteriaWeight label="Inclusion de genero" value={avgGenero} />
-            <CriteriaWeight label="Inclusion etnica" value={avgEtnico} />
+            <CriteriaWeight label="Inclusión de género" value={avgGenero} />
+            <CriteriaWeight label="Inclusión étnica" value={avgEtnico} />
             <MetricCard
               label="Enfoque diferencial"
               value={proyectosConEnfoqueDiferencial}

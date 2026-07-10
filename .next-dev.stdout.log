@@ -1,0 +1,20 @@
+
+> exposemilleros-cam-ia@0.1.0 dev
+> next dev --webpack
+
+▲ Next.js 16.2.10 (webpack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.55:3000
+- Environments: .env.local
+✓ Ready in 604ms
+
+○ Compiling /inscripcion ...
+ GET /inscripcion 200 in 9.8s (next.js: 8.6s, application-code: 1214ms)
+○ Compiling /evaluadores/registro ...
+ GET /inscripcion 200 in 191ms (next.js: 42ms, application-code: 148ms)
+ GET /evaluadores/registro 200 in 6.1s (next.js: 3.5s, application-code: 2.7s)
+[admin-auth] verificacion admin false
+ GET /proyectos 307 in 2.8s (next.js: 2.2s, application-code: 613ms)
+[admin-auth] verificacion admin false
+ GET /admin/login 200 in 2.1s (next.js: 1617ms, application-code: 489ms)
+ GET /inscripcion 200 in 509ms (next.js: 42ms, application-code: 466ms)

@@ -17,7 +17,7 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "ExpoSemilleros CAM IA",
   description:
-    "Sistema web para el Encuentro de Semilleros de Investigacion CAM 2026.",
+    "Sistema web para el Encuentro de Semilleros de Investigación CAM 2026.",
 };
 
 export default function RootLayout({

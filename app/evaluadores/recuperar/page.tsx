@@ -8,9 +8,9 @@ export default function RecuperarEvaluadorPage() {
       <div className="mx-auto max-w-2xl">
         <div className="mb-8">
           <p className="expo-eyebrow">Evaluadores</p>
-          <h1 className="expo-page-title mt-2">Recuperar mis proyectos asignados</h1>
+          <h1 className="expo-page-title mt-2">Recuperar acceso / consultar mis proyectos</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
-            Ingresa tu número de documento para consultar tu registro y tus proyectos asignados cuando estén disponibles.
+            Ingrese su número de documento para consultar su registro y sus proyectos asignados cuando estén disponibles.
           </p>
         </div>
         <Card>

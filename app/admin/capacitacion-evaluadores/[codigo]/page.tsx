@@ -42,21 +42,21 @@ export default async function CapacitacionProyectoPage({
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="expo-eyebrow">Admin</p>
-          <h1 className="expo-page-title mt-2">CapacitaciИn evaluadores</h1>
+          <h1 className="expo-page-title mt-2">Capacitación de evaluadores</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
-            Esta evaluaciИn es solo para practica y capacitaciИn. No se guardara como evaluaciИn oficial del proyecto.
+            Esta evaluación es solo para práctica y capacitación. No se guardará como evaluación oficial del proyecto.
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-amber-800">
           <GraduationCap className="size-4" />
-          MODO CAPACITACIИN
+          MODO CAPACITACIÓN
         </div>
       </div>
 
       <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Proyecto en practica</CardTitle>
+            <CardTitle>Proyecto de práctica</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 text-sm leading-6 text-[var(--color-muted)]">
             <div className="flex flex-wrap items-center gap-2">
@@ -105,7 +105,7 @@ export default async function CapacitacionProyectoPage({
 
         <Card>
           <CardHeader>
-            <CardTitle>Formulario de capacitaciИn</CardTitle>
+            <CardTitle>Formulario de capacitación</CardTitle>
           </CardHeader>
           <CardContent>
             <EvaluationForm criterios={criterios} mode="training" />

@@ -16,7 +16,7 @@ const adminLinks = [
   {
     href: "/proyectos",
     title: "Proyectos",
-    detail: "Consulta interna de registros y analisis.",
+    detail: "Consulta interna de registros y análisis.",
     icon: ClipboardCheck,
   },
   {
@@ -28,7 +28,7 @@ const adminLinks = [
   {
     href: "/admin/evaluadores",
     title: "Evaluadores",
-    detail: "Disponibilidad, area y carga maxima.",
+    detail: "Disponibilidad, área y carga máxima.",
     icon: Users,
   },
   {
@@ -45,8 +45,8 @@ const adminLinks = [
   },
   {
     href: "/admin/capacitacion-evaluadores",
-    title: "Capacitacion evaluadores",
-    detail: "Evaluaciones de practica sin efecto oficial.",
+    title: "Capacitación de evaluadores",
+    detail: "Evaluaciones de práctica sin efecto oficial.",
     icon: GraduationCap,
   },
 ];
@@ -87,7 +87,7 @@ export default async function AdminPage() {
           <p className="expo-eyebrow">Administracion</p>
           <h1 className="expo-page-title mt-2">Panel ejecutivo personal</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
-            Gestion operativa sin login tradicional: carga de evaluadores, asignaciones, certificados y alertas de avance.
+            Gestión operativa sin inicio de sesión tradicional: evaluadores, asignaciones, certificados y alertas de avance.
           </p>
         </div>
         <AdminLogoutButton />
@@ -188,7 +188,7 @@ export default async function AdminPage() {
                 </div>
                 <span className="font-sans text-2xl font-extrabold text-[var(--color-primary)]">{score}</span>
               </div>
-            )) : <p className="text-sm text-[var(--color-muted)]">Aun no hay scores registrados.</p>}
+            )) : <p className="text-sm text-[var(--color-muted)]">Aún no hay puntajes registrados.</p>}
           </CardContent>
         </Card>
         <SectionShell>
@@ -200,7 +200,7 @@ export default async function AdminPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-3">
-              <MetricCard label="Sin evaluador" value={resumenLogistica.proyectosSinEvaluador} detail="Requieren asignacion" accent="mint" />
+              <MetricCard label="Sin evaluador" value={resumenLogistica.proyectosSinEvaluador} detail="Requieren asignación" accent="mint" />
               <MetricCard label="Con 1 evaluador" value={resumenLogistica.proyectosConUnEvaluador} detail="Falta segunda mirada" accent="secondary" />
               <MetricCard label="Con 2 evaluadores" value={resumenLogistica.proyectosConDosEvaluadores} detail="Carga completa" accent="success" />
             </CardContent>
@@ -212,13 +212,13 @@ export default async function AdminPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ClipboardList className="size-5 text-[var(--color-success)]" />
-            Reglas de asignacion
+            Reglas de asignación
           </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 text-sm leading-6 text-[var(--color-muted)] md:grid-cols-3">
           <p>Maximo 3 proyectos por evaluador.</p>
           <p>Maximo 2 evaluadores por proyecto.</p>
-          <p>Area del proyecto y evaluador deben coincidir.</p>
+          <p>El área del proyecto y la del evaluador deben coincidir.</p>
         </CardContent>
       </Card>
     </SiteShell>

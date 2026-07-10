@@ -8,7 +8,7 @@ export default function InscripcionPage() {
       <div className="mx-auto max-w-5xl">
         <div className="mb-8">
           <p className="expo-eyebrow">Registro publico</p>
-          <h1 className="expo-page-title mt-2">Inscripcion de proyectos</h1>
+          <h1 className="expo-page-title mt-2">Inscripción de proyectos</h1>
         </div>
         <Card>
           <CardHeader>

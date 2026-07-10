@@ -4,7 +4,7 @@ type ScoreTone = "focus" | "progress" | "healthy" | "attention";
 
 const toneMap: Record<ScoreTone, { color: string; soft: string; label: string }> = {
   focus: { color: "#6D3FA9", soft: "rgba(109, 63, 169, 0.16)", label: "Foco alto" },
-  progress: { color: "#A37AD9", soft: "rgba(163, 122, 217, 0.2)", label: "En evaluacion" },
+  progress: { color: "#A37AD9", soft: "rgba(163, 122, 217, 0.2)", label: "En evaluación" },
   healthy: { color: "#2E7D5B", soft: "rgba(46, 125, 91, 0.16)", label: "Saludable" },
   attention: { color: "#7ECF9A", soft: "rgba(126, 207, 154, 0.22)", label: "Requiere atencion" },
 };

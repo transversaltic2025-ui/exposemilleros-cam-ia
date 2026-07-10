@@ -3,7 +3,7 @@ import { FileText, Home, ShieldCheck, UserRoundPlus } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Inicio", icon: Home },
-  { href: "/inscripcion", label: "Inscripcion", icon: FileText },
+  { href: "/inscripcion", label: "Inscripción", icon: FileText },
   { href: "/evaluadores/registro", label: "Evaluadores", icon: UserRoundPlus },
   { href: "/admin/login", label: "Admin", icon: ShieldCheck },
 ];
@@ -20,7 +20,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
             <span className="flex flex-col">
             <span className="font-heading text-xl font-black leading-tight">ExpoSemilleros IA</span>
             <span className="text-xs font-semibold text-[var(--color-muted)]">
-              Encuentro de Semilleros de Investigacion CAM 2026
+              Encuentro de Semilleros de Investigación CAM 2026
             </span>
             </span>
           </Link>

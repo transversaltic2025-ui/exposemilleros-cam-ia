@@ -20,7 +20,7 @@ export default async function AdminLoginPage() {
           <LockKeyhole className="mx-auto mb-4 size-12 text-[var(--color-primary)]" />
           <h1 className="font-heading text-3xl font-black text-[var(--color-text)]">Ingreso administrador</h1>
           <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">
-            Accede al panel interno de gestion, evaluacion y analisis.
+            Acceda al panel interno de gestión, evaluación y análisis.
           </p>
           <AdminLoginForm />
         </CardContent>

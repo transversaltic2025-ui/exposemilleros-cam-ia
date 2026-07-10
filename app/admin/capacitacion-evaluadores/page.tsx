@@ -23,9 +23,9 @@ export default async function CapacitacionEvaluadoresPage() {
             <GraduationCap className="size-6" />
           </div>
           <div>
-            <h1 className="expo-page-title">CapacitaciИn evaluadores</h1>
+            <h1 className="expo-page-title">Capacitación de evaluadores</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
-              Permite abrir una evaluaciИn de practica para capacitar a los evaluadores sin registrar resultados oficiales.
+              Permite abrir una evaluación de práctica para capacitar a los evaluadores sin registrar resultados oficiales.
             </p>
           </div>
         </div>
@@ -43,7 +43,7 @@ export default async function CapacitacionEvaluadoresPage() {
                 <p className="mt-1 text-xs text-[var(--color-muted)]">{project.codigo}</p>
               </div>
               <div className="grid gap-1 text-sm text-[var(--color-muted)]">
-                <p>Linea: {project.area_conocimiento}</p>
+                <p>Línea: {project.area_conocimiento}</p>
                 <p>Semillero: {project.semillero ?? "Sin registro"}</p>
                 <p>Estado: {project.estado}</p>
               </div>
@@ -51,12 +51,12 @@ export default async function CapacitacionEvaluadoresPage() {
                 href={`/admin/capacitacion-evaluadores/${project.codigo}`}
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]"
               >
-                Abrir evaluaciИn de capacitaciИn
+                Abrir evaluación de capacitación
                 <ArrowUpRight className="size-4" />
               </Link>
             </div>
           )) : (
-            <p className="text-sm text-[var(--color-muted)]">Todavヴa no hay proyectos registrados.</p>
+            <p className="text-sm text-[var(--color-muted)]">Todavía no hay proyectos registrados.</p>
           )}
         </CardContent>
       </Card>

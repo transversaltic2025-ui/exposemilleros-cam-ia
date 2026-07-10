@@ -28,7 +28,7 @@ export function AnalyzeProjectButton({ proyectoId }: { proyectoId: string }) {
       const payload = (await response.json()) as { error?: string; detail?: string };
 
       if (!response.ok) {
-        const message = payload.error ?? "No fue posible generar el analisis IA en este momento. Puedes intentarlo nuevamente.";
+        const message = payload.error ?? "No fue posible generar el análisis IA en este momento. Puede intentarlo nuevamente.";
         throw new Error(payload.detail ? `${message}\nDetalle tecnico: ${payload.detail}` : message);
       }
 
@@ -37,7 +37,7 @@ export function AnalyzeProjectButton({ proyectoId }: { proyectoId: string }) {
       setError(
         err instanceof Error
           ? err.message
-          : "No fue posible generar el analisis IA en este momento. Puedes intentarlo nuevamente.",
+          : "No fue posible generar el análisis IA en este momento. Puede intentarlo nuevamente.",
       );
     } finally {
       setLoading(false);

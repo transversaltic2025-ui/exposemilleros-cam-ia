@@ -69,7 +69,7 @@ export default async function EvaluarTokenPage({
               <p className="mt-3 leading-7 text-[var(--color-muted)]">{proyecto.resumen}</p>
             </div>
             <div className="rounded-2xl border border-[var(--color-border)] bg-white/45 p-4">
-              <div className="expo-eyebrow">Area</div>
+              <div className="expo-eyebrow">Área</div>
               <div className="mt-2 font-sans font-extrabold text-[var(--color-text)]">{proyecto.area_conocimiento}</div>
             </div>
             <a
@@ -82,14 +82,14 @@ export default async function EvaluarTokenPage({
               Abrir archivo
             </a>
             <p className="text-[var(--color-muted)]">
-              El evaluador debe abrir y leer el archivo antes de enviar la evaluacion.
+              El evaluador debe abrir y leer el archivo antes de enviar la evaluación.
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Evaluacion humana</CardTitle>
+            <CardTitle>Evaluación humana</CardTitle>
           </CardHeader>
           <CardContent>
             <EvaluationForm token={token} criterios={criterios} />
