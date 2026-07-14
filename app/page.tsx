@@ -7,6 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const publicActions = [
   {
+    href: "/inscripcion/editar",
+    title: "Editar inscripción de un proyecto",
+    detail: "Corrija la información o reemplace el póster usando el código del proyecto y el documento de un integrante.",
+    icon: ClipboardCheck,
+    label: "Editar inscripción de un proyecto",
+  },
+  {
     href: "/inscripcion",
     title: "Inscripción de proyectos",
     detail: "Registro institucional de proyectos participantes en modalidad póster.",
@@ -85,7 +92,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mt-12 grid gap-5 md:grid-cols-2">
+      <section className="mt-12 grid gap-5 md:grid-cols-3">
         {publicActions.map((item) => {
           const Icon = item.icon;
           return (

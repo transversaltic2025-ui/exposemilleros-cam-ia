@@ -9,7 +9,7 @@ import { SiteShell } from "@/components/site-shell";
 import { StatusPill } from "@/components/status-pill";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireAdmin } from "@/lib/admin-auth";
-import { getProjectDetail, shouldUseMockData } from "@/lib/supabase/queries";
+import { getProjectDetail, getProjectEditHistory, shouldUseMockData } from "@/lib/supabase/queries";
 import { createProjectFileSignedUrl } from "@/lib/supabase/storage";
 import { AnalyzeProjectButton } from "./analyze-project-button";
 
@@ -54,6 +54,7 @@ export default async function ProyectoDetallePage({
         ]),
     ),
   );
+  const editHistory = proyecto.id ? await getProjectEditHistory(proyecto.id) : [];
 
   return (
     <SiteShell>
@@ -277,6 +278,19 @@ export default async function ProyectoDetallePage({
             </CardContent>
           </Card>
         </div>
+        <Card>
+          <CardHeader><CardTitle>Historial de actualizaciones</CardTitle></CardHeader>
+          <CardContent>
+            {editHistory.length ? <div className="grid gap-3">{editHistory.map((entry) => (
+              <div key={entry.id} className="rounded-xl border border-[var(--color-border)] bg-white/45 p-4 text-sm">
+                <p className="font-bold text-[var(--color-text)]">{entry.tipo_edicion}</p>
+                <p className="mt-1 text-[var(--color-muted)]">{new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Bogota" }).format(new Date(entry.created_at))}</p>
+                <p className="mt-1 text-[var(--color-muted)]">Documento solicitante: {entry.documento_solicitante}</p>
+                {entry.observacion ? <p className="mt-2 text-[var(--color-muted)]">Observación: {entry.observacion}</p> : null}
+              </div>
+            ))}</div> : <p className="text-sm text-[var(--color-muted)]">Este proyecto aún no registra actualizaciones.</p>}
+          </CardContent>
+        </Card>
       </SectionShell>
     </SiteShell>
   );

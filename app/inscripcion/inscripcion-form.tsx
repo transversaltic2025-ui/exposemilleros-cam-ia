@@ -90,6 +90,7 @@ const schema = z.object({
   requiere_certificado: z.string(),
   archivo_proyecto: z.any().optional(),
   poster_proyecto: z.any().optional(),
+  observacion: z.string().max(1000, "La observación no puede superar 1000 caracteres.").optional(),
 }).superRefine((values, ctx) => {
   if (values.area_conocimiento === "Otra" && !values.linea_tematica_otro?.trim()) {
     ctx.addIssue({
@@ -135,7 +136,7 @@ const schema = z.object({
 
 });
 
-type FormValues = z.infer<typeof schema>;
+export type FormValues = z.infer<typeof schema>;
 
 const booleanFields = new Set([
   "requiere_conexion_electrica",
@@ -260,7 +261,21 @@ function minorConsentValidationError(reason?: string, fallback?: string) {
   return fallback ?? "La autorización para tratamiento de datos del menor de edad debe estar en PDF.";
 }
 
-export function InscripcionForm() {
+export function InscripcionForm({
+  mode = "create",
+  initialValues,
+  projectId,
+  projectCode,
+  requesterDocument,
+  hasEvaluations = false,
+}: {
+  mode?: "create" | "edit";
+  initialValues?: Partial<FormValues>;
+  projectId?: string;
+  projectCode?: string;
+  requesterDocument?: string;
+  hasEvaluations?: boolean;
+}) {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [codigoTemporal] = useState(createCodigoTemporal);
@@ -313,6 +328,7 @@ export function InscripcionForm() {
       presenta_prototipo_funcional: false,
       requiere_otro_elemento: false,
       categoria_presentacion: "Poster",
+      ...initialValues,
     },
   });
   const requiereOtroElemento = watch("requiere_otro_elemento");
@@ -552,14 +568,20 @@ export function InscripcionForm() {
       poster_proyecto_tipo: posterMetadata?.tipo ?? "",
       poster_proyecto_size: posterMetadata?.size ?? 0,
     };
-    console.log("[inscripcion] payload final enviado a /api/projects/register", finalPayload);
+    const requestPayload = mode === "edit" ? {
+      ...finalPayload,
+      proyecto_id: projectId,
+      codigo_proyecto: projectCode,
+      documento_solicitante: requesterDocument,
+    } : finalPayload;
+    console.log("[inscripcion] payload final", requestPayload);
 
-    const response = await fetch("/api/projects/register", {
+    const response = await fetch(mode === "edit" ? "/api/projects/update-registration" : "/api/projects/register", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(finalPayload),
+      body: JSON.stringify(requestPayload),
     });
 
     if (!response.ok) {
@@ -569,13 +591,21 @@ export function InscripcionForm() {
       return;
     }
 
-    router.push("/inscripcion/gracias");
+    router.push(mode === "edit" ? "/inscripcion/editar/gracias" : "/inscripcion/gracias");
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-5">
       <input type="hidden" value="Si" {...register("requiere_certificado")} />
       <input type="hidden" value="Poster" {...register("categoria_presentacion")} />
+
+      {mode === "edit" ? (
+        <div className="grid gap-2 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          <p className="font-bold">Está editando una inscripción existente. Los cambios reemplazarán la información registrada previamente.</p>
+          <p>Código del proyecto: <strong>{projectCode}</strong></p>
+          {hasEvaluations ? <p className="font-semibold">Este proyecto ya tiene evaluaciones registradas. Los cambios pueden afectar la coherencia de la evaluación.</p> : null}
+        </div>
+      ) : null}
 
       <section className="grid gap-4 rounded-2xl border border-[var(--color-border)] bg-white/45 p-5">
         <p className="font-sans text-base font-extrabold text-[var(--color-text)]">Información general del proyecto</p>
@@ -885,6 +915,8 @@ export function InscripcionForm() {
 
       {submitError ? <p className="text-sm font-semibold text-red-700">{submitError}</p> : null}
 
+      {mode === "edit" ? <div className="grid gap-2"><Label htmlFor="observacion">Observación de la corrección, opcional</Label><Textarea id="observacion" rows={3} {...register("observacion")} /></div> : null}
+
       <Button
         type="submit"
         size="lg"
@@ -895,7 +927,7 @@ export function InscripcionForm() {
           Object.values(minorConsentUploads).some((item) => item.status === "uploading")
         }
       >
-        Registrar proyecto
+        {mode === "edit" ? "Guardar cambios" : "Registrar proyecto"}
       </Button>
     </form>
   );

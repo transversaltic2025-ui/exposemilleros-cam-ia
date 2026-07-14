@@ -17,10 +17,12 @@ export default function GraciasInscripcionPage() {
           <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">
             Guarde la informacion enviada y este atento a las comunicaciones del evento.
           </p>
+          <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">Si necesita corregir la información enviada o reemplazar el póster, puede hacerlo desde la opción Editar inscripción.</p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
             <Link className="inline-flex h-11 items-center justify-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]" href="/inscripcion">
               Registrar otro proyecto
             </Link>
+            <Link className="inline-flex h-11 items-center justify-center rounded-xl border border-[var(--color-border)] bg-white/65 px-4 text-sm font-bold text-[var(--color-primary)]" href="/inscripcion/editar">Editar inscripción</Link>
             <Link className="inline-flex h-11 items-center justify-center rounded-xl border border-[var(--color-border)] bg-white/65 px-4 text-sm font-bold text-[var(--color-primary)] hover:bg-white" href="/">
               Volver al inicio
             </Link>

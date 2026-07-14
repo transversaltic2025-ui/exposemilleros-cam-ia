@@ -434,6 +434,21 @@ export async function getProjectByCodigo(codigo: string) {
   return data ? normalizeProject(data as Record<string, unknown>) : null;
 }
 
+export async function getProjectEditHistory(projectId: string) {
+  if (!projectId || shouldUseMockData()) return [];
+  const { data, error } = await supabase()
+    .from("proyecto_ediciones")
+    .select("id, created_at, documento_solicitante, tipo_edicion, observacion")
+    .eq("proyecto_id", projectId)
+    .order("created_at", { ascending: false });
+  if (error) {
+    // Permite desplegar la UI antes de ejecutar la migración sin romper el detalle actual.
+    console.error("[projects/edit-history]", error);
+    return [];
+  }
+  return (data ?? []) as Array<{ id: string; created_at: string; documento_solicitante: string; tipo_edicion: string; observacion: string | null }>;
+}
+
 export async function getEvaluators() {
   if (shouldUseMockData()) {
     return evaluadoresMock;
