@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { isEvaluatorAssignmentOpen } from "@/lib/event-config";
-import { documentBelongsToProject, EDIT_ACCESS_ERROR, EDIT_CLOSED_ERROR, normalizeDocument } from "@/lib/project-edit";
+import { documentBelongsToProject, EDIT_ACCESS_ERROR, normalizeDocument } from "@/lib/project-edit";
 import { getProjectByCodigo, getProjectMembers } from "@/lib/supabase/queries";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { validateMinorConsentMetadata, validatePosterMetadata } from "@/lib/upload-limits";
 import type { ProjectTeamPayload } from "@/types/project";
+import { isProjectEditingEnabled, PROJECT_EDITING_CLOSED_MESSAGE } from "@/lib/system-config";
 
 const member = z.object({
   nombreCompleto: z.string().trim().min(3), documento: z.string().trim().min(5),
@@ -50,7 +50,7 @@ function legacy(team: ProjectTeamPayload) {
 
 export async function POST(request: Request) {
   try {
-    if (isEvaluatorAssignmentOpen()) return NextResponse.json({ error: EDIT_CLOSED_ERROR }, { status: 403 });
+    if (!(await isProjectEditingEnabled())) return NextResponse.json({ error: PROJECT_EDITING_CLOSED_MESSAGE }, { status: 403 });
     const values = updateSchema.parse(await request.json());
     const project = await getProjectByCodigo(values.codigo_proyecto);
     if (!project?.id || project.id !== values.proyecto_id) return NextResponse.json({ error: EDIT_ACCESS_ERROR }, { status: 403 });

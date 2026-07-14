@@ -4,10 +4,21 @@ import { SiteShell } from "@/components/site-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getEvaluators } from "@/lib/supabase/queries";
 import { EvaluadorForm } from "./evaluador-form";
+import { isEvaluatorRegistrationEnabled } from "@/lib/system-config";
 
 export const dynamic = "force-dynamic";
 
 export default async function RegistroEvaluadorPage() {
+  const registrationEnabled = await isEvaluatorRegistrationEnabled();
+  if (!registrationEnabled) {
+    return <SiteShell><Card className="mx-auto max-w-2xl"><CardHeader><CardTitle>Registro de evaluadores cerrado</CardTitle></CardHeader><CardContent className="grid gap-4">
+      <p className="text-sm leading-6 text-[var(--color-muted)]">El registro público de evaluadores se encuentra cerrado. Si usted ya está registrado, puede recuperar su acceso para consultar o evaluar los proyectos asignados.</p>
+      <div className="flex flex-wrap gap-3">
+        <Link href="/evaluadores/recuperar" className="inline-flex h-11 w-fit items-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white">Recuperar acceso</Link>
+        <Link href="/" className="inline-flex h-11 w-fit items-center rounded-xl border border-[var(--color-border)] bg-white/65 px-4 text-sm font-bold text-[var(--color-primary)]">Volver al inicio</Link>
+      </div>
+    </CardContent></Card></SiteShell>;
+  }
   const evaluadores = await getEvaluators();
 
   return (

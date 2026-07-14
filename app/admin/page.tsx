@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireAdmin } from "@/lib/admin-auth";
 import { getAIAnalyses, getAssignments, getEvaluators, getHumanEvaluations, getLogisticsSummary, getProjects } from "@/lib/supabase/queries";
 import { AdminLogoutButton } from "./logout-button";
+import { PublicModulesControl } from "./project-editing-control";
+import { isEvaluatorRegistrationEnabled, isProjectEditingEnabled, isProjectRegistrationEnabled } from "@/lib/system-config";
 
 export const dynamic = "force-dynamic";
 
@@ -54,13 +56,14 @@ const adminLinks = [
 export default async function AdminPage() {
   await requireAdmin();
 
-  const [resumenLogistica, proyectos, asignaciones, evaluaciones, analisisIA, evaluadores] = await Promise.all([
+  const [resumenLogistica, proyectos, asignaciones, evaluaciones, analisisIA, evaluadores, projectRegistrationEnabled, projectEditingEnabled, evaluatorRegistrationEnabled] = await Promise.all([
     getLogisticsSummary(),
     getProjects(),
     getAssignments(),
     getHumanEvaluations(),
     getAIAnalyses(),
     getEvaluators(),
+    isProjectRegistrationEnabled(), isProjectEditingEnabled(), isEvaluatorRegistrationEnabled(),
   ]);
   const recientes = proyectos.slice(0, 4);
   const pendientes = asignaciones
@@ -92,6 +95,8 @@ export default async function AdminPage() {
         </div>
         <AdminLogoutButton />
       </div>
+
+      <PublicModulesControl initialState={{ projectRegistrationEnabled, projectEditingEnabled, evaluatorRegistrationEnabled }} />
       <div className="grid gap-4 md:grid-cols-5">
         <MetricCard label="Proyectos" value={resumenLogistica.proyectos} detail="Inscritos" />
         <MetricCard label="Evaluadores" value={resumenLogistica.evaluadores} detail="Registrados" accent="secondary" />

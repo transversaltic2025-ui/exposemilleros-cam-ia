@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isProjectRegistrationEnabled, PROJECT_REGISTRATION_CLOSED_MESSAGE } from "@/lib/system-config";
 import { z } from "zod";
 
 import { createProject, createProjectMembers, generateProjectCode, shouldUseMockData } from "@/lib/supabase/queries";
@@ -608,6 +609,7 @@ function formDataToRecord(formData: FormData) {
 
 export async function POST(request: Request) {
   try {
+    if (!(await isProjectRegistrationEnabled())) return NextResponse.json({ error: PROJECT_REGISTRATION_CLOSED_MESSAGE }, { status: 403 });
     const useMockData = shouldUseMockData();
     const contentType = request.headers.get("content-type") ?? "";
     console.log("[projects/register] USE_MOCK_DATA actual", process.env.USE_MOCK_DATA);

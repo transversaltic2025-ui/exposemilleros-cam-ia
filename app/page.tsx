@@ -4,6 +4,7 @@ import { CalendarDays, ClipboardCheck, FileText, MapPin, ShieldCheck, Users } fr
 
 import { SiteShell } from "@/components/site-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { isEvaluatorRegistrationEnabled, isProjectEditingEnabled, isProjectRegistrationEnabled } from "@/lib/system-config";
 
 const publicActions = [
   {
@@ -29,7 +30,12 @@ const publicActions = [
   },
 ];
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const [registrationEnabled, editingEnabled, evaluatorRegistrationEnabled] = await Promise.all([
+    isProjectRegistrationEnabled(), isProjectEditingEnabled(), isEvaluatorRegistrationEnabled(),
+  ]);
   return (
     <SiteShell>
       <section className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
@@ -62,13 +68,13 @@ export default function Home() {
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link
+            {registrationEnabled ? <Link
               href="/inscripcion"
               className="inline-flex h-12 items-center gap-2 rounded-xl bg-[var(--color-primary)] px-5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(109,63,169,0.22)] hover:bg-[var(--color-secondary)]"
             >
               <FileText className="size-4" />
               Inscribir proyecto
-            </Link>
+            </Link> : null}
             <Link
               href="/evaluadores/registro"
               className="inline-flex h-12 items-center gap-2 rounded-xl border border-[var(--color-border)] bg-white/70 px-5 text-sm font-bold text-[var(--color-text)] hover:bg-white"
@@ -93,7 +99,12 @@ export default function Home() {
       </section>
 
       <section className="mt-12 grid gap-5 md:grid-cols-3">
-        {publicActions.map((item) => {
+        {publicActions.filter((item) => {
+          if (item.href === "/inscripcion") return registrationEnabled;
+          if (item.href === "/inscripcion/editar") return editingEnabled;
+          if (item.href === "/evaluadores/registro") return evaluatorRegistrationEnabled;
+          return true;
+        }).map((item) => {
           const Icon = item.icon;
           return (
             <Card key={item.href} className="h-full">

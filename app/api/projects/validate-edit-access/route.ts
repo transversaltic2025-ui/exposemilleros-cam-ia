@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { isEvaluatorAssignmentOpen } from "@/lib/event-config";
-import { documentBelongsToProject, EDIT_ACCESS_ERROR, EDIT_CLOSED_ERROR, editableProject } from "@/lib/project-edit";
+import { documentBelongsToProject, EDIT_ACCESS_ERROR, editableProject } from "@/lib/project-edit";
 import { getProjectByCodigo, getProjectMembers } from "@/lib/supabase/queries";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isProjectEditingEnabled, PROJECT_EDITING_CLOSED_MESSAGE } from "@/lib/system-config";
 
 export async function POST(request: Request) {
   try {
-    if (isEvaluatorAssignmentOpen()) return NextResponse.json({ error: EDIT_CLOSED_ERROR }, { status: 403 });
+    if (!(await isProjectEditingEnabled())) return NextResponse.json({ error: PROJECT_EDITING_CLOSED_MESSAGE }, { status: 403 });
     const body = await request.json() as { codigo_proyecto?: string; documento?: string };
     const codigo = body.codigo_proyecto?.trim();
     if (!codigo || !body.documento) return NextResponse.json({ error: EDIT_ACCESS_ERROR }, { status: 404 });

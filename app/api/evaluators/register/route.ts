@@ -7,6 +7,7 @@ import {
   isEvaluatorAssignmentOpen,
 } from "@/lib/event-config";
 import { createEvaluatorAndAssignments, shouldUseMockData } from "@/lib/supabase/queries";
+import { EVALUATOR_REGISTRATION_CLOSED_MESSAGE, isEvaluatorRegistrationEnabled } from "@/lib/system-config";
 
 const schema = z.object({
   nombre_evaluador: z.string().min(3),
@@ -29,6 +30,7 @@ function textAlias(data: Record<string, FormDataEntryValue>, names: string[]) {
 
 export async function POST(request: Request) {
   try {
+    if (!(await isEvaluatorRegistrationEnabled())) return NextResponse.json({ error: EVALUATOR_REGISTRATION_CLOSED_MESSAGE }, { status: 403 });
     const now = new Date();
     const assignmentOpen = isEvaluatorAssignmentOpen(now);
     console.info("[evaluators/register] registro de evaluador recibido", {
