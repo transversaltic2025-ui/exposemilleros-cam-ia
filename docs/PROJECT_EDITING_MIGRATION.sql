@@ -1,7 +1,9 @@
 -- Ejecutar una sola vez en Supabase antes de desplegar el módulo de edición.
 alter table public.proyectos
   add column if not exists actualizado_por_documento text,
-  add column if not exists actualizado_at timestamptz;
+  add column if not exists actualizado_at timestamptz,
+  add column if not exists poster_actualizado_at timestamptz,
+  add column if not exists poster_actualizado_por_documento text;
 
 create table if not exists public.proyecto_ediciones (
   id uuid primary key default gen_random_uuid(),

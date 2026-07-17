@@ -587,7 +587,7 @@ export function InscripcionForm({
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
       console.error("[inscripcion] error exacto si falla registro de proyecto", payload);
-      setSubmitError(payload?.error ?? "No se pudo registrar el proyecto.");
+      setSubmitError(payload?.error ?? (mode === "edit" ? "No se pudo actualizar la inscripción." : "No se pudo registrar el proyecto."));
       return;
     }
 
