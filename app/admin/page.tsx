@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowUpRight, BarChart3, ClipboardCheck, ClipboardList, FileBadge, GitBranch, GraduationCap, Users } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BarChart3, ClipboardCheck, ClipboardList, FileBadge, GitBranch, GraduationCap, Sprout, Users } from "lucide-react";
 
 import { MetricCard } from "@/components/metric-card";
 import { SectionShell } from "@/components/section-shell";
@@ -15,6 +15,12 @@ import { isEvaluatorRegistrationEnabled, isProjectEditingEnabled, isProjectRegis
 export const dynamic = "force-dynamic";
 
 const adminLinks = [
+  {
+    href: "/admin/productores",
+    title: "Productores campesinos",
+    detail: "Consulte iniciativas productivas, evaluaciones y análisis IA.",
+    icon: Sprout,
+  },
   {
     href: "/proyectos",
     title: "Proyectos",

@@ -1,12 +1,19 @@
 import Image from "next/image";
 import Link from "next/link";
-import { CalendarDays, ClipboardCheck, FileText, MapPin, ShieldCheck, Users } from "lucide-react";
+import { CalendarDays, ClipboardCheck, FileText, MapPin, ShieldCheck, Sprout, Users } from "lucide-react";
 
 import { SiteShell } from "@/components/site-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isEvaluatorRegistrationEnabled, isProjectEditingEnabled, isProjectRegistrationEnabled } from "@/lib/system-config";
 
 const publicActions = [
+  {
+    href: "/productores/inscripcion",
+    title: "Productores campesinos",
+    detail: "Registro de iniciativas productivas campesinas.",
+    icon: Sprout,
+    label: "Inscribir iniciativa",
+  },
   {
     href: "/inscripcion/editar",
     title: "Editar inscripción de un proyecto",
@@ -98,7 +105,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="mt-12 grid gap-5 md:grid-cols-3">
+      <section className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {publicActions.filter((item) => {
           if (item.href === "/inscripcion") return registrationEnabled;
           if (item.href === "/inscripcion/editar") return editingEnabled;
