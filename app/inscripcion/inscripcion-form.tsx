@@ -78,6 +78,7 @@ const schema = z.object({
   institucion: z.string().min(2, "Indica la institucion."),
   municipio: z.string().min(2, "Indica el municipio."),
   integrantes: z.object({
+    autoresPrincipales: z.array(autorPrincipalSchema).min(1, "Debe registrar al menos un autor principal.").max(2, "Solo puede registrar hasta dos autores principales."),
     autorPrincipal: autorPrincipalSchema,
     aprendices: z.array(aprendizSchema).min(1, "Registra al menos un aprendiz participante."),
     instructoresInvestigadores: z.array(instructorSchema),
@@ -298,6 +299,12 @@ export function InscripcionForm({
     reValidateMode: "onChange",
     defaultValues: {
       integrantes: {
+        autoresPrincipales: [{
+          nombreCompleto: "",
+          documento: "",
+          correo: "",
+          celular: "",
+        }],
         autorPrincipal: {
           nombreCompleto: "",
           documento: "",
@@ -343,6 +350,10 @@ export function InscripcionForm({
   const aprendicesArray = useFieldArray({
     control,
     name: "integrantes.aprendices",
+  });
+  const autoresPrincipalesArray = useFieldArray({
+    control,
+    name: "integrantes.autoresPrincipales",
   });
   const instructoresInvestigadoresArray = useFieldArray({
     control,
@@ -558,7 +569,10 @@ export function InscripcionForm({
       observaciones_adicionales: resumenCientifico(values),
       modalidad_participacion: modalidadCompatibilidad(values),
       productos_obtenidos: productoCompatibilidad(values),
-      integrantes: values.integrantes,
+      integrantes: {
+        ...values.integrantes,
+        autorPrincipal: values.integrantes.autoresPrincipales[0],
+      },
       archivo_proyecto_path: "",
       archivo_proyecto_nombre: "",
       archivo_proyecto_tipo: "",
@@ -688,14 +702,21 @@ export function InscripcionForm({
           </p>
         </div>
 
-        <div className="grid gap-3 rounded-xl border border-[var(--color-border)] bg-white/55 p-4">
-          <p className="text-sm font-extrabold text-[var(--color-text)]">Autor principal *</p>
-          <div className="grid gap-3 md:grid-cols-4">
-            <Field id="autor_principal_nombre" label="Nombre completo" register={register("integrantes.autorPrincipal.nombreCompleto")} error={errors.integrantes?.autorPrincipal?.nombreCompleto?.message} showError={showFieldError(["integrantes", "autorPrincipal", "nombreCompleto"])} />
-            <Field id="autor_principal_documento" label="Documento, si aplica" register={register("integrantes.autorPrincipal.documento")} error={errors.integrantes?.autorPrincipal?.documento?.message} showError={showFieldError(["integrantes", "autorPrincipal", "documento"])} />
-            <Field id="autor_principal_correo" label="Correo" type="email" register={register("integrantes.autorPrincipal.correo")} error={errors.integrantes?.autorPrincipal?.correo?.message} showError={showFieldError(["integrantes", "autorPrincipal", "correo"])} />
-            <Field id="autor_principal_celular" label="Celular" register={register("integrantes.autorPrincipal.celular")} error={errors.integrantes?.autorPrincipal?.celular?.message} showError={showFieldError(["integrantes", "autorPrincipal", "celular"])} />
-          </div>
+        <div className="grid gap-3">
+          <p className="text-sm font-extrabold text-[var(--color-text)]">Autor(es) principal(es) *</p>
+          {autoresPrincipalesArray.fields.map((field, index) => (
+            <div key={field.id} className="grid gap-3 rounded-xl border border-[var(--color-border)] bg-white/55 p-4">
+              <div className="flex items-center justify-between gap-3"><p className="text-sm font-extrabold">Autor principal {index + 1}</p>{index === 1 ? <Button type="button" variant="outline" onClick={() => autoresPrincipalesArray.remove(index)}>Eliminar</Button> : null}</div>
+              <div className="grid gap-3 md:grid-cols-4">
+                <Field id={`autor_principal_${index}_nombre`} label="Nombre completo" register={register(`integrantes.autoresPrincipales.${index}.nombreCompleto`)} error={errors.integrantes?.autoresPrincipales?.[index]?.nombreCompleto?.message} showError={showFieldError(["integrantes", "autoresPrincipales", index, "nombreCompleto"])} />
+                <Field id={`autor_principal_${index}_documento`} label="Documento, si aplica" register={register(`integrantes.autoresPrincipales.${index}.documento`)} error={errors.integrantes?.autoresPrincipales?.[index]?.documento?.message} showError={showFieldError(["integrantes", "autoresPrincipales", index, "documento"])} />
+                <Field id={`autor_principal_${index}_correo`} label="Correo" type="email" register={register(`integrantes.autoresPrincipales.${index}.correo`)} error={errors.integrantes?.autoresPrincipales?.[index]?.correo?.message} showError={showFieldError(["integrantes", "autoresPrincipales", index, "correo"])} />
+                <Field id={`autor_principal_${index}_celular`} label="Celular" register={register(`integrantes.autoresPrincipales.${index}.celular`)} error={errors.integrantes?.autoresPrincipales?.[index]?.celular?.message} showError={showFieldError(["integrantes", "autoresPrincipales", index, "celular"])} />
+              </div>
+            </div>
+          ))}
+          {autoresPrincipalesArray.fields.length < 2 ? <Button type="button" variant="outline" onClick={() => autoresPrincipalesArray.append({ nombreCompleto: "", documento: "", correo: "", celular: "" })}>+ Agregar segundo autor principal</Button> : null}
+          <ErrorText message={errors.integrantes?.autoresPrincipales?.message} show={isSubmitted} />
         </div>
 
         <TeamBlock

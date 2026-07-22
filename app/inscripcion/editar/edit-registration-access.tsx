@@ -11,7 +11,8 @@ type EditableProject = Record<string, unknown> & { id: string; codigo_proyecto: 
 
 function formValues(project: EditableProject): Partial<FormValues> {
   const members = project.integrantes;
-  const author = members.find((m) => m.rol_integrante === "Autor principal");
+  const authors = members.filter((m) => m.rol_integrante === "Autor principal").slice(0, 2);
+  const author = authors[0];
   const learners = members.filter((m) => m.rol_integrante === "Aprendiz participante");
   const staff = members.filter((m) => m.rol_integrante === "Instructor" || m.rol_integrante === "Investigador asociado");
   return {
@@ -24,6 +25,7 @@ function formValues(project: EditableProject): Partial<FormValues> {
     requiere_conexion_electrica: Boolean(project.requiere_conexion_electrica), requiere_mesa_mobiliario: Boolean(project.requiere_mesa_mobiliario), presenta_prototipo_funcional: Boolean(project.presenta_prototipo_funcional),
     requiere_otro_elemento: Boolean(project.requiere_otro_elemento), otro_elemento_descripcion: String(project.otro_elemento_descripcion ?? ""), categoria_presentacion: "Poster", requiere_certificado: "Si",
     integrantes: {
+      autoresPrincipales: authors.map((m) => ({ nombreCompleto: m.nombre_completo, documento: m.documento ?? "", correo: m.correo ?? "", celular: m.celular ?? "" })),
       autorPrincipal: { nombreCompleto: author?.nombre_completo ?? "", documento: author?.documento ?? "", correo: author?.correo ?? "", celular: author?.celular ?? "" },
       aprendices: learners.map((m) => ({ nombreCompleto: m.nombre_completo, documento: m.documento, correo: m.correo, celular: m.celular, ficha: m.ficha, esMenorEdad: m.es_menor_edad, tratamientoDatosMenorPath: m.tratamiento_datos_menor_path, tratamientoDatosMenorNombre: m.tratamiento_datos_menor_nombre, tratamientoDatosMenorTipo: m.tratamiento_datos_menor_tipo, tratamientoDatosMenorSize: m.tratamiento_datos_menor_size })),
       instructoresInvestigadores: staff.map((m) => ({ nombreCompleto: m.nombre_completo, documento: m.documento, correo: m.correo, celular: m.celular, rol: m.rol_integrante as "Instructor" | "Investigador asociado" })),

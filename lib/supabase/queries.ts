@@ -197,17 +197,18 @@ export async function getProjectMembers(projectId: string) {
 }
 
 export async function createProjectMembers(projectId: string, team: ProjectTeamPayload) {
+  const autoresPrincipales = team.autoresPrincipales?.length ? team.autoresPrincipales : [team.autorPrincipal];
   const rows = [
-    {
+    ...autoresPrincipales.map((autor, index) => ({
       proyecto_id: projectId,
       rol_integrante: "Autor principal",
-      nombre_completo: team.autorPrincipal.nombreCompleto,
-      documento: team.autorPrincipal.documento ?? "",
-      correo: team.autorPrincipal.correo,
-      celular: team.autorPrincipal.celular,
+      nombre_completo: autor.nombreCompleto,
+      documento: autor.documento ?? "",
+      correo: autor.correo,
+      celular: autor.celular,
       ficha: "",
-      orden: 1,
-    },
+      orden: index + 1,
+    })),
     ...team.aprendices.map((aprendiz, index) => ({
       proyecto_id: projectId,
       rol_integrante: "Aprendiz participante",

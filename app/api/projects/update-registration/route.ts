@@ -19,6 +19,7 @@ const member = z.object({
   tratamientoDatosMenorSize: z.number().optional(),
 });
 const teamSchema = z.object({
+  autoresPrincipales: z.array(z.object({ nombreCompleto: z.string().trim().min(3), documento: z.string().optional(), correo: z.string().email(), celular: z.string().trim().min(7) })).min(1, "Debe registrar al menos un autor principal.").max(2, "Solo puede registrar hasta dos autores principales.").optional(),
   autorPrincipal: z.object({ nombreCompleto: z.string().trim().min(3), documento: z.string().optional(), correo: z.string().email(), celular: z.string().trim().min(7) }),
   aprendices: z.array(member).min(1, "Seleccione al menos un aprendiz participante."),
   instructoresInvestigadores: z.array(member.extend({ rol: z.enum(["Instructor", "Investigador asociado"]) })).default([]),
@@ -124,7 +125,7 @@ export async function POST(request: Request) {
     if (updateError) { logStep("actualización de proyecto", updateError, project.id); throw new RegistrationUpdateError("No fue posible actualizar los datos del proyecto.", "actualización de proyecto"); }
 
     const rows = [
-      { proyecto_id: project.id, rol_integrante: "Autor principal", nombre_completo: values.integrantes.autorPrincipal.nombreCompleto, documento: values.integrantes.autorPrincipal.documento ?? "", correo: values.integrantes.autorPrincipal.correo, celular: values.integrantes.autorPrincipal.celular, ficha: "", orden: 1 },
+      ...(values.integrantes.autoresPrincipales?.length ? values.integrantes.autoresPrincipales : [values.integrantes.autorPrincipal]).map((item, index) => ({ proyecto_id: project.id, rol_integrante: "Autor principal", nombre_completo: item.nombreCompleto, documento: item.documento ?? "", correo: item.correo, celular: item.celular, ficha: "", orden: index + 1 })),
       ...values.integrantes.aprendices.map((item, index) => ({ proyecto_id: project.id, rol_integrante: "Aprendiz participante", nombre_completo: item.nombreCompleto, documento: item.documento, correo: item.correo, celular: item.celular, ficha: item.ficha?.trim() || "", es_menor_edad: Boolean(item.esMenorEdad), tratamiento_datos_menor_path: item.esMenorEdad ? item.tratamientoDatosMenorPath : null, tratamiento_datos_menor_nombre: item.esMenorEdad ? item.tratamientoDatosMenorNombre : null, tratamiento_datos_menor_tipo: item.esMenorEdad ? item.tratamientoDatosMenorTipo : null, tratamiento_datos_menor_size: item.esMenorEdad ? item.tratamientoDatosMenorSize : null, orden: index + 1 })),
       ...values.integrantes.instructoresInvestigadores.map((item, index) => ({ proyecto_id: project.id, rol_integrante: item.rol, nombre_completo: item.nombreCompleto, documento: item.documento, correo: item.correo, celular: item.celular, ficha: "", es_menor_edad: false, orden: index + 1 })),
     ];

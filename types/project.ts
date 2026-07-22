@@ -40,6 +40,12 @@ export interface ProjectMember {
 }
 
 export interface ProjectTeamPayload {
+  autoresPrincipales?: {
+    nombreCompleto: string;
+    documento?: string;
+    correo: string;
+    celular: string;
+  }[];
   autorPrincipal: {
     nombreCompleto: string;
     documento?: string;

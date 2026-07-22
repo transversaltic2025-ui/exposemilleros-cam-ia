@@ -16,6 +16,12 @@ const optionalEmail = z.union([z.string().email(), z.literal("")]).optional();
 const DEFAULT_PRESENTATION_CATEGORY = "Poster" as const;
 
 const projectTeamSchema = z.object({
+  autoresPrincipales: z.array(z.object({
+    nombreCompleto: z.string().min(3, "Cada autor principal debe tener nombre completo."),
+    documento: z.string().optional(),
+    correo: z.string().email("Cada autor principal debe tener un correo electrónico válido."),
+    celular: z.string().min(7, "Cada autor principal debe tener celular."),
+  })).min(1, "Debe registrar al menos un autor principal.").max(2, "Solo puede registrar hasta dos autores principales."),
   autorPrincipal: z.object({
     nombreCompleto: z.string().min(3, "El autor principal debe tener nombre completo."),
     documento: z.string().optional(),
@@ -332,6 +338,7 @@ function stringArrayAlias(source: Record<string, unknown>, keys: string[]) {
 function normalizeProjectTeam(source: Record<string, unknown>) {
   const team = objectAlias(source, ["integrantes", "equipo"]);
   const autorPrincipal = objectAlias(team, ["autorPrincipal", "autor_principal"]);
+  const autoresPrincipales = arrayAlias(team, "autoresPrincipales");
   const aprendices = arrayAlias(team, "aprendices");
   const instructoresInvestigadores = arrayAlias(team, "instructoresInvestigadores");
   const legacyInstructores = arrayAlias(team, "instructores").map((instructor) => ({
@@ -348,6 +355,12 @@ function normalizeProjectTeam(source: Record<string, unknown>) {
     : [...legacyInstructores, ...legacyInvestigadores];
 
   return {
+    autoresPrincipales: (autoresPrincipales.length ? autoresPrincipales : [autorPrincipal]).map((autor) => ({
+      nombreCompleto: textAlias(autor, ["nombreCompleto", "nombre_completo", "nombre"]),
+      documento: textAlias(autor, ["documento"]),
+      correo: textAlias(autor, ["correo"]),
+      celular: textAlias(autor, ["celular", "telefono"]),
+    })),
     autorPrincipal: {
       nombreCompleto: textAlias(autorPrincipal, ["nombreCompleto", "nombre_completo", "nombre"]),
       documento: textAlias(autorPrincipal, ["documento"]),

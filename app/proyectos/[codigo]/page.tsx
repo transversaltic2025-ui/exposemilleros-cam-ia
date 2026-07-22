@@ -173,7 +173,7 @@ export default async function ProyectoDetallePage({
             <CardTitle>Equipo del proyecto</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-5">
-            <TeamGroup title="Autor principal" members={autorPrincipal} minorConsentUrls={minorConsentUrls} />
+            <TeamGroup title="Autor(es) principal(es)" members={autorPrincipal} minorConsentUrls={minorConsentUrls} />
             <TeamGroup title="Aprendices participantes" members={aprendices} minorConsentUrls={minorConsentUrls} />
             <TeamGroup title="Instructores o investigadores asociados" members={instructoresInvestigadores} minorConsentUrls={minorConsentUrls} emptyText="No registrados" />
           </CardContent>
