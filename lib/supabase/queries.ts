@@ -197,7 +197,14 @@ export async function getProjectMembers(projectId: string) {
 }
 
 export async function createProjectMembers(projectId: string, team: ProjectTeamPayload) {
-  const autoresPrincipales = team.autoresPrincipales?.length ? team.autoresPrincipales : [team.autorPrincipal];
+  const autoresPrincipales = team.autoresPrincipales?.length
+    ? team.autoresPrincipales
+    : team.autorPrincipal
+      ? [team.autorPrincipal]
+      : [];
+  if (autoresPrincipales.length === 0) {
+    throw new Error("Debe registrar al menos un autor principal.");
+  }
   const rows = [
     ...autoresPrincipales.map((autor, index) => ({
       proyecto_id: projectId,
@@ -1071,7 +1078,7 @@ export async function createProject(input: {
     observaciones_admin: input.observaciones_admin ?? "",
   };
 
-  console.log("[projects/register] payload que se intenta insertar", project);
+  console.log("[projects/register] insertando proyecto", { codigo_proyecto: project.codigo_proyecto });
 
   const { data, error } = await supabase()
     .from("proyectos")

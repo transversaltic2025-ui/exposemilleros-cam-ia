@@ -79,7 +79,7 @@ const schema = z.object({
   municipio: z.string().min(2, "Indica el municipio."),
   integrantes: z.object({
     autoresPrincipales: z.array(autorPrincipalSchema).min(1, "Debe registrar al menos un autor principal.").max(2, "Solo puede registrar hasta dos autores principales."),
-    autorPrincipal: autorPrincipalSchema,
+    autorPrincipal: autorPrincipalSchema.optional(),
     aprendices: z.array(aprendizSchema).min(1, "Registra al menos un aprendiz participante."),
     instructoresInvestigadores: z.array(instructorSchema),
   }),
@@ -599,9 +599,15 @@ export function InscripcionForm({
     });
 
     if (!response.ok) {
-      const payload = await response.json().catch(() => null);
+      const text = await response.text();
+      let payload: { error?: string } | null = null;
+      try {
+        payload = text ? JSON.parse(text) as { error?: string } : null;
+      } catch {
+        payload = null;
+      }
       console.error("[inscripcion] error exacto si falla registro de proyecto", payload);
-      setSubmitError(payload?.error ?? (mode === "edit" ? "No se pudo actualizar la inscripción." : "No se pudo registrar el proyecto."));
+      setSubmitError(payload?.error || (mode === "edit" ? "No se pudo actualizar la inscripción." : "No fue posible registrar el proyecto."));
       return;
     }
 

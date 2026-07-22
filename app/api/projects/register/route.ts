@@ -353,20 +353,22 @@ function normalizeProjectTeam(source: Record<string, unknown>) {
   const combinedInstructorsResearchers = hasExplicitCombinedTeam
     ? instructoresInvestigadores
     : [...legacyInstructores, ...legacyInvestigadores];
+  const normalizedAuthors = (autoresPrincipales.length ? autoresPrincipales : [autorPrincipal]).map((autor) => ({
+    nombreCompleto: textAlias(autor, ["nombreCompleto", "nombre_completo", "nombre"]),
+    documento: textAlias(autor, ["documento"]),
+    correo: textAlias(autor, ["correo"]),
+    celular: textAlias(autor, ["celular", "telefono"]),
+  }));
+  const firstAuthor = normalizedAuthors[0] ?? {
+    nombreCompleto: "",
+    documento: "",
+    correo: "",
+    celular: "",
+  };
 
   return {
-    autoresPrincipales: (autoresPrincipales.length ? autoresPrincipales : [autorPrincipal]).map((autor) => ({
-      nombreCompleto: textAlias(autor, ["nombreCompleto", "nombre_completo", "nombre"]),
-      documento: textAlias(autor, ["documento"]),
-      correo: textAlias(autor, ["correo"]),
-      celular: textAlias(autor, ["celular", "telefono"]),
-    })),
-    autorPrincipal: {
-      nombreCompleto: textAlias(autorPrincipal, ["nombreCompleto", "nombre_completo", "nombre"]),
-      documento: textAlias(autorPrincipal, ["documento"]),
-      correo: textAlias(autorPrincipal, ["correo"]),
-      celular: textAlias(autorPrincipal, ["celular", "telefono"]),
-    },
+    autoresPrincipales: normalizedAuthors,
+    autorPrincipal: firstAuthor,
     aprendices: aprendices.map((aprendiz) => ({
       nombreCompleto: textAlias(aprendiz, ["nombreCompleto", "nombre_completo", "nombre"]),
       documento: textAlias(aprendiz, ["documento"]),
@@ -621,6 +623,7 @@ function formDataToRecord(formData: FormData) {
 }
 
 export async function POST(request: Request) {
+  console.log("[projects/register] inicio");
   try {
     if (!(await isProjectRegistrationEnabled())) return NextResponse.json({ error: PROJECT_REGISTRATION_CLOSED_MESSAGE }, { status: 403 });
     const useMockData = shouldUseMockData();
@@ -635,10 +638,17 @@ export async function POST(request: Request) {
     const source = jsonPayload ?? formDataToRecord(formData as FormData);
     const normalizedPayload = normalizeRegistrationPayload(source);
     const fileMetadata = normalizeFileMetadata(source);
-    console.log("[projects/register] payload recibido normalizado", normalizedPayload);
-    console.log("[projects/register] metadatos de archivos recibidos", fileMetadata);
-
-    const values = schema.parse(normalizedPayload);
+    const parsedValues = schema.safeParse(normalizedPayload);
+    if (!parsedValues.success) {
+      return NextResponse.json(
+        { error: parsedValues.error.issues[0]?.message ?? "Los datos de la inscripción no son válidos." },
+        { status: 400 },
+      );
+    }
+    const values = parsedValues.data;
+    console.log("[projects/register] autores", values.integrantes.autoresPrincipales.length);
+    console.log("[projects/register] aprendices", values.integrantes.aprendices.length);
+    console.log("[projects/register] instructoresInvestigadores", values.integrantes.instructoresInvestigadores.length);
     const file = formData ? fileAlias(formData, ["archivo_proyecto", "archivoProyecto"]) : null;
     const poster = formData ? fileAlias(formData, ["poster_proyecto", "posterProyecto"]) : null;
     console.log("[projects/register] archivo completo recibido por multipart", file ? {
@@ -776,22 +786,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: finalMetadataError }, { status: 400 });
     }
 
-    console.log("[projects/register] payload final aceptado", projectPayload);
-    const project = await createProject(projectPayload);
+    let project;
+    try {
+      project = await createProject(projectPayload);
+    } catch (error) {
+      console.error("[projects/register] error insert proyecto", error);
+      return NextResponse.json({ error: "No fue posible registrar el proyecto." }, { status: 500 });
+    }
     if (!project.id) {
       throw new Error("El proyecto fue creado, pero no se recibio su identificador para guardar integrantes.");
     }
     try {
       await createProjectMembers(project.id, values.integrantes);
     } catch (error) {
-      console.error("[projects/register] error guardando integrantes del proyecto", error);
-      throw new Error("El proyecto se registro, pero fallo el guardado del equipo del proyecto. Revise la tabla proyecto_integrantes.");
+      console.error("[projects/register] error integrantes", error);
+      return NextResponse.json({ error: "No fue posible registrar el proyecto." }, { status: 500 });
     }
 
     return NextResponse.json({ project }, { status: 201 });
   } catch (error) {
-    console.error("[projects/register] error exacto en registro de proyecto", error);
-    const message = error instanceof Error ? error.message : "No se pudo registrar el proyecto.";
-    return NextResponse.json({ error: message }, { status: 400 });
+    console.error("[projects/register] error:", error);
+    return NextResponse.json({ error: "No fue posible registrar el proyecto." }, { status: 500 });
   }
 }

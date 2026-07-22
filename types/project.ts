@@ -46,7 +46,7 @@ export interface ProjectTeamPayload {
     correo: string;
     celular: string;
   }[];
-  autorPrincipal: {
+  autorPrincipal?: {
     nombreCompleto: string;
     documento?: string;
     correo: string;
