@@ -5,7 +5,7 @@ import { Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { useFieldArray, useForm, type UseFormRegister, type UseFormRegisterReturn } from "react-hook-form";
+import { useFieldArray, useForm, type FieldErrors, type UseFormRegister, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,16 @@ const instructorSchema = z.object({
   }),
 });
 
+const integrantesSchema = z.object({
+  autoresPrincipales: z.array(autorPrincipalSchema)
+    .min(1, "Debe registrar al menos un autor principal.")
+    .max(2, "Solo puede registrar hasta dos autores principales."),
+  // Se recibe solo por compatibilidad. La fuente validada es autoresPrincipales.
+  autorPrincipal: z.unknown().optional(),
+  aprendices: z.array(aprendizSchema).min(1, "Registra al menos un aprendiz participante."),
+  instructoresInvestigadores: z.array(instructorSchema),
+});
+
 const schema = z.object({
   titulo: z.string().min(5, "Escribe el titulo del proyecto."),
   area_conocimiento: z.string().min(1, "Seleccione una línea temática."),
@@ -77,12 +87,7 @@ const schema = z.object({
   categoria_presentacion: z.literal("Poster"),
   institucion: z.string().min(2, "Indica la institucion."),
   municipio: z.string().min(2, "Indica el municipio."),
-  integrantes: z.object({
-    autoresPrincipales: z.array(autorPrincipalSchema).min(1, "Debe registrar al menos un autor principal.").max(2, "Solo puede registrar hasta dos autores principales."),
-    autorPrincipal: autorPrincipalSchema.optional(),
-    aprendices: z.array(aprendizSchema).min(1, "Registra al menos un aprendiz participante."),
-    instructoresInvestigadores: z.array(instructorSchema),
-  }),
+  integrantes: integrantesSchema,
   requiere_conexion_electrica: z.boolean(),
   requiere_mesa_mobiliario: z.boolean(),
   presenta_prototipo_funcional: z.boolean(),
@@ -177,6 +182,19 @@ function isTouchedPath(touchedFields: unknown, path: Array<string | number>) {
   }
 
   return Boolean(current);
+}
+
+function firstFormErrorMessage(value: unknown): string | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  if (typeof record.message === "string" && record.message) return record.message;
+
+  for (const child of Object.values(record)) {
+    const message = firstFormErrorMessage(child);
+    if (message) return message;
+  }
+
+  return null;
 }
 
 function legacyTeamFields(values: FormValues) {
@@ -290,6 +308,7 @@ export function InscripcionForm({
     register,
     handleSubmit,
     watch,
+    getValues,
     setValue,
     control,
     formState: { errors, isSubmitting, isSubmitted, touchedFields },
@@ -305,12 +324,6 @@ export function InscripcionForm({
           correo: "",
           celular: "",
         }],
-        autorPrincipal: {
-          nombreCompleto: "",
-          documento: "",
-          correo: "",
-          celular: "",
-        },
         aprendices: [
           {
             nombreCompleto: "",
@@ -452,6 +465,7 @@ export function InscripcionForm({
       };
       setMetadata(metadata);
       setStatus("uploaded");
+      if (kind === "poster") console.log("[inscripcion] poster cargado", metadata);
       console.log("[inscripcion] subida completada en cliente", {
         kind,
         ...metadata,
@@ -537,6 +551,13 @@ export function InscripcionForm({
   }
 
   async function onSubmit(values: FormValues) {
+    console.log("[inscripcion] submit iniciado");
+    console.log("[inscripcion] autoresPrincipales estado", values.integrantes.autoresPrincipales.map((autor, index) => ({
+      index,
+      nombreCompletoDiligenciado: Boolean(autor.nombreCompleto),
+      correoDiligenciado: Boolean(autor.correo),
+      celularDiligenciado: Boolean(autor.celular),
+    })));
     setSubmitError(null);
     if (posterStatus === "uploading") {
       setSubmitError("Espera a que termine la subida de archivos.");
@@ -588,15 +609,25 @@ export function InscripcionForm({
       codigo_proyecto: projectCode,
       documento_solicitante: requesterDocument,
     } : finalPayload;
-    console.log("[inscripcion] payload final", requestPayload);
+    console.log("[inscripcion] payload listo para registrar");
 
-    const response = await fetch(mode === "edit" ? "/api/projects/update-registration" : "/api/projects/register", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestPayload),
-    });
+    const endpoint = mode === "edit" ? "/api/projects/update-registration" : "/api/projects/register";
+    console.log(`[inscripcion] llamando ${endpoint}`);
+    let response: Response;
+    try {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestPayload),
+      });
+    } catch (error) {
+      console.error("[inscripcion] error de red registrando proyecto", error);
+      setSubmitError(mode === "edit" ? "No se pudo actualizar la inscripción." : "No fue posible registrar el proyecto.");
+      return;
+    }
+    console.log("[inscripcion] respuesta register", response.status);
 
     if (!response.ok) {
       const text = await response.text();
@@ -614,8 +645,24 @@ export function InscripcionForm({
     router.push(mode === "edit" ? "/inscripcion/editar/gracias" : "/inscripcion/gracias");
   }
 
+  function onInvalid(validationErrors: FieldErrors<FormValues>) {
+    console.log("[inscripcion] submit iniciado");
+    const autoresPrincipales = getValues("integrantes.autoresPrincipales") ?? [];
+    console.log("[inscripcion] autoresPrincipales estado", autoresPrincipales.map((autor, index) => ({
+      index,
+      nombreCompletoDiligenciado: Boolean(autor.nombreCompleto),
+      correoDiligenciado: Boolean(autor.correo),
+      celularDiligenciado: Boolean(autor.celular),
+    })));
+    const message = firstFormErrorMessage(validationErrors);
+    console.log("[inscripcion] error validacion", message ?? "Campos obligatorios incompletos");
+    setSubmitError(message
+      ? `Revise el formulario: ${message}`
+      : "Revise los campos obligatorios antes de registrar el proyecto.");
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-5">
+    <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="grid gap-5">
       <input type="hidden" value="Si" {...register("requiere_certificado")} />
       <input type="hidden" value="Poster" {...register("categoria_presentacion")} />
 
