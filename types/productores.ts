@@ -25,7 +25,7 @@ export type ProductorIniciativa = {
 
 export type EvaluadoraProductores = {
   id: string;
-  nombre_completo: string;
+  nombre: string;
   documento: string;
   correo?: string | null;
   activo: boolean;

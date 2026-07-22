@@ -4,7 +4,7 @@ export const LINEAS_PRODUCTIVAS = ["Agricultura", "Pecuaria", "Agroindustria", "
 export const NIVELES_MADUREZ_PRODUCTORES = ["Idea", "Producción inicial", "Producto listo para vender", "Ya tiene ventas", "En crecimiento"];
 export const PRODUCTOS_PRODUCTORES = ["Producto fresco", "Producto transformado", "Prototipo", "Marca", "Empaque", "Canal de venta", "Catálogo", "Certificación", "Registro sanitario", "Otro"];
 export const LUGARES_VENTA = ["No vende todavía", "Finca o unidad productiva", "Plaza de mercado", "Tienda local", "Ferias", "Intermediarios", "Restaurantes", "Clientes directos", "Otro"];
-export const DIFICULTADES_PRODUCTORES = ["Falta de capital", "Falta de maquinaria o equipos", "Falta de empaque", "Falta de transporte", "Falta de clientes", "Falta de capacitación", "Falta de registro sanitario", "Falta de marca o imagen comercial", "Falta de asistencia técnica", "Otra"];
+export const DIFICULTADES_PRODUCTORES = ["Falta de capital", "Falta de maquinaria o equipos", "Falta de empaque", "Falta de transporte", "Falta de clientes", "Falta de capacitación", "Falta de registro sanitario", "Falta de marca o imagen comercial", "Falta de asistencia técnica", "Falta de financiación", "Otra"];
 
 export const iniciativaProductorSchema = z.object({
   nombre_productor: z.string().trim().min(2, "Ingrese el nombre del productor."),
@@ -37,4 +37,8 @@ export const iniciativaProductorSchema = z.object({
 
 export function nivelTendencia(promedio: number) {
   return promedio >= 4 ? "Alto potencial" : promedio >= 3 ? "Potencial medio" : "Requiere fortalecimiento";
+}
+
+export function normalizarDocumento(value: string) {
+  return value.trim().replace(/[\s.,-]+/g, "");
 }

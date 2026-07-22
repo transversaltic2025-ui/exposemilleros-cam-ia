@@ -25,6 +25,9 @@ export const OPENROUTER_FREE_FALLBACK_MODELS = [
 
 type OpenRouterOptions = {
   temperature?: number;
+  validateContent?: (content: string) => void;
+  onModelAttempt?: (model: string) => void;
+  onModelError?: (model: string, error: Error) => void;
 };
 
 function metadataSummary(metadata: unknown) {
@@ -121,10 +124,14 @@ export async function callOpenRouter(messages: OpenRouterMessage[], options: Ope
   let lastError: Error | null = null;
 
   for (const model of OPENROUTER_FREE_FALLBACK_MODELS) {
+    options.onModelAttempt?.(model);
     try {
-      return await callOpenRouterModel(model, messages, options, apiKey);
+      const result = await callOpenRouterModel(model, messages, options, apiKey);
+      options.validateContent?.(result.content);
+      return result;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error("Error desconocido de OpenRouter.");
+      options.onModelError?.(model, lastError);
       console.warn(`[ai/openrouter] modelo fallo: ${model} - ${lastError.message}`);
     }
   }

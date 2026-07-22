@@ -130,6 +130,14 @@ export default async function Home() {
                   {item.label}
                   <ClipboardCheck className="size-4" />
                 </Link>
+                {item.href === "/productores/inscripcion" ? (
+                  <Link
+                    href="/evaluadoras-productores"
+                    className="inline-flex w-fit text-sm font-bold text-[var(--color-primary)] underline-offset-4 hover:underline"
+                  >
+                    Acceso evaluadoras de productores
+                  </Link>
+                ) : null}
               </CardContent>
             </Card>
           );
