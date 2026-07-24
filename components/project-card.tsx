@@ -8,6 +8,7 @@ export function ProjectCard({
   codigo,
   nombre,
   linea,
+  semillero,
   estado,
   score,
   updatedAt,
@@ -15,6 +16,7 @@ export function ProjectCard({
   codigo: string;
   nombre: string;
   linea: string;
+  semillero?: string;
   estado?: string;
   score?: number | null;
   updatedAt?: string;
@@ -32,6 +34,11 @@ export function ProjectCard({
       </div>
       <div className="mt-5 flex flex-wrap gap-2">
         <StatusPill status={estado} />
+        {semillero ? (
+          <span className="inline-flex min-h-7 items-center rounded-full border border-[var(--color-primary)]/20 bg-[var(--color-primary)]/5 px-3 py-1 text-xs font-bold text-[var(--color-primary)]">
+            {semillero}
+          </span>
+        ) : null}
         <span className="inline-flex min-h-7 items-center rounded-full border border-[var(--color-border)] bg-white/55 px-3 py-1 text-xs font-bold text-[var(--color-muted)]">
           {linea}
         </span>
