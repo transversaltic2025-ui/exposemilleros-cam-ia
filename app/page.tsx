@@ -1,47 +1,20 @@
 import Image from "next/image";
 import Link from "next/link";
-import { CalendarDays, ClipboardCheck, FileText, MapPin, ShieldCheck, Sprout, Users } from "lucide-react";
+import { CalendarDays, FilePenLine, FilePlus2, FileText, KeyRound, MapPin, NotebookPen, Rocket, ShieldCheck, Sprout, UserRoundPlus, Users } from "lucide-react";
 
 import { SiteShell } from "@/components/site-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { isEvaluatorRegistrationEnabled, isProjectEditingEnabled, isProjectRegistrationEnabled } from "@/lib/system-config";
-
-const publicActions = [
-  {
-    href: "/productores/inscripcion",
-    title: "Productores campesinos",
-    detail: "Registro de iniciativas productivas campesinas.",
-    icon: Sprout,
-    label: "Inscribir iniciativa",
-  },
-  {
-    href: "/inscripcion/editar",
-    title: "Editar inscripción de un proyecto",
-    detail: "Corrija la información o reemplace el póster usando el código del proyecto y el documento de un integrante.",
-    icon: ClipboardCheck,
-    label: "Editar inscripción de un proyecto",
-  },
-  {
-    href: "/inscripcion",
-    title: "Inscripción de proyectos",
-    detail: "Registro institucional de proyectos participantes en modalidad póster.",
-    icon: FileText,
-    label: "Inscribir proyecto",
-  },
-  {
-    href: "/evaluadores/registro",
-    title: "Acceso evaluadores",
-    detail: "Registro de evaluadores y acceso a recuperación de proyectos asignados.",
-    icon: Users,
-    label: "Acceso evaluadores",
-  },
-];
+import { isEvaluatorRegistrationEnabled, isProducersRegistrationEnabled, isProjectEditingEnabled, isProjectRegistrationEnabled, isYoungEntrepreneursRegistrationEnabled } from "@/lib/system-config";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [registrationEnabled, editingEnabled, evaluatorRegistrationEnabled] = await Promise.all([
-    isProjectRegistrationEnabled(), isProjectEditingEnabled(), isEvaluatorRegistrationEnabled(),
+  const [registrationEnabled, editingEnabled, evaluatorRegistrationEnabled, producersRegistrationEnabled, youngEntrepreneursRegistrationEnabled] = await Promise.all([
+    isProjectRegistrationEnabled(),
+    isProjectEditingEnabled(),
+    isEvaluatorRegistrationEnabled(),
+    isProducersRegistrationEnabled(),
+    isYoungEntrepreneursRegistrationEnabled(),
   ]);
   return (
     <SiteShell>
@@ -75,19 +48,19 @@ export default async function Home() {
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
-            {registrationEnabled ? <Link
-              href="/inscripcion"
+            <Link
+              href="/proyectos-investigacion"
               className="inline-flex h-12 items-center gap-2 rounded-xl bg-[var(--color-primary)] px-5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(109,63,169,0.22)] hover:bg-[var(--color-secondary)]"
             >
               <FileText className="size-4" />
-              Inscribir proyecto
-            </Link> : null}
+              Proyectos de investigación
+            </Link>
             <Link
               href="/evaluadores/registro"
               className="inline-flex h-12 items-center gap-2 rounded-xl border border-[var(--color-border)] bg-white/70 px-5 text-sm font-bold text-[var(--color-text)] hover:bg-white"
             >
               <Users className="size-4" />
-              Acceso evaluadores
+              Acceso evaluadores de proyectos
             </Link>
           </div>
         </div>
@@ -105,44 +78,133 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {publicActions.filter((item) => {
-          if (item.href === "/inscripcion") return registrationEnabled;
-          if (item.href === "/inscripcion/editar") return editingEnabled;
-          if (item.href === "/evaluadores/registro") return evaluatorRegistrationEnabled;
-          return true;
-        }).map((item) => {
-          const Icon = item.icon;
-          return (
-            <Card key={item.href} className="h-full">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Icon className="size-5 text-[var(--color-primary)]" />
-                  {item.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex h-full flex-col gap-5 text-sm leading-6 text-[var(--color-muted)]">
-                <p>{item.detail}</p>
-                <Link
-                  href={item.href}
-                  className="mt-auto inline-flex h-11 w-fit items-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]"
-                >
-                  {item.label}
-                  <ClipboardCheck className="size-4" />
-                </Link>
-                {item.href === "/productores/inscripcion" ? (
-                  <Link
-                    href="/evaluadoras-productores"
-                    className="inline-flex w-fit text-sm font-bold text-[var(--color-primary)] underline-offset-4 hover:underline"
-                  >
-                    Acceso evaluadoras de productores
-                  </Link>
-                ) : null}
-              </CardContent>
-            </Card>
-          );
-        })}
+      <section className="mt-12 grid items-stretch gap-6 lg:grid-cols-2">
+        <HomeModuleCard
+          icon={NotebookPen}
+          title="Proyectos de investigación"
+          description="Inscribe un proyecto de investigación o ingrese para editar una inscripción existente."
+          actions={[
+            {
+              href: "/inscripcion",
+              label: "Inscribir proyecto",
+              icon: FilePlus2,
+              enabled: registrationEnabled,
+              closedMessage: "La inscripción de proyectos está cerrada en este momento.",
+            },
+            {
+              href: "/inscripcion/editar",
+              label: "Editar inscripción",
+              icon: FilePenLine,
+              enabled: editingEnabled,
+              closedMessage: "La edición de inscripciones está cerrada en este momento.",
+            },
+          ]}
+        />
+        <HomeModuleCard
+          icon={Sprout}
+          title="Productores campesinos"
+          description="Registre iniciativas productivas campesinas o ingrese como evaluador autorizado."
+          actions={[
+            {
+              href: "/productores/inscripcion",
+              label: "Inscribir iniciativa",
+              icon: Sprout,
+              enabled: producersRegistrationEnabled,
+              closedMessage: "La inscripción de productores campesinos está cerrada en este momento.",
+            },
+            { href: "/evaluadores-productores", label: "Acceso evaluadores", icon: Users, enabled: true },
+          ]}
+        />
+        <HomeModuleCard
+          icon={Users}
+          title="Evaluadores de proyectos"
+          description="Acceda al registro, recuperación y evaluación de proyectos de investigación en modalidad póster."
+          actions={[
+            {
+              href: "/evaluadores/registro",
+              label: "Registro de evaluadores de proyectos (modalidad póster)",
+              icon: UserRoundPlus,
+              enabled: evaluatorRegistrationEnabled,
+              closedMessage: "El registro público de evaluadores de proyectos de investigación en modalidad póster está cerrado en este momento.",
+            },
+            { href: "/evaluadores/recuperar", label: "Recuperar acceso", icon: KeyRound, enabled: true },
+          ]}
+        />
+        <HomeModuleCard
+          icon={Rocket}
+          title="Jóvenes emprendedores"
+          description="Inscripción para jóvenes emprendedores del departamento del Meta."
+          actions={[
+            {
+              href: "/jovenes-emprendedores/inscripcion",
+              label: "Inscribir joven emprendedor",
+              icon: Rocket,
+              enabled: youngEntrepreneursRegistrationEnabled,
+              closedMessage: "La inscripción de jóvenes emprendedores está cerrada en este momento.",
+            },
+          ]}
+        />
       </section>
     </SiteShell>
   );
+}
+
+type ModuleAction = {
+  href: string;
+  label: string;
+  icon: typeof FileText;
+  enabled: boolean;
+  closedMessage?: string;
+};
+
+function HomeModuleCard({
+  icon: Icon,
+  title,
+  description,
+  actions,
+}: {
+  icon: typeof FileText;
+  title: string;
+  description: string;
+  actions: ModuleAction[];
+}) {
+  return (
+    <Card className="flex h-full flex-col rounded-3xl bg-white/85 shadow-[0_18px_45px_rgba(30,41,59,0.10)]">
+      <CardHeader className="gap-4 p-6 pb-3 sm:p-8 sm:pb-4">
+        <div className="grid size-12 place-items-center rounded-full bg-[var(--color-primary)] text-white shadow-[0_12px_28px_rgba(109,63,169,0.22)]">
+          <Icon className="size-6" aria-hidden="true" />
+        </div>
+        <CardTitle className="text-2xl font-black">{title}</CardTitle>
+        <p className="text-sm leading-7 text-[var(--color-muted)] sm:text-base">{description}</p>
+      </CardHeader>
+      <CardContent className="mt-auto grid gap-3 p-6 pt-3 sm:p-8 sm:pt-4">
+        {actions.map((action, index) => (
+          <div key={action.href} className="grid gap-2">
+            {!action.enabled && action.closedMessage ? (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-950">
+                {action.closedMessage}
+              </p>
+            ) : null}
+            <HomeModuleButton action={action} primary={index === 0} />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function HomeModuleButton({ action, primary }: { action: ModuleAction; primary: boolean }) {
+  const Icon = action.icon;
+  const className = `inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold transition ${
+    action.enabled
+      ? primary
+        ? "bg-[var(--color-primary)] text-white shadow-[0_12px_24px_rgba(109,63,169,0.18)] hover:bg-[var(--color-secondary)]"
+        : "border border-[var(--color-primary)] bg-white text-[var(--color-primary)] hover:bg-violet-50"
+      : "cursor-not-allowed border border-[var(--color-border)] bg-slate-100 text-[var(--color-muted)] opacity-65"
+  }`;
+
+  if (!action.enabled) {
+    return <span aria-disabled="true" className={className}>{action.label}<Icon className="size-4" /></span>;
+  }
+  return <Link href={action.href} className={className}>{action.label}<Icon className="size-4" /></Link>;
 }

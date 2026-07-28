@@ -9,9 +9,10 @@ import { SiteShell } from "@/components/site-shell";
 import { StatusPill } from "@/components/status-pill";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireAdmin } from "@/lib/admin-auth";
-import { getProjectDetail, getProjectEditHistory, shouldUseMockData } from "@/lib/supabase/queries";
+import { getAssignments, getProjectDetail, getProjectEditHistory, shouldUseMockData } from "@/lib/supabase/queries";
 import { createProjectFileSignedUrl } from "@/lib/supabase/storage";
 import { AnalyzeProjectButton } from "./analyze-project-button";
+import { AssignmentControl } from "./assignment-control";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,7 @@ export default async function ProyectoDetallePage({
     ),
   );
   const editHistory = proyecto.id ? await getProjectEditHistory(proyecto.id) : [];
+  const projectAssignments = (await getAssignments()).filter((assignment) => assignment.proyecto_id === proyecto.id);
 
   return (
     <SiteShell>
@@ -163,6 +165,21 @@ export default async function ProyectoDetallePage({
             <Info label="Productos obtenidos" value={displayList(proyecto.productos_obtenidos)} />
             {proyecto.productos_obtenidos_otro ? <Info label="Otro producto" value={proyecto.productos_obtenidos_otro} /> : null}
             <Info label="Nivel de madurez" value={proyecto.nivel_madurez} />
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="mt-6">
+        <Card>
+          <CardHeader><CardTitle>Asignación de evaluadores</CardTitle></CardHeader>
+          <CardContent>
+            <AssignmentControl
+              codigo={proyecto.codigo_proyecto ?? proyecto.codigo}
+              manual={proyecto.requiere_asignacion_manual === true}
+              capacity={proyecto.cupo_evaluadores_manual ?? 2}
+              observations={proyecto.observaciones_asignacion_manual ?? ""}
+              assignments={projectAssignments}
+            />
           </CardContent>
         </Card>
       </section>

@@ -22,8 +22,8 @@ export async function POST(request: Request) {
       .eq("documento", documento)
       .maybeSingle();
     if (error) throw error;
-    if (!data) return NextResponse.json({ error: "No encontramos una evaluadora activa con ese documento." }, { status: 404 });
-    if (!data.activo) return NextResponse.json({ error: "La evaluadora se encuentra inactiva. Comuníquese con el equipo organizador." }, { status: 403 });
+    if (!data) return NextResponse.json({ error: "No encontramos un evaluador activo con ese documento." }, { status: 404 });
+    if (!data.activo) return NextResponse.json({ error: "El evaluador se encuentra inactivo. Comuníquese con el equipo organizador." }, { status: 403 });
     return NextResponse.json({ success: true, token: createEvaluadoraToken(data.id), evaluadora: { nombre: data.nombre, documento: data.documento } });
   } catch (error) {
     console.error("[productores/evaluadoras/login] error:", error);

@@ -15,6 +15,6 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ evaluadora: data });
   } catch (error) {
     console.error("[admin/productores/evaluadoras/id] error:", error);
-    return NextResponse.json({ error: "No fue posible actualizar la evaluadora." }, { status: 500 });
+    return NextResponse.json({ error: "No fue posible actualizar el evaluador." }, { status: 500 });
   }
 }

@@ -728,7 +728,12 @@ export async function POST(request: Request) {
         estado_lectura_archivo: "Pendiente",
       };
       console.log("[projects/register] payload mock", mockProject);
-      return NextResponse.json({ project: mockProject }, { status: 201 });
+      return NextResponse.json({
+        success: true,
+        codigo_proyecto: mockProject.codigo_proyecto,
+        nombre_proyecto: mockProject.nombre_proyecto,
+        project: mockProject,
+      }, { status: 201 });
     }
 
     const codigoProyecto = await generateProjectCode();
@@ -803,7 +808,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No fue posible registrar el proyecto." }, { status: 500 });
     }
 
-    return NextResponse.json({ project }, { status: 201 });
+    return NextResponse.json({
+      success: true,
+      codigo_proyecto: project.codigo_proyecto,
+      nombre_proyecto: project.nombre_proyecto,
+      project,
+    }, { status: 201 });
   } catch (error) {
     console.error("[projects/register] error:", error);
     return NextResponse.json({ error: "No fue posible registrar el proyecto." }, { status: 500 });

@@ -642,7 +642,26 @@ export function InscripcionForm({
       return;
     }
 
-    router.push(mode === "edit" ? "/inscripcion/editar/gracias" : "/inscripcion/gracias");
+    if (mode === "edit") {
+      router.push("/inscripcion/editar/gracias");
+      return;
+    }
+
+    const text = await response.text();
+    type RegistrationResult = {
+      codigo_proyecto?: string;
+      project?: { codigo_proyecto?: string };
+    };
+    let result: RegistrationResult | null = null;
+    try {
+      result = text ? JSON.parse(text) as RegistrationResult : null;
+    } catch {
+      result = null;
+    }
+    const registeredCode = result?.codigo_proyecto ?? result?.project?.codigo_proyecto;
+    router.push(registeredCode
+      ? `/inscripcion/gracias?codigo=${encodeURIComponent(registeredCode)}`
+      : "/inscripcion/gracias");
   }
 
   function onInvalid(validationErrors: FieldErrors<FormValues>) {

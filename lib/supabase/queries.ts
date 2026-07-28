@@ -344,6 +344,9 @@ function normalizeProject(row: Record<string, unknown>): Project {
     estado_evaluacion_humana: toStringValue(row.estado_evaluacion_humana) as Project["estado_evaluacion_humana"],
     estado_analisis_ia: toStringValue(row.estado_analisis_ia) as Project["estado_analisis_ia"],
     estado_lectura_archivo: toStringValue(row.estado_lectura_archivo) as Project["estado_lectura_archivo"],
+    requiere_asignacion_manual: Boolean(row.requiere_asignacion_manual),
+    cupo_evaluadores_manual: typeof row.cupo_evaluadores_manual === "number" ? row.cupo_evaluadores_manual : 2,
+    observaciones_asignacion_manual: toStringValue(row.observaciones_asignacion_manual),
     created_at: createdAt,
     codigo,
     fecha_registro: createdAt,
@@ -494,7 +497,7 @@ export async function getAssignments() {
     evaluatorIds.length > 0
       ? client
           .from("evaluadores")
-          .select("id,codigo_evaluador,nombre_evaluador")
+          .select("id,codigo_evaluador,nombre_evaluador,documento_evaluador")
           .in("id", evaluatorIds)
       : Promise.resolve({ data: [], error: null }),
   ]);
@@ -531,6 +534,7 @@ export async function getAssignments() {
         : undefined,
       evaluador_codigo: evaluator ? toStringValue(evaluator.codigo_evaluador) : assignment.evaluador_id,
       evaluador_nombre: evaluator ? toStringValue(evaluator.nombre_evaluador) : assignment.evaluador_id,
+      evaluador_documento: evaluator ? toStringValue(evaluator.documento_evaluador) : "",
     };
   });
 }
@@ -1497,7 +1501,7 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
 
   const { data: projectRows, error: projectsError } = await client
     .from("proyectos")
-    .select("id,codigo_proyecto,nombre_proyecto,linea_tematica,estado_proyecto,instructor_documento,instructor_correo,instructor_2_documento,instructor_2_correo,instructor_3_documento,instructor_3_correo,aprendiz_1_nombre,aprendiz_1_documento,aprendiz_1_correo,aprendiz_1_celular,aprendiz_1_ficha,aprendiz_2_nombre,aprendiz_2_documento,aprendiz_2_correo,aprendiz_2_celular,aprendiz_2_ficha,aprendiz_3_nombre,aprendiz_3_documento,aprendiz_3_correo,aprendiz_3_celular,aprendiz_3_ficha,created_at")
+    .select("id,codigo_proyecto,nombre_proyecto,linea_tematica,estado_proyecto,requiere_asignacion_manual,instructor_documento,instructor_correo,instructor_2_documento,instructor_2_correo,instructor_3_documento,instructor_3_correo,aprendiz_1_nombre,aprendiz_1_documento,aprendiz_1_correo,aprendiz_1_celular,aprendiz_1_ficha,aprendiz_2_nombre,aprendiz_2_documento,aprendiz_2_correo,aprendiz_2_celular,aprendiz_2_ficha,aprendiz_3_nombre,aprendiz_3_documento,aprendiz_3_correo,aprendiz_3_celular,aprendiz_3_ficha,created_at")
     .order("created_at", { ascending: true });
 
   if (projectsError) {
@@ -1506,7 +1510,7 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
   }
 
   const proyectosEncontrados = ((projectRows ?? []) as Project[])
-    .filter((proyecto) => proyecto.estado_proyecto !== "Cerrado");
+    .filter((proyecto) => proyecto.estado_proyecto !== "Cerrado" && proyecto.requiere_asignacion_manual !== true);
   const evaluatorArea = normalizeArea(evaluador.area_conocimiento);
   const proyectos = proyectosEncontrados.filter((proyecto) => {
     return normalizeArea(proyecto.linea_tematica) === evaluatorArea;
@@ -1686,6 +1690,8 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
       fecha_asignacion: new Date().toISOString(),
       permitir_edicion: true,
       url_evaluacion: `${appUrl}/evaluar/${tokenEvaluacion}`,
+      tipo_asignacion: "Automática",
+      asignado_por_admin: false,
     };
   });
 

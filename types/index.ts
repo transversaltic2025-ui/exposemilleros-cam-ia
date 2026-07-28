@@ -29,6 +29,7 @@ export type { AIAnalysis } from "./ai-analysis";
 export type { EventLogistics, LogisticsSummary } from "./logistics";
 export type { CertificateRecord } from "./certificate";
 export type { HumanVsAIComparison, TrendByArea } from "./analytics";
+export type { JovenEmprendedor } from "./joven-emprendedor";
 
 export type ProyectoPublico = Project;
 export type EvaluadorAdmin = Evaluator;

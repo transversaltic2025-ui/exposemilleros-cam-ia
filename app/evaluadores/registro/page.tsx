@@ -11,8 +11,8 @@ export const dynamic = "force-dynamic";
 export default async function RegistroEvaluadorPage() {
   const registrationEnabled = await isEvaluatorRegistrationEnabled();
   if (!registrationEnabled) {
-    return <SiteShell><Card className="mx-auto max-w-2xl"><CardHeader><CardTitle>Registro de evaluadores cerrado</CardTitle></CardHeader><CardContent className="grid gap-4">
-      <p className="text-sm leading-6 text-[var(--color-muted)]">El registro público de evaluadores se encuentra cerrado. Si usted ya está registrado, puede recuperar su acceso para consultar o evaluar los proyectos asignados.</p>
+    return <SiteShell><Card className="mx-auto max-w-2xl"><CardHeader><CardTitle>Registro de evaluadores de proyectos cerrado</CardTitle></CardHeader><CardContent className="grid gap-4">
+      <p className="text-sm leading-6 text-[var(--color-muted)]">El registro público de evaluadores de proyectos de investigación en modalidad póster está cerrado en este momento. Si usted ya está registrado, puede recuperar su acceso para consultar o evaluar los proyectos asignados.</p>
       <div className="flex flex-wrap gap-3">
         <Link href="/evaluadores/recuperar" className="inline-flex h-11 w-fit items-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white">Recuperar acceso</Link>
         <Link href="/" className="inline-flex h-11 w-fit items-center rounded-xl border border-[var(--color-border)] bg-white/65 px-4 text-sm font-bold text-[var(--color-primary)]">Volver al inicio</Link>
@@ -25,8 +25,8 @@ export default async function RegistroEvaluadorPage() {
     <SiteShell>
       <div className="mx-auto max-w-5xl">
         <div className="mb-8">
-          <p className="expo-eyebrow">Evaluadores</p>
-          <h1 className="expo-page-title mt-2">Registro de evaluadores</h1>
+          <p className="expo-eyebrow">Evaluadores de proyectos de investigación</p>
+          <h1 className="expo-page-title mt-2">Registro de evaluadores de proyectos (modalidad póster)</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--color-muted)]">
             Los evaluadores no tendrán login. Recibirán enlaces de evaluación por token según su área de conocimiento.
           </p>
@@ -34,7 +34,7 @@ export default async function RegistroEvaluadorPage() {
 
         <Card className="mb-6 border-[#2E7D5B]/25 bg-[#2E7D5B]/10">
           <CardHeader>
-            <CardTitle>Registro de evaluadores habilitado</CardTitle>
+            <CardTitle>Registro de evaluadores de proyectos habilitado</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm leading-6 text-[var(--color-muted)]">
             <p>

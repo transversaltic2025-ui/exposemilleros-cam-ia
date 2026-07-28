@@ -12,11 +12,14 @@ export interface Assignment {
   url_evaluacion?: string | null;
   fecha_envio_evaluacion?: string | null;
   observaciones_admin?: string | null;
+  tipo_asignacion?: "Automática" | "Manual" | string;
+  asignado_por_admin?: boolean;
   proyecto_codigo?: string;
   proyecto_nombre?: string;
   proyecto_area?: LineaTematica | string;
   evaluador_codigo?: string;
   evaluador_nombre?: string;
+  evaluador_documento?: string;
 
   asignacion_id?: string;
   codigo_proyecto?: string;

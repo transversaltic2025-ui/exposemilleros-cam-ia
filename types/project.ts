@@ -144,6 +144,9 @@ export interface Project {
   estado_analisis_ia?: EstadoAnalisisIA;
   estado_lectura_archivo?: "Pendiente" | "Leido" | "Error";
   observaciones_admin?: string;
+  requiere_asignacion_manual?: boolean;
+  cupo_evaluadores_manual?: number;
+  observaciones_asignacion_manual?: string | null;
   created_at?: string;
   updated_at?: string;
 

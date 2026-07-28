@@ -34,6 +34,12 @@ export default async function AdminAsignacionesPage() {
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
           Control de asignaciones por área, enlaces de acceso y lectura del archivo.
         </p>
+        <Link
+          href="/admin/asignaciones/manual"
+          className="mt-4 inline-flex h-11 items-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]"
+        >
+          Asignación manual
+        </Link>
       </div>
       <div className="mb-6 grid gap-4 md:grid-cols-4">
         <MetricCard label="Electricidad" value={electricidad} detail="Proyectos" accent="secondary" />

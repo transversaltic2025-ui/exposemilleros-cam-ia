@@ -2,9 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { iniciativaProductorSchema } from "@/lib/productores";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isProducersRegistrationEnabled, PRODUCERS_REGISTRATION_CLOSED_MESSAGE } from "@/lib/system-config";
 
 export async function POST(request: Request) {
   try {
+    if (!(await isProducersRegistrationEnabled())) {
+      return NextResponse.json({ error: PRODUCERS_REGISTRATION_CLOSED_MESSAGE }, { status: 403 });
+    }
     let body: unknown;
     try {
       body = await request.json();

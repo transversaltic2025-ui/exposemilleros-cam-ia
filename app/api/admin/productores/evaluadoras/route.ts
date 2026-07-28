@@ -5,7 +5,7 @@ import { normalizarDocumento } from "@/lib/productores";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const schema = z.object({
-  nombre: z.string().trim().min(3, "Ingrese el nombre completo de la evaluadora."),
+  nombre: z.string().trim().min(3, "Ingrese el nombre completo del evaluador."),
   documento: z.string().trim().min(5, "Ingrese el número de documento."),
   correo: z.union([z.string().trim().email("Ingrese un correo electrónico válido."), z.literal("")]).optional(),
   activo: z.boolean().default(true),
@@ -19,7 +19,7 @@ export async function GET() {
     return NextResponse.json({ evaluadoras: data || [] });
   } catch (error) {
     console.error("[admin/productores/evaluadoras] error:", error);
-    return NextResponse.json({ error: "No fue posible consultar las evaluadoras." }, { status: 500 });
+    return NextResponse.json({ error: "No fue posible consultar los evaluadores." }, { status: 500 });
   }
 }
 
@@ -35,15 +35,15 @@ export async function POST(request: Request) {
     const client = createSupabaseServerClient();
     const { data: existing, error: lookupError } = await client.from("evaluadoras_productores").select("id").eq("documento", documento).maybeSingle();
     if (lookupError) throw lookupError;
-    if (existing) return NextResponse.json({ error: "Ya existe una evaluadora registrada con este documento." }, { status: 400 });
+    if (existing) return NextResponse.json({ error: "Ya existe un evaluador registrado con este documento." }, { status: 400 });
     const { data, error } = await client.from("evaluadoras_productores").insert({ nombre: values.nombre, documento, correo: values.correo || null, activo: values.activo }).select().single();
     if (error) {
-      if (error.code === "23505") return NextResponse.json({ error: "Ya existe una evaluadora registrada con este documento." }, { status: 400 });
+      if (error.code === "23505") return NextResponse.json({ error: "Ya existe un evaluador registrado con este documento." }, { status: 400 });
       throw error;
     }
-    return NextResponse.json({ evaluadora: data, mensaje: "Evaluadora registrada correctamente." }, { status: 201 });
+    return NextResponse.json({ evaluadora: data, mensaje: "Evaluador registrado correctamente." }, { status: 201 });
   } catch (error) {
     console.error("[admin/productores/evaluadoras] error:", error);
-    return NextResponse.json({ error: "No fue posible registrar la evaluadora." }, { status: 500 });
+    return NextResponse.json({ error: "No fue posible registrar el evaluador." }, { status: 500 });
   }
 }

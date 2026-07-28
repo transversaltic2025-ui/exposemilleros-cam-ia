@@ -3,8 +3,8 @@ import { FileText, Home, ShieldCheck, UserRoundPlus } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Inicio", icon: Home },
-  { href: "/inscripcion", label: "Inscripción", icon: FileText },
-  { href: "/evaluadores/registro", label: "Evaluadores", icon: UserRoundPlus },
+  { href: "/proyectos-investigacion", label: "Proyectos de investigación", icon: FileText },
+  { href: "/evaluadores/registro", label: "Evaluadores de proyectos", icon: UserRoundPlus },
   { href: "/admin/login", label: "Admin", icon: ShieldCheck },
 ];
 

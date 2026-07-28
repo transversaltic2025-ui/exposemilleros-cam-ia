@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowUpRight, BarChart3, ClipboardCheck, ClipboardList, FileBadge, GitBranch, GraduationCap, Sprout, Users } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BarChart3, ClipboardCheck, ClipboardList, FileBadge, GitBranch, GraduationCap, Rocket, Sprout, Users } from "lucide-react";
 
 import { MetricCard } from "@/components/metric-card";
 import { SectionShell } from "@/components/section-shell";
@@ -10,11 +10,17 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { getAIAnalyses, getAssignments, getEvaluators, getHumanEvaluations, getLogisticsSummary, getProjects } from "@/lib/supabase/queries";
 import { AdminLogoutButton } from "./logout-button";
 import { PublicModulesControl } from "./project-editing-control";
-import { isEvaluatorRegistrationEnabled, isProjectEditingEnabled, isProjectRegistrationEnabled } from "@/lib/system-config";
+import { ensurePublicModuleConfigKeys, isEvaluatorRegistrationEnabled, isProducersRegistrationEnabled, isProjectEditingEnabled, isProjectRegistrationEnabled, isYoungEntrepreneursRegistrationEnabled } from "@/lib/system-config";
 
 export const dynamic = "force-dynamic";
 
 const adminLinks = [
+  {
+    href: "/admin/jovenes-emprendedores",
+    title: "Jóvenes emprendedores",
+    detail: "Consulte los registros de jóvenes emprendedores.",
+    icon: Rocket,
+  },
   {
     href: "/admin/productores",
     title: "Productores campesinos",
@@ -61,8 +67,9 @@ const adminLinks = [
 
 export default async function AdminPage() {
   await requireAdmin();
+  await ensurePublicModuleConfigKeys();
 
-  const [resumenLogistica, proyectos, asignaciones, evaluaciones, analisisIA, evaluadores, projectRegistrationEnabled, projectEditingEnabled, evaluatorRegistrationEnabled] = await Promise.all([
+  const [resumenLogistica, proyectos, asignaciones, evaluaciones, analisisIA, evaluadores, projectRegistrationEnabled, projectEditingEnabled, evaluatorRegistrationEnabled, producersRegistrationEnabled, youngEntrepreneursRegistrationEnabled] = await Promise.all([
     getLogisticsSummary(),
     getProjects(),
     getAssignments(),
@@ -70,6 +77,7 @@ export default async function AdminPage() {
     getAIAnalyses(),
     getEvaluators(),
     isProjectRegistrationEnabled(), isProjectEditingEnabled(), isEvaluatorRegistrationEnabled(),
+    isProducersRegistrationEnabled(), isYoungEntrepreneursRegistrationEnabled(),
   ]);
   const recientes = proyectos.slice(0, 4);
   const pendientes = asignaciones
@@ -102,7 +110,7 @@ export default async function AdminPage() {
         <AdminLogoutButton />
       </div>
 
-      <PublicModulesControl initialState={{ projectRegistrationEnabled, projectEditingEnabled, evaluatorRegistrationEnabled }} />
+      <PublicModulesControl initialState={{ projectRegistrationEnabled, projectEditingEnabled, evaluatorRegistrationEnabled, producersRegistrationEnabled, youngEntrepreneursRegistrationEnabled }} />
       <div className="grid gap-4 md:grid-cols-5">
         <MetricCard label="Proyectos" value={resumenLogistica.proyectos} detail="Inscritos" />
         <MetricCard label="Evaluadores" value={resumenLogistica.evaluadores} detail="Registrados" accent="secondary" />

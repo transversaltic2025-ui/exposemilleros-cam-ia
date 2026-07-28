@@ -11,7 +11,7 @@ export default async function EditRegistrationPage() {
   return <SiteShell><div className="mx-auto max-w-5xl">
     <p className="expo-eyebrow">Inscripción existente</p>
     <h1 className="expo-page-title mt-2">Editar inscripción del proyecto</h1>
-    <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--color-muted)]">Si necesita corregir información de un proyecto ya inscrito, ingrese el código del proyecto y el número de documento de una persona registrada en el equipo.</p>
+    <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--color-muted)]">Para editar una inscripción, ingrese el código del proyecto y el número de documento de una persona registrada en el equipo.</p>
     <Card className="mt-8">
       <CardHeader><CardTitle>{enabled ? "Validar acceso" : "Edición de inscripciones cerrada"}</CardTitle></CardHeader>
       <CardContent>{enabled ? <EditRegistrationAccess /> : <div className="grid gap-4">
