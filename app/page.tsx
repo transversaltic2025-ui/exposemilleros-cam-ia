@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CalendarDays, FilePenLine, FilePlus2, FileText, KeyRound, MapPin, NotebookPen, Rocket, ShieldCheck, Sprout, UserRoundPlus, Users } from "lucide-react";
 
 import { SiteShell } from "@/components/site-shell";
+import { FeriaServicesSlider } from "@/components/home/feria-services-slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isEvaluatorRegistrationEnabled, isProducersRegistrationEnabled, isProjectEditingEnabled, isProjectRegistrationEnabled, isYoungEntrepreneursRegistrationEnabled } from "@/lib/system-config";
 
@@ -47,25 +48,9 @@ export default async function Home() {
               <p className="mt-1 text-sm font-extrabold text-[var(--color-text)]">Presencial</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/proyectos-investigacion"
-              className="inline-flex h-12 items-center gap-2 rounded-xl bg-[var(--color-primary)] px-5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(109,63,169,0.22)] hover:bg-[var(--color-secondary)]"
-            >
-              <FileText className="size-4" />
-              Proyectos de investigación
-            </Link>
-            <Link
-              href="/evaluadores/registro"
-              className="inline-flex h-12 items-center gap-2 rounded-xl border border-[var(--color-border)] bg-white/70 px-5 text-sm font-bold text-[var(--color-text)] hover:bg-white"
-            >
-              <Users className="size-4" />
-              Acceso evaluadores de proyectos
-            </Link>
-          </div>
         </div>
 
-        <div className="rounded-3xl bg-white/55 p-3 shadow-[0_18px_45px_rgba(30,41,59,0.12)] ring-1 ring-[var(--color-border)]">
+        <div className="flex items-start justify-center rounded-3xl bg-white/55 p-3 shadow-[0_16px_38px_rgba(30,41,59,0.10)] ring-1 ring-[var(--color-border)]">
           <Image
             src="/images/post-ix-encuentro-semilleros-cam.jpeg"
             alt="IX Encuentro de Semilleros de Investigación CAM 2026 ExpoInnovación y CampeSENA"
@@ -73,12 +58,15 @@ export default async function Home() {
             height={1600}
             priority
             sizes="(min-width: 1024px) 44vw, 100vw"
-            className="h-auto w-full rounded-2xl object-contain"
+            className="h-auto max-h-[440px] w-auto max-w-full rounded-2xl object-contain"
           />
         </div>
       </section>
 
-      <section className="mt-12 grid items-stretch gap-6 lg:grid-cols-2">
+      <section
+        className="mt-8 grid items-stretch gap-4 sm:gap-5 lg:grid-cols-2 xl:grid-cols-4"
+        aria-label="Accesos a módulos públicos"
+      >
         <HomeModuleCard
           icon={NotebookPen}
           title="Proyectos de investigación"
@@ -145,6 +133,8 @@ export default async function Home() {
           ]}
         />
       </section>
+
+      <FeriaServicesSlider />
     </SiteShell>
   );
 }
@@ -169,19 +159,22 @@ function HomeModuleCard({
   actions: ModuleAction[];
 }) {
   return (
-    <Card className="flex h-full flex-col rounded-3xl bg-white/85 shadow-[0_18px_45px_rgba(30,41,59,0.10)]">
-      <CardHeader className="gap-4 p-6 pb-3 sm:p-8 sm:pb-4">
-        <div className="grid size-12 place-items-center rounded-full bg-[var(--color-primary)] text-white shadow-[0_12px_28px_rgba(109,63,169,0.22)]">
-          <Icon className="size-6" aria-hidden="true" />
+    <Card
+      size="sm"
+      className="flex h-full flex-col gap-0 rounded-3xl bg-white/85 py-0 shadow-[0_14px_36px_rgba(30,41,59,0.09)]"
+    >
+      <CardHeader className="gap-2 p-4 pb-2 sm:p-5 sm:pb-2">
+        <div className="grid size-10 place-items-center rounded-full bg-[var(--color-primary)] text-white shadow-[0_10px_22px_rgba(109,63,169,0.20)]">
+          <Icon className="size-5" aria-hidden="true" />
         </div>
-        <CardTitle className="text-2xl font-black">{title}</CardTitle>
-        <p className="text-sm leading-7 text-[var(--color-muted)] sm:text-base">{description}</p>
+        <CardTitle className="text-xl font-black sm:text-[1.35rem]">{title}</CardTitle>
+        <p className="text-sm leading-5 text-[var(--color-muted)] sm:leading-6">{description}</p>
       </CardHeader>
-      <CardContent className="mt-auto grid gap-3 p-6 pt-3 sm:p-8 sm:pt-4">
+      <CardContent className="grid gap-2 p-4 pt-2 sm:p-5 sm:pt-2">
         {actions.map((action, index) => (
-          <div key={action.href} className="grid gap-2">
+          <div key={action.href} className="grid gap-1.5">
             {!action.enabled && action.closedMessage ? (
-              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-950">
+              <p className="rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-xs font-semibold leading-5 text-amber-950 sm:text-sm">
                 {action.closedMessage}
               </p>
             ) : null}
@@ -195,7 +188,7 @@ function HomeModuleCard({
 
 function HomeModuleButton({ action, primary }: { action: ModuleAction; primary: boolean }) {
   const Icon = action.icon;
-  const className = `inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold transition ${
+  const className = `inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition ${
     action.enabled
       ? primary
         ? "bg-[var(--color-primary)] text-white shadow-[0_12px_24px_rgba(109,63,169,0.18)] hover:bg-[var(--color-secondary)]"
