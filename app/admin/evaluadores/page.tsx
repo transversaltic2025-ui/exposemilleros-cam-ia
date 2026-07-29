@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Download } from "lucide-react";
 
 import { MetricCard } from "@/components/metric-card";
 import { SiteShell } from "@/components/site-shell";
@@ -28,12 +29,17 @@ export default async function AdminEvaluadoresPage() {
 
   return (
     <SiteShell>
-      <div className="mb-8">
-        <p className="expo-eyebrow">Admin</p>
-        <h1 className="expo-page-title mt-2">Evaluadores</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
-          Vista interna de carga y disponibilidad. Los datos sensibles se mantienen fuera de tablas publicas.
-        </p>
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="expo-eyebrow">Admin</p>
+          <h1 className="expo-page-title mt-2">Evaluadores</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
+            Vista interna de carga y disponibilidad. Los datos sensibles se mantienen fuera de tablas publicas.
+          </p>
+        </div>
+        <a href="/api/admin/evaluators/export/excel" className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white">
+          <Download className="size-4" />Descargar evaluadores
+        </a>
       </div>
       <div className="mb-6 grid gap-4 md:grid-cols-4">
         <MetricCard label="Electricidad" value={electricidad} detail="Proyectos" accent="secondary" />

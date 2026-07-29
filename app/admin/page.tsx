@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowUpRight, BarChart3, ClipboardCheck, ClipboardList, FileBadge, GitBranch, GraduationCap, Rocket, Sprout, Users } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BarChart3, ClipboardCheck, ClipboardList, Download, FileBadge, GitBranch, GraduationCap, PlugZap, Rocket, Sprout, Users } from "lucide-react";
 
 import { MetricCard } from "@/components/metric-card";
 import { SectionShell } from "@/components/section-shell";
@@ -15,6 +15,18 @@ import { ensurePublicModuleConfigKeys, isEvaluatorRegistrationEnabled, isProduce
 export const dynamic = "force-dynamic";
 
 const adminLinks = [
+  {
+    href: "/api/admin/projects/participants/export/excel",
+    title: "Participantes por proyecto",
+    detail: "Descargue la base administrativa de participantes en Excel.",
+    icon: Download,
+  },
+  {
+    href: "/proyectos?requerimientos=electricidad,mobiliario,prototipo,otro",
+    title: "Requerimientos logísticos",
+    detail: "Consulte proyectos que requieren punto eléctrico, mobiliario, prototipo u otros elementos.",
+    icon: PlugZap,
+  },
   {
     href: "/admin/jovenes-emprendedores",
     title: "Jóvenes emprendedores",
