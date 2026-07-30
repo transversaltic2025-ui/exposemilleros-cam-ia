@@ -641,6 +641,7 @@ export async function getEvaluatorAssignmentsByAccessToken(token: string) {
   }
 
   const evaluator = evaluatorRow as Evaluator;
+  await repairAssignmentEvaluationLinks(evaluator.id);
   const { error: updateError } = await client
     .from("evaluadores")
     .update({ fecha_ultimo_acceso: new Date().toISOString() })
@@ -659,6 +660,41 @@ export async function getEvaluatorAssignmentsByAccessToken(token: string) {
     evaluations: await getEvaluationsForEvaluator(evaluator.id ?? ""),
     assignmentOpen: true,
   };
+}
+
+export async function repairAssignmentEvaluationLinks(evaluatorId?: string) {
+  if (shouldUseMockData()) return 0;
+  const client = supabase();
+  let query = client
+    .from("asignaciones")
+    .select("id,evaluador_id,token_evaluacion,url_evaluacion");
+  if (evaluatorId) query = query.eq("evaluador_id", evaluatorId);
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const repairs = ((data ?? []) as Array<{
+    id: string;
+    token_evaluacion?: string | null;
+    url_evaluacion?: string | null;
+  }>).flatMap((assignment) => {
+    const token = assignment.token_evaluacion?.trim() || crypto.randomUUID();
+    const expectedUrl = `/evaluar/${token}`;
+    if (assignment.token_evaluacion?.trim() === token && assignment.url_evaluacion === expectedUrl) {
+      return [];
+    }
+    return [{ id: assignment.id, token, url: expectedUrl }];
+  });
+
+  await Promise.all(
+    repairs.map(async (repair) => {
+      const { error: updateError } = await client
+        .from("asignaciones")
+        .update({ token_evaluacion: repair.token, url_evaluacion: repair.url })
+        .eq("id", repair.id);
+      if (updateError) throw updateError;
+    }),
+  );
+  return repairs.length;
 }
 
 async function getEvaluationsForEvaluator(evaluatorId: string) {
@@ -854,6 +890,7 @@ export async function getEvaluationByToken(token: string) {
       evaluador: null,
       criterios: criteriosEvaluacionMock,
       analisis: result.analisis ?? null,
+      evaluacion: null,
     };
   }
 
@@ -868,21 +905,24 @@ export async function getEvaluationByToken(token: string) {
     throw assignmentError;
   }
   if (!asignacion) {
-    return { asignacion: null, proyecto: null, evaluador: null, criterios: [], analisis: null };
+    return { asignacion: null, proyecto: null, evaluador: null, criterios: [], analisis: null, evaluacion: null };
   }
 
   const assignment = asignacion as Assignment;
   const proyectoId = assignment.proyecto_id;
   if (!proyectoId) {
-    return { asignacion: assignment, proyecto: null, evaluador: null, criterios: [], analisis: null };
+    return { asignacion: assignment, proyecto: null, evaluador: null, criterios: [], analisis: null, evaluacion: null };
   }
 
-  const [proyectoResult, evaluadorResult, criteriosResult] = await Promise.all([
+  const [proyectoResult, evaluadorResult, criteriosResult, evaluacionResult] = await Promise.all([
     client.from("proyectos").select("*").eq("id", proyectoId).maybeSingle(),
     assignment.evaluador_id
       ? client.from("evaluadores").select("*").eq("id", assignment.evaluador_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     client.from("criterios").select("*").eq("activo", true).order("orden", { ascending: true }),
+    assignment.id
+      ? client.from("evaluaciones").select("*").eq("asignacion_id", assignment.id).order("created_at", { ascending: false }).limit(1).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
 
   if (proyectoResult.error) {
@@ -893,6 +933,9 @@ export async function getEvaluationByToken(token: string) {
   }
   if (criteriosResult.error) {
     throw criteriosResult.error;
+  }
+  if (evaluacionResult.error) {
+    throw evaluacionResult.error;
   }
 
   const proyecto = proyectoResult.data
@@ -914,6 +957,7 @@ export async function getEvaluationByToken(token: string) {
     analisis: analisisResult.data
       ? normalizeAIAnalysis(analisisResult.data as Record<string, unknown>)
       : null,
+    evaluacion: evaluacionResult.data as HumanEvaluation | null,
   };
 }
 
@@ -1885,6 +1929,7 @@ export async function generateAutomaticProjectAssignments(
     };
   }
 
+  await repairAssignmentEvaluationLinks();
   const client = supabase();
   const [
     { data: projectRows, error: projectsError },
@@ -1968,8 +2013,6 @@ export async function generateAutomaticProjectAssignments(
     tipo_asignacion: string;
     asignado_por_admin: true;
   }> = [];
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
-
   function score(evaluator: Evaluator, project: Project) {
     return getCompatibilityScore(evaluator.area_conocimiento, project.linea_tematica, project.semillero);
   }
@@ -1994,7 +2037,7 @@ export async function generateAutomaticProjectAssignments(
       estado_asignacion: "Pendiente",
       fecha_asignacion: new Date().toISOString(),
       permitir_edicion: true,
-      url_evaluacion: `${appUrl}/evaluar/${token}`,
+      url_evaluacion: `/evaluar/${token}`,
       tipo_asignacion: "Automática",
       asignado_por_admin: true,
     });
@@ -2177,9 +2220,9 @@ export async function saveHumanEvaluation(
   },
 ) {
   console.log("[evaluations] token recibido", token);
-  const { asignacion, proyecto, evaluador, criterios } = await getEvaluationByToken(token);
+  const { asignacion, proyecto, evaluador, criterios, evaluacion: existingEvaluation } = await getEvaluationByToken(token);
   if (!asignacion) {
-    throw new Error("Assignment token not found.");
+    throw new Error("No se encontró una asignación válida para este enlace.");
   }
   console.log("[evaluations] asignacion encontrada", asignacion);
   console.log("[evaluations] evaluador encontrado", evaluador ? {
@@ -2187,11 +2230,15 @@ export async function saveHumanEvaluation(
     codigo_evaluador: evaluador.codigo_evaluador,
   } : null);
   console.log("[evaluations] token_acceso del evaluador", evaluador?.token_acceso ? "disponible" : "faltante");
-  if ((asignacion.estado_asignacion === "Completada" || asignacion.estado === "Completada") && asignacion.permitir_edicion !== true) {
+  const assignmentStatus = normalizeAssignmentText(asignacion.estado_asignacion ?? asignacion.estado);
+  if (["cancelada", "eliminada", "anulada", "inactiva"].includes(assignmentStatus)) {
+    throw new Error("La asignación se encuentra inactiva.");
+  }
+  if (["completada", "finalizada"].includes(assignmentStatus) && asignacion.permitir_edicion !== true) {
     throw new Error("Esta evaluación ya fue registrada.");
   }
   if (!proyecto?.id) {
-    throw new Error("Project not found for assignment token.");
+    throw new Error("Este enlace no corresponde a una asignación disponible.");
   }
 
   const oldScores = [
@@ -2237,11 +2284,10 @@ export async function saveHumanEvaluation(
   console.log("[evaluations] payload de evaluacion antes de insertar", evaluation);
 
   const client = supabase();
-  const { data, error } = await client
-    .from("evaluaciones")
-    .insert(evaluation)
-    .select("*")
-    .single();
+  const evaluationQuery = existingEvaluation?.id && asignacion.permitir_edicion === true
+    ? client.from("evaluaciones").update(evaluation).eq("id", existingEvaluation.id)
+    : client.from("evaluaciones").insert(evaluation);
+  const { data, error } = await evaluationQuery.select("*").single();
 
   if (error) {
     console.error("[evaluations] error exacto de Supabase al insertar evaluacion", error);
@@ -2254,6 +2300,13 @@ export async function saveHumanEvaluation(
   });
 
   if (details.length > 0) {
+    if (existingEvaluation?.id && asignacion.permitir_edicion === true) {
+      const { error: deleteDetailsError } = await client
+        .from("evaluacion_detalles")
+        .delete()
+        .eq("evaluacion_id", existingEvaluation.id);
+      if (deleteDetailsError) throw deleteDetailsError;
+    }
     const detailRows = details.map((detail) => ({
       evaluacion_id: data.id,
       criterio_id: detail.criterio_id,

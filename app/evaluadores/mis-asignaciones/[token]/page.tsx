@@ -39,9 +39,9 @@ export default async function MisAsignacionesEvaluadorPage({
   }
 
   const completedAssignments = assignments.filter(isCompletedAssignment);
-  const pendingAssignments = assignments.filter((assignment) => !isCompletedAssignment(assignment));
+  const pendingAssignments = assignments.filter(isAvailableAssignment);
   const nextAssignment = pendingAssignments.find((assignment) => assignment.permitir_edicion !== false);
-  const allCompleted = assignments.length > 0 && pendingAssignments.length === 0;
+  const allCompleted = assignments.length > 0 && completedAssignments.length === assignments.length;
   const averageScore = evaluations.length > 0
     ? Math.round(evaluations.reduce((sum, evaluation) => sum + (evaluation.puntaje_total ?? 0), 0) / evaluations.length)
     : 0;
@@ -90,7 +90,7 @@ export default async function MisAsignacionesEvaluadorPage({
               Tienes evaluaciones pendientes. Puedes continuar con el siguiente proyecto asignado.
             </p>
             {nextAssignment ? (
-              <Link className="inline-flex h-11 items-center justify-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]" href={nextAssignment.url_evaluacion || `/evaluar/${nextAssignment.token_evaluacion ?? nextAssignment.token}`}>
+              <Link className="inline-flex h-11 items-center justify-center rounded-xl bg-[var(--color-primary)] px-4 text-sm font-bold text-white hover:bg-[var(--color-secondary)]" href={`/evaluar/${nextAssignment.token_evaluacion ?? nextAssignment.token}`}>
                 Continuar con la siguiente evaluación
               </Link>
             ) : null}
@@ -128,8 +128,9 @@ export default async function MisAsignacionesEvaluadorPage({
               <TableBody>
                 {assignments.map((assignment) => {
                   const completed = isCompletedAssignment(assignment);
-                  const canEdit = assignment.permitir_edicion !== false && !completed;
-                  const evaluationUrl = assignment.url_evaluacion || `/evaluar/${assignment.token_evaluacion ?? assignment.token}`;
+                  const available = isAvailableAssignment(assignment);
+                  const canEdit = assignment.permitir_edicion !== false && available;
+                  const evaluationUrl = `/evaluar/${assignment.token_evaluacion ?? assignment.token}`;
 
                   return (
                     <TableRow key={assignment.id ?? assignment.asignacion_id}>
@@ -149,7 +150,7 @@ export default async function MisAsignacionesEvaluadorPage({
                           </Link>
                         ) : (
                           <span className="inline-flex h-10 items-center rounded-xl bg-white/70 px-4 text-sm font-bold text-[var(--color-muted)]">
-                            Evaluación completada
+                            {completed ? "Evaluación completada" : "Asignación inactiva"}
                           </span>
                         )}
                       </TableCell>
@@ -203,7 +204,15 @@ function Info({ label, value }: { label: string; value: string }) {
 }
 
 function isCompletedAssignment(assignment: { estado_asignacion?: string; estado?: string }) {
-  return assignment.estado_asignacion === "Completada" || assignment.estado === "Completada";
+  return ["completada", "finalizada"].includes(
+    (assignment.estado_asignacion ?? assignment.estado ?? "").toLowerCase(),
+  );
+}
+
+function isAvailableAssignment(assignment: { estado_asignacion?: string; estado?: string }) {
+  return ["pendiente", "en proceso"].includes(
+    (assignment.estado_asignacion ?? assignment.estado ?? "Pendiente").toLowerCase(),
+  );
 }
 
 function formatDate(value?: string) {
