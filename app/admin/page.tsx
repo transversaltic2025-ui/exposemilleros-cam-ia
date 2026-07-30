@@ -9,8 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireAdmin } from "@/lib/admin-auth";
 import { getAIAnalyses, getAssignments, getEvaluators, getHumanEvaluations, getLogisticsSummary, getProjects } from "@/lib/supabase/queries";
 import { AdminLogoutButton } from "./logout-button";
+import { AutomaticAssignmentControl } from "./automatic-assignment-control";
 import { PublicModulesControl } from "./project-editing-control";
-import { ensurePublicModuleConfigKeys, isEvaluatorRegistrationEnabled, isProducersRegistrationEnabled, isProjectEditingEnabled, isProjectRegistrationEnabled, isYoungEntrepreneursRegistrationEnabled } from "@/lib/system-config";
+import { ensurePublicModuleConfigKeys, isAutomaticProjectAssignmentEnabled, isEvaluatorRegistrationEnabled, isProducersRegistrationEnabled, isProjectEditingEnabled, isProjectRegistrationEnabled, isYoungEntrepreneursRegistrationEnabled } from "@/lib/system-config";
 
 export const dynamic = "force-dynamic";
 
@@ -81,7 +82,7 @@ export default async function AdminPage() {
   await requireAdmin();
   await ensurePublicModuleConfigKeys();
 
-  const [resumenLogistica, proyectos, asignaciones, evaluaciones, analisisIA, evaluadores, projectRegistrationEnabled, projectEditingEnabled, evaluatorRegistrationEnabled, producersRegistrationEnabled, youngEntrepreneursRegistrationEnabled] = await Promise.all([
+  const [resumenLogistica, proyectos, asignaciones, evaluaciones, analisisIA, evaluadores, projectRegistrationEnabled, projectEditingEnabled, evaluatorRegistrationEnabled, producersRegistrationEnabled, youngEntrepreneursRegistrationEnabled, automaticAssignmentEnabled] = await Promise.all([
     getLogisticsSummary(),
     getProjects(),
     getAssignments(),
@@ -90,6 +91,7 @@ export default async function AdminPage() {
     getEvaluators(),
     isProjectRegistrationEnabled(), isProjectEditingEnabled(), isEvaluatorRegistrationEnabled(),
     isProducersRegistrationEnabled(), isYoungEntrepreneursRegistrationEnabled(),
+    isAutomaticProjectAssignmentEnabled(),
   ]);
   const recientes = proyectos.slice(0, 4);
   const pendientes = asignaciones
@@ -123,6 +125,7 @@ export default async function AdminPage() {
       </div>
 
       <PublicModulesControl initialState={{ projectRegistrationEnabled, projectEditingEnabled, evaluatorRegistrationEnabled, producersRegistrationEnabled, youngEntrepreneursRegistrationEnabled }} />
+      <AutomaticAssignmentControl initialEnabled={automaticAssignmentEnabled} />
       <div className="grid gap-4 md:grid-cols-5">
         <MetricCard label="Proyectos" value={resumenLogistica.proyectos} detail="Inscritos" />
         <MetricCard label="Evaluadores" value={resumenLogistica.evaluadores} detail="Registrados" accent="secondary" />

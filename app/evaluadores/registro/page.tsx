@@ -38,12 +38,11 @@ export default async function RegistroEvaluadorPage() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm leading-6 text-[var(--color-muted)]">
             <p>
-              Puede registrar sus datos como evaluador desde este momento. Los proyectos serán asignados automáticamente
-              según el perfil y área seleccionada a partir del 5 de agosto de 2026 a las 00:00, hora Colombia, día del
-              evento.
+              Puede registrar sus datos como evaluador desde este momento. Los proyectos se asignar?n autom?ticamente
+              seg?n el perfil y ?rea seleccionada cuando el proceso administrativo est? activo.
             </p>
             <p>
-              Una vez habilitada la asignación, podrá ingresar con su documento para consultar los proyectos asignados.
+              Puede ingresar con su documento para consultar los proyectos asignados desde este momento.
             </p>
             <Link
               href="/evaluadores/recuperar"

@@ -45,8 +45,7 @@ export default async function GraciasEvaluadorPage({
                 Su registro como evaluador fue recibido correctamente.
               </p>
               <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">
-                Los proyectos serán asignados automáticamente el 5 de agosto de 2026 a las 00:00, hora Colombia, de
-                acuerdo con el área de conocimiento seleccionada.
+                Los proyectos se asignar?n autom?ticamente cuando el proceso administrativo est? activo, de acuerdo con el ?rea de conocimiento seleccionada.
               </p>
             </>
           )}

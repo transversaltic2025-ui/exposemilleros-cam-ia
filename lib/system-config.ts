@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export const PROJECT_EDITING_CONFIG_KEY = "edicion_inscripciones_habilitada";
 export const PROJECT_REGISTRATION_CONFIG_KEY = "inscripcion_proyectos_habilitada";
 export const EVALUATOR_REGISTRATION_CONFIG_KEY = "registro_evaluadores_habilitado";
+export const AUTOMATIC_PROJECT_ASSIGNMENT_CONFIG_KEY = "asignacion_proyectos_habilitada";
 export const PRODUCERS_REGISTRATION_CONFIG_KEY = "productores_inscripcion_habilitada";
 export const YOUNG_ENTREPRENEURS_REGISTRATION_CONFIG_KEY = "jovenes_emprendedores_inscripcion_habilitada";
 export const PROJECT_EDITING_CLOSED_MESSAGE = "La edición pública de inscripciones se encuentra cerrada.";
@@ -36,6 +37,11 @@ export async function isProjectRegistrationEnabled() {
 
 export async function isEvaluatorRegistrationEnabled() {
   return (await getSystemConfigValue(EVALUATOR_REGISTRATION_CONFIG_KEY))?.trim().toLowerCase() === "true";
+}
+
+export async function isAutomaticProjectAssignmentEnabled() {
+  const value = await getSystemConfigValue(AUTOMATIC_PROJECT_ASSIGNMENT_CONFIG_KEY);
+  return value === null || value.trim().toLowerCase() === "true";
 }
 
 export async function isProducersRegistrationEnabled() {

@@ -13,14 +13,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { requireAdmin } from "@/lib/admin-auth";
-import { getAssignments, getProjects } from "@/lib/supabase/queries";
+import { getActiveEvaluatorsWithoutAssignments, getAssignments, getProjects } from "@/lib/supabase/queries";
+import { isAutomaticProjectAssignmentEnabled } from "@/lib/system-config";
+import { AutomaticAssignmentControl } from "../automatic-assignment-control";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminAsignacionesPage() {
   await requireAdmin();
 
-  const [asignaciones, proyectos] = await Promise.all([getAssignments(), getProjects()]);
+  const [asignaciones, proyectos, automaticAssignmentEnabled, evaluatorsWithoutProject] = await Promise.all([
+    getAssignments(),
+    getProjects(),
+    isAutomaticProjectAssignmentEnabled(),
+    getActiveEvaluatorsWithoutAssignments(),
+  ]);
   const electricidad = proyectos.filter((project) => project.requiere_conexion_electrica).length;
   const mobiliario = proyectos.filter((project) => project.requiere_mesa_mobiliario).length;
   const prototipos = proyectos.filter((project) => project.presenta_prototipo_funcional).length;
@@ -41,6 +48,10 @@ export default async function AdminAsignacionesPage() {
           Asignación manual
         </Link>
       </div>
+      <AutomaticAssignmentControl
+        initialEnabled={automaticAssignmentEnabled}
+        initialEvaluatorsWithoutProject={evaluatorsWithoutProject}
+      />
       <div className="mb-6 grid gap-4 md:grid-cols-4">
         <MetricCard label="Electricidad" value={electricidad} detail="Proyectos" accent="secondary" />
         <MetricCard label="Mobiliario" value={mobiliario} detail="Proyectos" accent="mint" />

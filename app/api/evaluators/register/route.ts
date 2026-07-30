@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import {
-  EVALUATOR_ASSIGNMENT_OPEN_AT_CO,
-  getColombiaDateString,
-  isEvaluatorAssignmentOpen,
-} from "@/lib/event-config";
+import { getColombiaDateString } from "@/lib/event-config";
 import { createEvaluatorAndAssignments, shouldUseMockData } from "@/lib/supabase/queries";
-import { EVALUATOR_REGISTRATION_CLOSED_MESSAGE, isEvaluatorRegistrationEnabled } from "@/lib/system-config";
+import {
+  EVALUATOR_REGISTRATION_CLOSED_MESSAGE,
+  isEvaluatorRegistrationEnabled,
+} from "@/lib/system-config";
 
 const schema = z.object({
   nombre_evaluador: z.string().min(3),
@@ -32,10 +31,9 @@ export async function POST(request: Request) {
   try {
     if (!(await isEvaluatorRegistrationEnabled())) return NextResponse.json({ error: EVALUATOR_REGISTRATION_CLOSED_MESSAGE }, { status: 403 });
     const now = new Date();
-    const assignmentOpen = isEvaluatorAssignmentOpen(now);
+    const assignmentOpen = true;
     console.info("[evaluators/register] registro de evaluador recibido", {
       currentDate: getColombiaDateString(now),
-      assignmentOpenAt: EVALUATOR_ASSIGNMENT_OPEN_AT_CO,
       assignmentOpen,
     });
 
@@ -74,7 +72,7 @@ export async function POST(request: Request) {
           assignmentOpen,
           message: assignmentOpen
             ? "Tu registro fue creado, pero no hay proyectos disponibles para tu area en este momento."
-            : "Registro recibido correctamente. Los proyectos serán asignados automáticamente a partir del 5 de agosto de 2026 a las 00:00, hora Colombia, según el perfil y área seleccionada.",
+            : "Registro recibido correctamente. La asignaci?n autom?tica est? desactivada.",
         },
         { status: 201 },
       );

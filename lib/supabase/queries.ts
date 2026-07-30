@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 
 import { LINEAS_TEMATICAS } from "@/lib/constants";
-import { isEvaluatorAssignmentOpen } from "@/lib/event-config";
 import {
   analisisIAMock,
   asignacionesMock,
@@ -268,7 +267,7 @@ function isEvaluatorProjectMember(
 ) {
   const evaluatorDocument = normalizeDocument(evaluador.documento_evaluador);
   const evaluatorEmail = normalizeEmail(evaluador.correo_evaluador);
-  const candidates = members.length > 0 ? members : legacyProjectMembers(proyecto);
+  const candidates = [...members, ...legacyProjectMembers(proyecto)];
 
   return candidates.some((member) => {
     const memberDocument = normalizeDocument(member.documento);
@@ -621,7 +620,7 @@ export async function getEvaluatorAssignmentsByAccessToken(token: string) {
       evaluator: evaluator ? { ...evaluator, token_acceso: token } : null,
       assignments,
       evaluations: evaluacionesMock.filter((evaluation) => assignments.some((assignment) => assignment.asignacion_id === evaluation.asignacion_id)),
-      assignmentOpen: isEvaluatorAssignmentOpen(),
+      assignmentOpen: true,
     };
   }
 
@@ -652,20 +651,13 @@ export async function getEvaluatorAssignmentsByAccessToken(token: string) {
     throw updateError;
   }
 
-  const currentAssignments = await getAssignmentsForEvaluator(evaluator.id ?? "");
-  const assignmentOpen = isEvaluatorAssignmentOpen();
-  if (assignmentOpen && currentAssignments.length < 3) {
-    await assignProjectsToEvaluator(evaluator);
-  }
-  const assignments = assignmentOpen
-    ? await getAssignmentsForEvaluator(evaluator.id ?? "")
-    : currentAssignments;
+  const assignments = await getAssignmentsForEvaluator(evaluator.id ?? "");
 
   return {
     evaluator,
     assignments,
     evaluations: await getEvaluationsForEvaluator(evaluator.id ?? ""),
-    assignmentOpen,
+    assignmentOpen: true,
   };
 }
 
@@ -1147,10 +1139,7 @@ function evaluatorAccessUrl(token: string) {
 }
 
 const ASSIGNMENT_PENDING_MESSAGE =
-  "Registro recibido correctamente. Los proyectos serán asignados automáticamente a partir del 5 de agosto de 2026 a las 00:00, hora Colombia, según el perfil y área seleccionada.";
-
-const RECOVERY_PENDING_MESSAGE =
-  "Su registro está activo. Los proyectos serán asignados a partir del 5 de agosto de 2026 a las 00:00, hora Colombia.";
+  "Registro recibido correctamente. La asignaci?n autom?tica est? desactivada.";
 
 function isActiveAssignment(assignment: Pick<Assignment, "estado_asignacion" | "estado">) {
   const status = assignment.estado_asignacion ?? assignment.estado ?? "Pendiente";
@@ -1287,10 +1276,8 @@ export async function recoverEvaluatorAccessByDocument(documentoEvaluador: strin
         area_conocimiento: evaluator.area_conocimiento,
       },
       evaluatorAccessUrl: url,
-      assignmentOpen: isEvaluatorAssignmentOpen(),
-      message: isEvaluatorAssignmentOpen()
-        ? "Acceso encontrado. Puedes continuar con tus proyectos asignados."
-        : RECOVERY_PENDING_MESSAGE,
+      assignmentOpen: true,
+      message: "Acceso encontrado. Puedes continuar con tus proyectos asignados.",
     };
   }
 
@@ -1329,11 +1316,6 @@ export async function recoverEvaluatorAccessByDocument(documentoEvaluador: strin
     throw updateError;
   }
 
-  const currentAssignments = await getAssignmentsForEvaluator(evaluatorWithToken.id ?? "");
-  const assignmentOpen = isEvaluatorAssignmentOpen();
-  const newAssignments = assignmentOpen && currentAssignments.length < 3
-    ? await assignProjectsToEvaluator(evaluatorWithToken)
-    : [];
   const url = evaluatorAccessUrl(evaluatorWithToken.token_acceso ?? "");
   console.log("[evaluators/recover-access] token_acceso generado", evaluatorHadToken ? "no" : "si");
   console.log("[evaluators/recover-access] URL de acceso generada", url);
@@ -1348,11 +1330,9 @@ export async function recoverEvaluatorAccessByDocument(documentoEvaluador: strin
       area_conocimiento: evaluatorWithToken.area_conocimiento,
     },
     evaluatorAccessUrl: url,
-    assignmentOpen,
-    newAssignmentsCount: newAssignments.length,
-    message: assignmentOpen
-      ? "Acceso encontrado. Puedes continuar con tus proyectos asignados."
-      : RECOVERY_PENDING_MESSAGE,
+    assignmentOpen: true,
+    newAssignmentsCount: 0,
+    message: "Acceso encontrado. Puedes continuar con tus proyectos asignados.",
   };
 }
 
@@ -1378,8 +1358,8 @@ export async function createEvaluatorAndAssignments(input: {
 
     const updatedEvaluator = await updateExistingEvaluatorProfile(existingEvaluator, input);
     const evaluatorWithToken = await ensureEvaluatorAccessToken(updatedEvaluator);
-    const assignmentOpen = isEvaluatorAssignmentOpen();
-    const newAssignments = assignmentOpen ? await assignProjectsToEvaluator(evaluatorWithToken) : [];
+    const assignmentOpen = true;
+    const newAssignments: Assignment[] = [];
     const currentAssignments = await getAssignmentsForEvaluator(evaluatorWithToken.id ?? "");
     const finalEvaluator = await updateEvaluatorAssignmentCount(evaluatorWithToken, currentAssignments.length);
     const message = assignmentOpen
@@ -1445,8 +1425,8 @@ export async function createEvaluatorAndAssignments(input: {
     id: created.id,
     codigo_evaluador: created.codigo_evaluador,
   });
-  const assignmentOpen = isEvaluatorAssignmentOpen();
-  const newAssignments = assignmentOpen ? await assignProjectsToEvaluator(created) : [];
+  const assignmentOpen = true;
+  const newAssignments: Assignment[] = [];
   const currentAssignments = await getAssignmentsForEvaluator(created.id ?? "");
   const finalEvaluator = await updateEvaluatorAssignmentCount(created, currentAssignments.length);
   const message = newAssignments.length === 0
@@ -1738,6 +1718,444 @@ export async function assignProjectsToEvaluator(evaluador: Evaluator) {
   });
 
   return (assignments ?? []) as Assignment[];
+}
+
+export type AutomaticAssignmentSummary = {
+  evaluadoresActivos: number;
+  evaluadoresConProyectoAntes: number;
+  evaluadoresSinProyectoAntes: number;
+  evaluadoresReparados: number;
+  evaluadoresSinProyectoDespues: number;
+  proyectosUsadosEnReparacion: number;
+  evaluadoresConProyecto: number;
+  evaluadoresSinProyecto: number;
+  proyectosProcesados: number;
+  proyectosConDosEvaluadores: number;
+  proyectosConUnEvaluador: number;
+  asignacionesCreadas: number;
+  proyectosSinEvaluadores: number;
+  asignacionesExistentesRespetadas: number;
+  detalleEvaluadoresSinProyecto: Array<{
+    evaluador: string;
+    documento: string;
+    area: string;
+    motivo: string;
+  }>;
+  detalleProyectosSinEvaluadores: Array<{ proyecto: string; motivo: string }>;
+};
+
+export function normalizeAssignmentText(value: unknown) {
+  return String(value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const COMPATIBILITY_GROUPS: Record<string, string[]> = {
+  agricultura: ["agricultura", "agricola", "agroindustria", "ambiental", "biotecnologia", "automatizacion", "energias renovables", "economia circular"],
+  pecuaria: ["pecuaria", "ganaderia", "avicultura", "piscicultura", "lacteos", "biotecnologia", "agroindustria"],
+  ambiental: ["ambiental", "biodiversidad", "biotecnologia", "economia circular", "energias renovables", "agricultura"],
+  tic: ["tic", "tecnologia", "software", "automatizacion", "desarrollo tecnologico"],
+  automatizacion: ["automatizacion", "tic", "agricultura de precision", "desarrollo tecnologico", "agricultura"],
+  agroindustria: ["agroindustria", "transformacion de alimentos", "agricultura", "pecuaria", "biotecnologia"],
+  emprendimiento: ["emprendimiento", "economia circular", "agroindustria", "comercial", "negocios"],
+  "energias renovables": ["energias renovables", "ambiental", "automatizacion", "agricultura", "desarrollo tecnologico"],
+  "economia circular": ["economia circular", "ambiental", "agroindustria", "emprendimiento", "agricultura"],
+  biotecnologia: ["biotecnologia", "ambiental", "agricultura", "pecuaria", "agroindustria"],
+};
+
+function textMatchesConcept(text: string, concept: string) {
+  return Boolean(text && concept) && (text === concept || text.includes(concept) || concept.includes(text));
+}
+
+function conceptsFor(text: string) {
+  return Object.entries(COMPATIBILITY_GROUPS)
+    .filter(([category, related]) =>
+      textMatchesConcept(text, category) ||
+      related.some((concept) => textMatchesConcept(text, concept)),
+    )
+    .map(([category]) => category);
+}
+
+export function getCompatibilityScore(
+  evaluatorArea: unknown,
+  projectLinea: unknown,
+  projectSemillero: unknown,
+) {
+  const area = normalizeAssignmentText(evaluatorArea);
+  const linea = normalizeAssignmentText(projectLinea);
+  const semillero = normalizeAssignmentText(projectSemillero);
+  if (!area || (!linea && !semillero)) return 20;
+
+  if (
+    textMatchesConcept(area, linea) ||
+    (semillero && textMatchesConcept(area, semillero)) ||
+    (
+      (area.includes("agricultura") || area.includes("agricola")) &&
+      (
+        linea.includes("agricultura") ||
+        linea.includes("agricola") ||
+        semillero.includes("agricultura") ||
+        semillero.includes("agricola")
+      )
+    )
+  ) {
+    return 100;
+  }
+
+  const evaluatorConcepts = new Set(conceptsFor(area));
+  const projectConcepts = [...conceptsFor(linea), ...conceptsFor(semillero)];
+  if (projectConcepts.some((concept) => evaluatorConcepts.has(concept))) return 80;
+
+  if (
+    semillero.includes("agricola") &&
+    ["agricultura", "agricola", "agroindustria", "ambiental", "biotecnologia", "automatizacion", "energias renovables", "economia circular"]
+      .some((concept) => area.includes(concept))
+  ) {
+    return 60;
+  }
+
+  return 20;
+}
+
+function countsForAssignmentLimits(status: unknown) {
+  const normalized = normalizeAssignmentText(status || "Pendiente");
+  return !["cancelada", "cancelado", "eliminada", "eliminado", "anulada", "anulado"].includes(normalized);
+}
+
+function isActiveEvaluator(evaluator: Evaluator) {
+  const status = normalizeAssignmentText(evaluator.estado_evaluador ?? evaluator.estado);
+  return !status || ["activo", "disponible", "completo"].includes(status);
+}
+
+export async function getActiveEvaluatorsWithoutAssignments() {
+  const [allEvaluators, allAssignments] = await Promise.all([getEvaluators(), getAssignments()]);
+  const assignedEvaluatorIds = new Set(
+    allAssignments
+      .filter((assignment) =>
+        countsForAssignmentLimits(assignment.estado_asignacion ?? assignment.estado),
+      )
+      .map((assignment) => assignment.evaluador_id),
+  );
+
+  return allEvaluators
+    .filter(
+      (evaluator) =>
+        evaluator.id &&
+        isActiveEvaluator(evaluator) &&
+        !assignedEvaluatorIds.has(evaluator.id),
+    )
+    .map((evaluator) => ({
+      id: evaluator.id as string,
+      nombre: evaluator.nombre_evaluador ?? evaluator.nombre ?? "Evaluador",
+      documento: evaluator.documento_evaluador ?? evaluator.documento ?? "",
+      area: String(evaluator.area_conocimiento ?? ""),
+    }));
+}
+
+export async function generateAutomaticProjectAssignments(
+  mode: "generate" | "repair" = "generate",
+): Promise<AutomaticAssignmentSummary> {
+  if (shouldUseMockData()) {
+    return {
+      evaluadoresActivos: evaluadoresMock.length,
+      evaluadoresConProyectoAntes: 0,
+      evaluadoresSinProyectoAntes: evaluadoresMock.length,
+      evaluadoresReparados: 0,
+      evaluadoresSinProyectoDespues: evaluadoresMock.length,
+      proyectosUsadosEnReparacion: 0,
+      evaluadoresConProyecto: 0,
+      evaluadoresSinProyecto: evaluadoresMock.length,
+      proyectosProcesados: 0,
+      proyectosConDosEvaluadores: 0,
+      proyectosConUnEvaluador: 0,
+      asignacionesCreadas: 0,
+      proyectosSinEvaluadores: 0,
+      asignacionesExistentesRespetadas: 0,
+      detalleEvaluadoresSinProyecto: evaluadoresMock.map((evaluator) => ({
+        evaluador: evaluator.nombre_evaluador ?? evaluator.nombre ?? "Evaluador",
+        documento: evaluator.documento_evaluador ?? evaluator.documento ?? "",
+        area: String(evaluator.area_conocimiento ?? ""),
+        motivo: "No hay proyectos automáticos disponibles",
+      })),
+      detalleProyectosSinEvaluadores: [],
+    };
+  }
+
+  const client = supabase();
+  const [
+    { data: projectRows, error: projectsError },
+    { data: evaluatorRows, error: evaluatorsError },
+    { data: assignmentRows, error: assignmentsError },
+  ] =
+    await Promise.all([
+      client
+        .from("proyectos")
+        .select("id,codigo_proyecto,nombre_proyecto,linea_tematica,semillero,estado_proyecto,requiere_asignacion_manual,instructor_documento,instructor_correo,instructor_2_documento,instructor_2_correo,instructor_3_documento,instructor_3_correo,aprendiz_1_nombre,aprendiz_1_documento,aprendiz_1_correo,aprendiz_1_celular,aprendiz_1_ficha,aprendiz_2_nombre,aprendiz_2_documento,aprendiz_2_correo,aprendiz_2_celular,aprendiz_2_ficha,aprendiz_3_nombre,aprendiz_3_documento,aprendiz_3_correo,aprendiz_3_celular,aprendiz_3_ficha,created_at")
+        .order("created_at", { ascending: true }),
+      client
+        .from("evaluadores")
+        .select("*")
+        .order("created_at", { ascending: true }),
+      client.from("asignaciones").select("proyecto_id,evaluador_id,estado_asignacion"),
+    ]);
+
+  if (projectsError) throw projectsError;
+  if (evaluatorsError) throw evaluatorsError;
+  if (assignmentsError) throw assignmentsError;
+
+  const projects = ((projectRows ?? []) as Project[]).filter(
+    (project) =>
+      project.id &&
+      project.estado_proyecto !== "Cerrado" &&
+      project.requiere_asignacion_manual !== true,
+  );
+  const evaluators = ((evaluatorRows ?? []) as Evaluator[]).filter(
+    (evaluator) => evaluator.id && isActiveEvaluator(evaluator),
+  );
+  const projectIds = projects.map((project) => project.id as string);
+  const { data: memberRows, error: membersError } = projectIds.length
+    ? await client.from("proyecto_integrantes").select("*").in("proyecto_id", projectIds)
+    : { data: [], error: null };
+  if (membersError) throw membersError;
+
+  const membersByProject = new Map<string, ProjectMember[]>();
+  ((memberRows ?? []) as Record<string, unknown>[]).forEach((row) => {
+    const member = normalizeProjectMember(row);
+    if (!member.proyecto_id) return;
+    const current = membersByProject.get(member.proyecto_id) ?? [];
+    current.push(member);
+    membersByProject.set(member.proyecto_id, current);
+  });
+
+  const allAssignments = (assignmentRows ?? []) as Array<{
+    proyecto_id: string;
+    evaluador_id: string;
+    estado_asignacion?: string;
+  }>;
+  const countedAssignments = allAssignments.filter((assignment) =>
+    countsForAssignmentLimits(assignment.estado_asignacion),
+  );
+  const evaluatorCounts = new Map(evaluators.map((evaluator) => [evaluator.id as string, 0]));
+  const projectCounts = new Map(projects.map((project) => [project.id as string, 0]));
+  countedAssignments.forEach((assignment) => {
+    if (evaluatorCounts.has(assignment.evaluador_id)) {
+      evaluatorCounts.set(assignment.evaluador_id, (evaluatorCounts.get(assignment.evaluador_id) ?? 0) + 1);
+    }
+    if (projectCounts.has(assignment.proyecto_id)) {
+      projectCounts.set(assignment.proyecto_id, (projectCounts.get(assignment.proyecto_id) ?? 0) + 1);
+    }
+  });
+  const evaluatorCountsBefore = new Map(evaluatorCounts);
+  const evaluadoresConProyectoAntes = evaluators.filter(
+    (evaluator) => (evaluatorCountsBefore.get(evaluator.id as string) ?? 0) > 0,
+  ).length;
+
+  const existingPairs = new Set(
+    allAssignments.map((assignment) => `${assignment.proyecto_id}:${assignment.evaluador_id}`),
+  );
+  const pendingRows: Array<{
+    token_evaluacion: string;
+    proyecto_id: string;
+    evaluador_id: string;
+    estado_asignacion: "Pendiente";
+    fecha_asignacion: string;
+    permitir_edicion: true;
+    url_evaluacion: string;
+    tipo_asignacion: string;
+    asignado_por_admin: true;
+  }> = [];
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+
+  function score(evaluator: Evaluator, project: Project) {
+    return getCompatibilityScore(evaluator.area_conocimiento, project.linea_tematica, project.semillero);
+  }
+  function canAssign(evaluator: Evaluator, project: Project, projectLimit = 2) {
+    const evaluatorId = evaluator.id as string;
+    const projectId = project.id as string;
+    return (
+      (evaluatorCounts.get(evaluatorId) ?? 0) < 3 &&
+      (projectCounts.get(projectId) ?? 0) < projectLimit &&
+      !existingPairs.has(`${projectId}:${evaluatorId}`) &&
+      !isEvaluatorProjectMember(evaluator, project, membersByProject.get(projectId) ?? [])
+    );
+  }
+  function addAssignment(evaluator: Evaluator, project: Project) {
+    const evaluatorId = evaluator.id as string;
+    const projectId = project.id as string;
+    const token = crypto.randomUUID();
+    pendingRows.push({
+      token_evaluacion: token,
+      proyecto_id: projectId,
+      evaluador_id: evaluatorId,
+      estado_asignacion: "Pendiente",
+      fecha_asignacion: new Date().toISOString(),
+      permitir_edicion: true,
+      url_evaluacion: `${appUrl}/evaluar/${token}`,
+      tipo_asignacion: "Automática",
+      asignado_por_admin: true,
+    });
+    evaluatorCounts.set(evaluatorId, (evaluatorCounts.get(evaluatorId) ?? 0) + 1);
+    projectCounts.set(projectId, (projectCounts.get(projectId) ?? 0) + 1);
+    existingPairs.add(`${projectId}:${evaluatorId}`);
+  }
+  function sortedEvaluators(project: Project, minimumScore = 1) {
+    return evaluators
+      .filter((evaluator) => canAssign(evaluator, project, 2) && score(evaluator, project) >= minimumScore)
+      .sort((left, right) => {
+        const leftCount = evaluatorCounts.get(left.id as string) ?? 0;
+        const rightCount = evaluatorCounts.get(right.id as string) ?? 0;
+        return (
+          leftCount - rightCount ||
+          score(right, project) - score(left, project) ||
+          Number(leftCount > 0) - Number(rightCount > 0) ||
+          String(left.created_at ?? left.nombre_evaluador ?? "").localeCompare(
+            String(right.created_at ?? right.nombre_evaluador ?? ""),
+          )
+        );
+      });
+  }
+
+  const repairedEvaluatorIds = new Set<string>();
+  const repairProjectIds = new Set<string>();
+
+  // Fase inicial obligatoria: asignar evaluadores sin proyecto.
+  // Excepcionalmente se permite un tercer evaluador por proyecto durante el rescate,
+  // únicamente para evitar que un evaluador activo quede sin ninguna asignación.
+  for (const evaluator of evaluators) {
+    if ((evaluatorCounts.get(evaluator.id as string) ?? 0) > 0) continue;
+    const regularCandidates = projects
+      .filter((project) => canAssign(evaluator, project, 2))
+      .sort((left, right) =>
+        (projectCounts.get(left.id as string) ?? 0) - (projectCounts.get(right.id as string) ?? 0) ||
+        score(evaluator, right) - score(evaluator, left) ||
+        String(left.created_at ?? left.codigo_proyecto ?? "").localeCompare(
+          String(right.created_at ?? right.codigo_proyecto ?? ""),
+        ),
+      );
+    const rescueCandidates = regularCandidates.length > 0
+      ? regularCandidates
+      : projects
+          .filter((project) => canAssign(evaluator, project, 3))
+          .sort((left, right) =>
+            (projectCounts.get(left.id as string) ?? 0) - (projectCounts.get(right.id as string) ?? 0) ||
+            score(evaluator, right) - score(evaluator, left) ||
+            String(left.created_at ?? left.codigo_proyecto ?? "").localeCompare(
+              String(right.created_at ?? right.codigo_proyecto ?? ""),
+            ),
+          );
+    if (rescueCandidates[0]) {
+      addAssignment(evaluator, rescueCandidates[0]);
+      repairedEvaluatorIds.add(evaluator.id as string);
+      repairProjectIds.add(rescueCandidates[0].id as string);
+    }
+  }
+
+  if (mode === "generate") {
+    // Fase 2: completa con candidatos relacionados antes de recurrir a asignaciones generales.
+    for (const project of projects) {
+      while ((projectCounts.get(project.id as string) ?? 0) < 2) {
+        const candidate = sortedEvaluators(project, 60)[0];
+        if (!candidate) break;
+        addAssignment(candidate, project);
+      }
+    }
+
+    // Fase 3: balance general, incluyendo compatibilidad baja, siempre sin conflictos.
+    for (const project of projects) {
+      while ((projectCounts.get(project.id as string) ?? 0) < 2) {
+        const candidate = sortedEvaluators(project)[0];
+        if (!candidate) break;
+        addAssignment(candidate, project);
+      }
+    }
+  }
+
+  if (pendingRows.length > 0) {
+    const { error: insertError } = await client.from("asignaciones").insert(pendingRows);
+    if (insertError) throw insertError;
+    const assignedProjectIds = [...new Set(pendingRows.map((row) => row.proyecto_id))];
+    const { error: projectUpdateError } = await client
+      .from("proyectos")
+      .update({ estado_proyecto: "Asignado" })
+      .in("id", assignedProjectIds);
+    if (projectUpdateError) throw projectUpdateError;
+  }
+  await Promise.all(
+    evaluators.map((evaluator) =>
+      client
+        .from("evaluadores")
+        .update({ cantidad_proyectos_asignados: evaluatorCounts.get(evaluator.id as string) ?? 0 })
+        .eq("id", evaluator.id as string),
+    ),
+  );
+
+  const evaluatorsWithoutProject = evaluators.filter(
+    (evaluator) => (evaluatorCounts.get(evaluator.id as string) ?? 0) === 0,
+  );
+  const projectsWithoutEvaluator = projects.filter(
+    (project) => (projectCounts.get(project.id as string) ?? 0) === 0,
+  );
+  return {
+    evaluadoresActivos: evaluators.length,
+    evaluadoresConProyectoAntes,
+    evaluadoresSinProyectoAntes: evaluators.length - evaluadoresConProyectoAntes,
+    evaluadoresReparados: repairedEvaluatorIds.size,
+    evaluadoresSinProyectoDespues: evaluatorsWithoutProject.length,
+    proyectosUsadosEnReparacion: repairProjectIds.size,
+    evaluadoresConProyecto: evaluators.length - evaluatorsWithoutProject.length,
+    evaluadoresSinProyecto: evaluatorsWithoutProject.length,
+    proyectosProcesados: projects.length,
+    proyectosConDosEvaluadores: projects.filter((project) => (projectCounts.get(project.id as string) ?? 0) >= 2).length,
+    proyectosConUnEvaluador: projects.filter((project) => (projectCounts.get(project.id as string) ?? 0) === 1).length,
+    proyectosSinEvaluadores: projectsWithoutEvaluator.length,
+    asignacionesCreadas: pendingRows.length,
+    asignacionesExistentesRespetadas: countedAssignments.filter((assignment) =>
+      projectCounts.has(assignment.proyecto_id),
+    ).length,
+    detalleEvaluadoresSinProyecto: evaluatorsWithoutProject.map((evaluator) => {
+      const hasAutomaticProjects = projects.length > 0;
+      const hasCapacity = projects.some((project) => (projectCounts.get(project.id as string) ?? 0) < 3);
+      const hasConflictFreeProject = projects.some(
+        (project) =>
+          (projectCounts.get(project.id as string) ?? 0) < 3 &&
+          !isEvaluatorProjectMember(evaluator, project, membersByProject.get(project.id as string) ?? []),
+      );
+      return {
+        evaluador: evaluator.nombre_evaluador ?? evaluator.codigo_evaluador ?? "Evaluador",
+        documento: evaluator.documento_evaluador ?? evaluator.documento ?? "",
+        area: String(evaluator.area_conocimiento ?? ""),
+        motivo: !hasAutomaticProjects
+          ? "No existen proyectos automáticos disponibles"
+          : !hasCapacity
+            ? "No existen proyectos automáticos disponibles"
+            : !hasConflictFreeProject
+              ? "Todos los proyectos disponibles tienen conflicto con este evaluador"
+              : "Error al crear asignación",
+      };
+    }),
+    detalleProyectosSinEvaluadores: projectsWithoutEvaluator.map((project) => {
+      const evaluatorsWithCapacity = evaluators.filter(
+        (evaluator) => (evaluatorCounts.get(evaluator.id as string) ?? 0) < 3,
+      );
+      const hasConflictFreeEvaluator = evaluatorsWithCapacity.some(
+        (evaluator) =>
+          !isEvaluatorProjectMember(evaluator, project, membersByProject.get(project.id as string) ?? []),
+      );
+      return {
+        proyecto: project.codigo_proyecto ?? project.nombre_proyecto ?? "Proyecto",
+        motivo:
+          evaluatorsWithCapacity.length === 0
+            ? "No hay evaluadores con cupo"
+            : hasConflictFreeEvaluator
+              ? "No hay evaluadores compatibles disponibles"
+              : "Todos los evaluadores presentan conflicto",
+      };
+    }),
+  };
 }
 
 export async function saveHumanEvaluation(
