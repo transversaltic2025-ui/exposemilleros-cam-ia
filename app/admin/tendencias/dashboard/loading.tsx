@@ -1,0 +1,2 @@
+import { SiteShell } from "@/components/site-shell";
+export default function Loading(){return <SiteShell><div className="flex min-h-[420px] items-center justify-center"><div className="text-center"><div className="mx-auto size-10 animate-spin rounded-full border-4 border-violet-200 border-t-violet-700"/><p className="mt-4 font-bold text-slate-700">Cargando dashboard de tendencias...</p></div></div></SiteShell>}

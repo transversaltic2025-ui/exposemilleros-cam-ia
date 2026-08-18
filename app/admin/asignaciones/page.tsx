@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { requireAdmin } from "@/lib/admin-auth";
-import { getActiveEvaluatorsWithoutAssignments, getAssignments, getProjects } from "@/lib/supabase/queries";
+import { getActiveEvaluatorsWithoutAssignments, getAssignmentConflictDiagnostics, getAssignments, getProjects } from "@/lib/supabase/queries";
 import { isAutomaticProjectAssignmentEnabled } from "@/lib/system-config";
 import { AutomaticAssignmentControl } from "../automatic-assignment-control";
 
@@ -22,11 +22,12 @@ export const dynamic = "force-dynamic";
 export default async function AdminAsignacionesPage() {
   await requireAdmin();
 
-  const [asignaciones, proyectos, automaticAssignmentEnabled, evaluatorsWithoutProject] = await Promise.all([
+  const [asignaciones, proyectos, automaticAssignmentEnabled, evaluatorsWithoutProject, assignmentConflicts] = await Promise.all([
     getAssignments(),
     getProjects(),
     isAutomaticProjectAssignmentEnabled(),
     getActiveEvaluatorsWithoutAssignments(),
+    getAssignmentConflictDiagnostics(),
   ]);
   const electricidad = proyectos.filter((project) => project.requiere_conexion_electrica).length;
   const mobiliario = proyectos.filter((project) => project.requiere_mesa_mobiliario).length;
@@ -58,6 +59,35 @@ export default async function AdminAsignacionesPage() {
         <MetricCard label="Prototipos" value={prototipos} detail="Funcionales" accent="success" />
         <MetricCard label="Otro elemento" value={otros} detail="Requerido" />
       </div>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Asignaciones con posible conflicto</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {assignmentConflicts.length > 0 ? (
+            <div className="grid gap-3">
+              {assignmentConflicts.map((conflict) => (
+                <div
+                  key={conflict.id}
+                  className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900"
+                >
+                  <p className="font-extrabold">
+                    {conflict.evaluador} · {conflict.documento || "Sin documento"}
+                  </p>
+                  <p className="mt-1">
+                    {conflict.codigo} · {conflict.proyecto} · {conflict.tipoAsignacion || "Sin tipo"}
+                  </p>
+                  <p className="mt-1 font-semibold">{conflict.tipoConflicto}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--color-muted)]">
+              No se detectaron asignaciones actuales con conflicto por documento o correo.
+            </p>
+          )}
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Asignaciones actuales</CardTitle>

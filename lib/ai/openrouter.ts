@@ -1,6 +1,10 @@
+export type OpenRouterContentPart =
+  | { type: "text"; text: string }
+  | { type: "file"; file: { filename: string; file_data: string } };
+
 export type OpenRouterMessage = {
   role: "system" | "user" | "assistant";
-  content: string;
+  content: string | OpenRouterContentPart[];
 };
 
 export type OpenRouterChatResponse = {
@@ -16,6 +20,18 @@ export type OpenRouterChatResponse = {
   };
 };
 
+export class OpenRouterRateLimitError extends Error {
+  readonly type = "OPENROUTER_RATE_LIMIT" as const;
+  constructor(public readonly detail?: string) {
+    super("Se alcanzó el límite diario de OpenRouter para modelos gratuitos.");
+    this.name = "OpenRouterRateLimitError";
+  }
+}
+
+export function isOpenRouterRateLimitError(error: unknown): error is OpenRouterRateLimitError {
+  return error instanceof OpenRouterRateLimitError || Boolean(error && typeof error === "object" && "type" in error && error.type === "OPENROUTER_RATE_LIMIT");
+}
+
 export const OPENROUTER_FREE_FALLBACK_MODELS = [
   process.env.OPENROUTER_MODEL || "google/gemma-4-31b-it:free",
   "google/gemma-4-26b-a4b-it:free",
@@ -25,10 +41,30 @@ export const OPENROUTER_FREE_FALLBACK_MODELS = [
 
 type OpenRouterOptions = {
   temperature?: number;
+  signal?: AbortSignal;
   validateContent?: (content: string) => void;
   onModelAttempt?: (model: string) => void;
   onModelError?: (model: string, error: Error) => void;
 };
+
+export function validateAIConfiguration() {
+  const provider = (process.env.AI_PROVIDER || "openrouter").trim().toLowerCase();
+  if (provider !== "openrouter") throw new Error(`AI_PROVIDER está configurado como "${provider}". El análisis de tendencias requiere "openrouter".`);
+  if (!process.env.OPENROUTER_API_KEY?.trim()) throw new Error("OPENROUTER_API_KEY no está configurada.");
+  return { provider, configuredModel: process.env.OPENROUTER_MODEL?.trim() || null };
+}
+
+function errorDetail(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const value = error as Record<string, unknown>;
+    const parts = [value.message, value.code && `code=${value.code}`, value.details && `details=${value.details}`, value.hint && `hint=${value.hint}`, value.status && `status=${value.status}`].filter(Boolean);
+    if (parts.length) return parts.join(" | ");
+    try { return JSON.stringify(error).slice(0, 800); } catch { return String(error); }
+  }
+  return String(error ?? "Error sin detalle devuelto por OpenRouter.");
+}
 
 function metadataSummary(metadata: unknown) {
   if (!metadata || typeof metadata !== "object") {
@@ -79,6 +115,7 @@ async function callOpenRouterModel(
       messages,
       temperature: options.temperature ?? 0.2,
     }),
+    signal: options.signal,
   });
 
   const raw = await response.text();
@@ -93,7 +130,11 @@ async function callOpenRouterModel(
   if (!response.ok || payload?.error) {
     console.warn("[ai/openrouter] status de OpenRouter", response.status);
     console.warn("[ai/openrouter] error message de OpenRouter", payload?.error?.message ?? response.statusText);
-    throw new Error(buildOpenRouterErrorMessage({ status: response.status, model, payload, raw }));
+    const detail = buildOpenRouterErrorMessage({ status: response.status, model, payload, raw });
+    if (response.status === 429 && /rate limit exceeded|free-models-per-day|x-ratelimit-remaining\s*:\s*0/i.test(`${detail} ${raw}`)) {
+      throw new OpenRouterRateLimitError(detail);
+    }
+    throw new Error(detail);
   }
 
   const content = payload?.choices?.[0]?.message?.content;
@@ -112,16 +153,14 @@ async function callOpenRouterModel(
 }
 
 export async function callOpenRouter(messages: OpenRouterMessage[], options: OpenRouterOptions = {}) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-
-  if (!apiKey) {
-    throw new Error("OPENROUTER_API_KEY no esta configurada.");
-  }
+  validateAIConfiguration();
+  const apiKey = process.env.OPENROUTER_API_KEY as string;
 
   console.log("[ai/openrouter] modelo principal", OPENROUTER_FREE_FALLBACK_MODELS[0]);
   console.log("[ai/openrouter] modelos fallback disponibles", OPENROUTER_FREE_FALLBACK_MODELS.join(", "));
 
   let lastError: Error | null = null;
+  const attemptErrors: string[] = [];
 
   for (const model of OPENROUTER_FREE_FALLBACK_MODELS) {
     options.onModelAttempt?.(model);
@@ -130,11 +169,15 @@ export async function callOpenRouter(messages: OpenRouterMessage[], options: Ope
       options.validateContent?.(result.content);
       return result;
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error("Error desconocido de OpenRouter.");
+      if (isOpenRouterRateLimitError(error)) throw error;
+      const detail = errorDetail(error);
+      lastError = error instanceof Error ? error : new Error(detail);
+      attemptErrors.push(`${model}: ${detail}`);
       options.onModelError?.(model, lastError);
       console.warn(`[ai/openrouter] modelo fallo: ${model} - ${lastError.message}`);
     }
   }
 
-  throw lastError ?? new Error("No fue posible obtener respuesta de OpenRouter.");
+  if (lastError?.name === "AbortError" || options.signal?.aborted) throw new DOMException("Tiempo de espera agotado durante el análisis IA.", "AbortError");
+  throw new Error(`Fallaron todos los modelos de OpenRouter. ${attemptErrors.join(" || ").slice(0, 1800)}`);
 }

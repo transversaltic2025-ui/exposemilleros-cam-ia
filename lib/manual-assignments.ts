@@ -1,30 +1,15 @@
 import crypto from "node:crypto";
 
+import {
+  hasEvaluatorProjectConflict,
+  normalizeDocument,
+  normalizeEmail,
+} from "@/lib/assignment-conflicts";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { normalizeDocument } from "@/lib/supabase/queries";
 import type { Evaluator, Project, ProjectMember } from "@/types";
 
-const normalizeEmail = (value: unknown) => String(value ?? "").trim().toLowerCase();
-
-function hasConflict(evaluator: Evaluator, project: Project, members: ProjectMember[]) {
-  const document = normalizeDocument(evaluator.documento_evaluador);
-  const email = normalizeEmail(evaluator.correo_evaluador);
-  const legacy = [
-    [project.instructor_documento, project.instructor_correo],
-    [project.instructor_2_documento, project.instructor_2_correo],
-    [project.instructor_3_documento, project.instructor_3_correo],
-    [project.aprendiz_1_documento, project.aprendiz_1_correo],
-    [project.aprendiz_2_documento, project.aprendiz_2_correo],
-    [project.aprendiz_3_documento, project.aprendiz_3_correo],
-  ];
-  const identities = members.length
-    ? members.map((member) => [member.documento, member.correo])
-    : legacy;
-  return identities.some(([memberDocument, memberEmail]) =>
-    Boolean(document && normalizeDocument(memberDocument) === document) ||
-    Boolean(email && normalizeEmail(memberEmail) === email),
-  );
-}
+const countsForCapacity = (status: unknown) =>
+  !["cancelada", "eliminada", "anulada"].includes(String(status ?? "").trim().toLowerCase());
 
 export async function createAdminEvaluator(input: {
   nombre_evaluador: string;
@@ -84,13 +69,17 @@ export async function createManualAssignment({
   ]);
   if (projectError || !project) throw new Error("El proyecto no existe.");
   if (evaluatorError || !evaluator) throw new Error("El evaluador no existe.");
+  const evaluatorStatus = String(evaluator.estado_evaluador ?? "").trim().toLowerCase();
+  if (evaluatorStatus === "inactivo") {
+    throw new Error("Este evaluador no está activo.");
+  }
   const resolvedProjectId = String(project.id);
 
   const { data: assignments, error: assignmentError } = await client
-    .from("asignaciones").select("id,evaluador_id").eq("proyecto_id", resolvedProjectId);
+    .from("asignaciones").select("id,evaluador_id,estado_asignacion").eq("proyecto_id", resolvedProjectId);
   if (assignmentError) throw assignmentError;
   if ((assignments ?? []).some((item) => item.evaluador_id === evaluatorId)) {
-    throw new Error("Este evaluador ya está asignado al proyecto.");
+    throw new Error("Este evaluador ya está asignado a este proyecto.");
   }
   const evaluatorAssignmentCount = await countEvaluatorAssignments(evaluatorId);
   if (evaluatorAssignmentCount >= 3) {
@@ -100,27 +89,28 @@ export async function createManualAssignment({
   const limit = typedProject.requiere_asignacion_manual
     ? Math.min(Math.max(typedProject.cupo_evaluadores_manual ?? 4, 1), 4)
     : 2;
-  if ((assignments ?? []).length >= limit) {
-    throw new Error(typedProject.requiere_asignacion_manual
-      ? `El proyecto alcanzó su cupo de ${limit} evaluadores manuales.`
-      : "El proyecto admite máximo 2 evaluadores. Márquelo para asignación manual antes de superar ese cupo.");
+  if ((assignments ?? []).filter((assignment) => countsForCapacity(assignment.estado_asignacion)).length >= limit) {
+    throw new Error("Este proyecto ya completó el cupo de evaluadores asignados.");
   }
   const { data: members, error: membersError } = await client
     .from("proyecto_integrantes").select("*").eq("proyecto_id", resolvedProjectId);
   if (membersError) throw membersError;
-  if (hasConflict(evaluator as Evaluator, typedProject, (members ?? []) as ProjectMember[])) {
-    throw new Error("No se puede asignar: existe un conflicto de interés por documento o correo.");
+  if (hasEvaluatorProjectConflict(
+    evaluator as Evaluator,
+    typedProject,
+    (members ?? []) as ProjectMember[],
+  ).hasConflict) {
+    throw new Error("No se puede asignar este evaluador porque aparece como integrante del proyecto.");
   }
 
   const token = crypto.randomUUID();
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
   const { data, error } = await client.from("asignaciones").insert({
     proyecto_id: resolvedProjectId,
     evaluador_id: evaluatorId,
     token_evaluacion: token,
     estado_asignacion: "Pendiente",
     permitir_edicion: true,
-    url_evaluacion: `${appUrl}/evaluar/${token}`,
+    url_evaluacion: `/evaluar/${token}`,
     tipo_asignacion: "Manual",
     asignado_por_admin: true,
     fecha_asignacion: new Date().toISOString(),
@@ -135,10 +125,10 @@ export async function createManualAssignment({
 
 async function countEvaluatorAssignments(evaluatorId: string) {
   const client = createSupabaseServerClient();
-  const { count, error } = await client.from("asignaciones")
-    .select("id", { count: "exact", head: true }).eq("evaluador_id", evaluatorId);
+  const { data, error } = await client.from("asignaciones")
+    .select("estado_asignacion").eq("evaluador_id", evaluatorId);
   if (error) throw error;
-  return count ?? 0;
+  return (data ?? []).filter((assignment) => countsForCapacity(assignment.estado_asignacion)).length;
 }
 
 export async function deleteUnevaluatedAssignment(id: string) {

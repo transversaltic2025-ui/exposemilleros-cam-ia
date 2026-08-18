@@ -35,7 +35,13 @@ export interface AIAnalysis {
   concepto_ia: string;
   enfoque_genero_ia?: string;
   nivel_inclusion_genero_ia?: number;
-  recomendaciones_genero_ia?: string[];
+  mujeres_involucradas_ia?: string;
+  mujeres_en_formulacion_ia?: string;
+  mujeres_en_ejecucion_ia?: string;
+  evidencia_genero_ia?: string;
+  brechas_genero_ia?: string[];
+  acciones_genero_recomendadas_ia?: string[];
+  recomendaciones_genero_ia?: string | string[];
   enfoque_etnico_ia?: string;
   nivel_inclusion_etnica_ia?: number;
   recomendaciones_etnicas_ia?: string[];

@@ -56,3 +56,9 @@ La comparacion debe revisar:
 - Alertas donde la IA detecte falta de evidencia documental.
 
 La IA no aprueba ni rechaza proyectos. Su salida es un insumo para analisis y dashboard.
+# Enfoque de género (regla obligatoria)
+
+El análisis se basa únicamente en información explícita del proyecto. No se infiere género por
+nombres propios, apellidos, apariencia, municipio o institución. Si el documento no declara
+participación de mujeres en formulación o ejecución, el resultado debe ser exactamente
+`No reportado explícitamente`.

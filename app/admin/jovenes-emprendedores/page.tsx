@@ -1,4 +1,8 @@
+import Link from "next/link";
+import { Download } from "lucide-react";
+
 import { SiteShell } from "@/components/site-shell";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireAdmin } from "@/lib/admin-auth";
@@ -21,6 +25,10 @@ export default async function AdminJovenesEmprendedoresPage() {
       <p className="expo-eyebrow">Administración</p>
       <h1 className="expo-page-title mt-2">Jóvenes emprendedores</h1>
       <p className="mt-3 text-[var(--color-muted)]">Consulte los registros de jóvenes emprendedores.</p>
+      <Link className={buttonVariants({ className: "mt-5" })} href="/api/admin/jovenes-emprendedores/export/excel">
+        <Download className="size-4" />
+        Descargar jóvenes emprendedores
+      </Link>
       <Card className="mt-8">
         <CardHeader><CardTitle>Registros ({records.length})</CardTitle></CardHeader>
         <CardContent className="overflow-x-auto">

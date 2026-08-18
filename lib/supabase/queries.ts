@@ -2,6 +2,11 @@ import crypto from "node:crypto";
 
 import { LINEAS_TEMATICAS } from "@/lib/constants";
 import {
+  hasEvaluatorProjectConflict,
+  normalizeDocument,
+  normalizeEmail,
+} from "@/lib/assignment-conflicts";
+import {
   analisisIAMock,
   asignacionesMock,
   certificadosMock,
@@ -52,21 +57,7 @@ function toNumberValue(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
-function normalizeEmail(value: unknown) {
-  if (value === null || value === undefined) {
-    return "";
-  }
-
-  return String(value).trim().toLowerCase();
-}
-
-export function normalizeDocument(value: unknown) {
-  if (value === null || value === undefined) {
-    return "";
-  }
-
-  return String(value).trim().replace(/[\s.,-]+/g, "");
-}
+export { normalizeDocument } from "@/lib/assignment-conflicts";
 
 function normalizeArea(value: unknown) {
   if (value === null || value === undefined) {
@@ -265,18 +256,7 @@ function isEvaluatorProjectMember(
   proyecto: Project,
   members: ProjectMember[],
 ) {
-  const evaluatorDocument = normalizeDocument(evaluador.documento_evaluador);
-  const evaluatorEmail = normalizeEmail(evaluador.correo_evaluador);
-  const candidates = [...members, ...legacyProjectMembers(proyecto)];
-
-  return candidates.some((member) => {
-    const memberDocument = normalizeDocument(member.documento);
-    const memberEmail = normalizeEmail(member.correo);
-    return (
-      Boolean(evaluatorDocument && memberDocument && evaluatorDocument === memberDocument) ||
-      Boolean(evaluatorEmail && memberEmail && evaluatorEmail === memberEmail)
-    );
-  });
+  return hasEvaluatorProjectConflict(evaluador, proyecto, members).hasConflict;
 }
 
 function normalizeProject(row: Record<string, unknown>): Project {
@@ -386,7 +366,15 @@ function normalizeAIAnalysis(row: Record<string, unknown>): AIAnalysis {
     oportunidades_detectadas: toStringArray(row.oportunidades_detectadas),
     enfoque_genero_ia: toDisplayText(row.enfoque_genero_ia),
     nivel_inclusion_genero_ia: toNumberValue(row.nivel_inclusion_genero_ia),
-    recomendaciones_genero_ia: toStringArray(row.recomendaciones_genero_ia),
+    mujeres_involucradas_ia: toDisplayText(row.mujeres_involucradas_ia),
+    mujeres_en_formulacion_ia: toDisplayText(row.mujeres_en_formulacion_ia),
+    mujeres_en_ejecucion_ia: toDisplayText(row.mujeres_en_ejecucion_ia),
+    evidencia_genero_ia: toDisplayText(row.evidencia_genero_ia),
+    brechas_genero_ia: toStringArray(row.brechas_genero_ia),
+    acciones_genero_recomendadas_ia: toStringArray(row.acciones_genero_recomendadas_ia),
+    recomendaciones_genero_ia: Array.isArray(row.recomendaciones_genero_ia)
+      ? toStringArray(row.recomendaciones_genero_ia)
+      : toDisplayText(row.recomendaciones_genero_ia),
     enfoque_etnico_ia: toDisplayText(row.enfoque_etnico_ia),
     nivel_inclusion_etnica_ia: toNumberValue(row.nivel_inclusion_etnica_ia),
     recomendaciones_etnicas_ia: toStringArray(row.recomendaciones_etnicas_ia),
@@ -1900,6 +1888,71 @@ export async function getActiveEvaluatorsWithoutAssignments() {
     }));
 }
 
+export async function getAssignmentConflictDiagnostics() {
+  if (shouldUseMockData()) return [];
+  const client = supabase();
+  const { data: assignments, error: assignmentError } = await client
+    .from("asignaciones")
+    .select("id,proyecto_id,evaluador_id,tipo_asignacion");
+  if (assignmentError) throw assignmentError;
+
+  const projectIds = [...new Set((assignments ?? []).map((row) => row.proyecto_id).filter(Boolean))];
+  const evaluatorIds = [...new Set((assignments ?? []).map((row) => row.evaluador_id).filter(Boolean))];
+  const [projectsResult, evaluatorsResult, membersResult] = await Promise.all([
+    projectIds.length
+      ? client.from("proyectos").select("*").in("id", projectIds)
+      : Promise.resolve({ data: [], error: null }),
+    evaluatorIds.length
+      ? client.from("evaluadores").select("*").in("id", evaluatorIds)
+      : Promise.resolve({ data: [], error: null }),
+    projectIds.length
+      ? client.from("proyecto_integrantes").select("*").in("proyecto_id", projectIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (projectsResult.error) throw projectsResult.error;
+  if (evaluatorsResult.error) throw evaluatorsResult.error;
+  if (membersResult.error) throw membersResult.error;
+
+  const projectsById = new Map(
+    ((projectsResult.data ?? []) as Record<string, unknown>[]).map((row) => {
+      const project = normalizeProject(row);
+      return [project.id as string, project] as const;
+    }),
+  );
+  const evaluatorsById = new Map(
+    ((evaluatorsResult.data ?? []) as Evaluator[]).map((evaluator) => [evaluator.id as string, evaluator]),
+  );
+  const membersByProjectId = new Map<string, ProjectMember[]>();
+  ((membersResult.data ?? []) as Record<string, unknown>[]).forEach((row) => {
+    const member = normalizeProjectMember(row);
+    if (!member.proyecto_id) return;
+    const current = membersByProjectId.get(member.proyecto_id) ?? [];
+    current.push(member);
+    membersByProjectId.set(member.proyecto_id, current);
+  });
+
+  return (assignments ?? []).flatMap((assignment) => {
+    const project = projectsById.get(String(assignment.proyecto_id));
+    const evaluator = evaluatorsById.get(String(assignment.evaluador_id));
+    if (!project || !evaluator) return [];
+    const conflict = hasEvaluatorProjectConflict(
+      evaluator,
+      project,
+      membersByProjectId.get(project.id as string) ?? [],
+    );
+    if (!conflict.hasConflict) return [];
+    return [{
+      id: String(assignment.id),
+      evaluador: evaluator.nombre_evaluador ?? evaluator.codigo_evaluador ?? "Evaluador",
+      documento: evaluator.documento_evaluador ?? "",
+      proyecto: project.nombre_proyecto ?? "Proyecto",
+      codigo: project.codigo_proyecto ?? "",
+      tipoConflicto: conflict.reason ?? "Posible conflicto de integrante.",
+      tipoAsignacion: String(assignment.tipo_asignacion ?? ""),
+    }];
+  });
+}
+
 export async function generateAutomaticProjectAssignments(
   mode: "generate" | "repair" = "generate",
 ): Promise<AutomaticAssignmentSummary> {
@@ -2065,9 +2118,13 @@ export async function generateAutomaticProjectAssignments(
   const repairedEvaluatorIds = new Set<string>();
   const repairProjectIds = new Set<string>();
 
-  // Fase inicial obligatoria: asignar evaluadores sin proyecto.
-  // Excepcionalmente se permite un tercer evaluador por proyecto durante el rescate,
-  // únicamente para evitar que un evaluador activo quede sin ninguna asignación.
+  // Fase 1: ningún segundo evaluador se asigna mientras haya proyectos automáticos en cero.
+  for (const project of projects.filter((item) => (projectCounts.get(item.id as string) ?? 0) === 0)) {
+    const candidate = sortedEvaluators(project)[0];
+    if (candidate) addAssignment(candidate, project);
+  }
+
+  // Fase 2: después de cubrir proyectos, rescata evaluadores activos que sigan sin proyecto.
   for (const evaluator of evaluators) {
     if ((evaluatorCounts.get(evaluator.id as string) ?? 0) > 0) continue;
     const regularCandidates = projects
@@ -2079,41 +2136,37 @@ export async function generateAutomaticProjectAssignments(
           String(right.created_at ?? right.codigo_proyecto ?? ""),
         ),
       );
-    const rescueCandidates = regularCandidates.length > 0
+    // Se conserva el tercer cupo excepcional solo para rescatar un evaluador sin ninguna asignación.
+    const candidates = regularCandidates.length > 0
       ? regularCandidates
       : projects
           .filter((project) => canAssign(evaluator, project, 3))
           .sort((left, right) =>
             (projectCounts.get(left.id as string) ?? 0) - (projectCounts.get(right.id as string) ?? 0) ||
-            score(evaluator, right) - score(evaluator, left) ||
-            String(left.created_at ?? left.codigo_proyecto ?? "").localeCompare(
-              String(right.created_at ?? right.codigo_proyecto ?? ""),
-            ),
+            score(evaluator, right) - score(evaluator, left),
           );
-    if (rescueCandidates[0]) {
-      addAssignment(evaluator, rescueCandidates[0]);
+    if (candidates[0]) {
+      addAssignment(evaluator, candidates[0]);
       repairedEvaluatorIds.add(evaluator.id as string);
-      repairProjectIds.add(rescueCandidates[0].id as string);
+      repairProjectIds.add(candidates[0].id as string);
     }
   }
 
-  if (mode === "generate") {
-    // Fase 2: completa con candidatos relacionados antes de recurrir a asignaciones generales.
-    for (const project of projects) {
-      while ((projectCounts.get(project.id as string) ?? 0) < 2) {
-        const candidate = sortedEvaluators(project, 60)[0];
-        if (!candidate) break;
-        addAssignment(candidate, project);
-      }
-    }
+  // Una segunda pasada cubre proyectos que pudieron quedar en cero antes de usar segundos cupos.
+  for (const project of projects.filter((item) => (projectCounts.get(item.id as string) ?? 0) === 0)) {
+    const candidate = sortedEvaluators(project)[0];
+    if (candidate) addAssignment(candidate, project);
+  }
 
-    // Fase 3: balance general, incluyendo compatibilidad baja, siempre sin conflictos.
+  const hasUncoveredProjects = projects.some(
+    (project) => (projectCounts.get(project.id as string) ?? 0) === 0,
+  );
+  if (mode === "generate" && !hasUncoveredProjects) {
+    // Fase 3: solo cuando todos tienen al menos uno, completa segundos evaluadores.
     for (const project of projects) {
-      while ((projectCounts.get(project.id as string) ?? 0) < 2) {
-        const candidate = sortedEvaluators(project)[0];
-        if (!candidate) break;
-        addAssignment(candidate, project);
-      }
+      if ((projectCounts.get(project.id as string) ?? 0) !== 1) continue;
+      const candidate = sortedEvaluators(project)[0];
+      if (candidate) addAssignment(candidate, project);
     }
   }
 
@@ -2188,16 +2241,87 @@ export async function generateAutomaticProjectAssignments(
         (evaluator) =>
           !isEvaluatorProjectMember(evaluator, project, membersByProject.get(project.id as string) ?? []),
       );
+      const hasProjectsWithSecondEvaluator = projects.some(
+        (candidate) => (projectCounts.get(candidate.id as string) ?? 0) >= 2,
+      );
       return {
         proyecto: project.codigo_proyecto ?? project.nombre_proyecto ?? "Proyecto",
         motivo:
           evaluatorsWithCapacity.length === 0
-            ? "No hay evaluadores con cupo"
+            ? hasProjectsWithSecondEvaluator
+              ? "Hay cupos ocupados por segundos evaluadores; use el rebalanceo automático"
+              : "No hay evaluadores con cupo"
             : hasConflictFreeEvaluator
               ? "No hay evaluadores compatibles disponibles"
-              : "Todos los evaluadores presentan conflicto",
+              : "Todos los evaluadores disponibles presentan conflicto o no tienen cupo.",
       };
     }),
+  };
+}
+
+export type AutomaticRebalanceSummary = AutomaticAssignmentSummary & {
+  asignacionesAutomaticasEliminadas: number;
+  asignacionesManualesRespetadas: number;
+  asignacionesConEvaluacionRespetadas: number;
+};
+
+export async function rebalanceAutomaticProjectAssignments(): Promise<AutomaticRebalanceSummary> {
+  if (shouldUseMockData()) {
+    return {
+      ...(await generateAutomaticProjectAssignments("generate")),
+      asignacionesAutomaticasEliminadas: 0,
+      asignacionesManualesRespetadas: 0,
+      asignacionesConEvaluacionRespetadas: 0,
+    };
+  }
+
+  const client = supabase();
+  const [{ data: assignmentRows, error: assignmentError }, { data: evaluationRows, error: evaluationError }] =
+    await Promise.all([
+      client
+        .from("asignaciones")
+        .select("id,tipo_asignacion,estado_asignacion,asignado_por_admin"),
+      client.from("evaluaciones").select("asignacion_id"),
+    ]);
+  if (assignmentError) throw assignmentError;
+  if (evaluationError) throw evaluationError;
+
+  const evaluatedAssignmentIds = new Set(
+    (evaluationRows ?? []).map((evaluation) => String(evaluation.asignacion_id)),
+  );
+  const assignments = (assignmentRows ?? []) as Array<{
+    id: string;
+    tipo_asignacion?: string | null;
+    estado_asignacion?: string | null;
+  }>;
+  const movableIds = assignments
+    .filter((assignment) => {
+      const type = normalizeAssignmentText(assignment.tipo_asignacion);
+      const status = normalizeAssignmentText(assignment.estado_asignacion);
+      return (
+        type === "automatica" &&
+        ["pendiente", "en proceso"].includes(status) &&
+        !evaluatedAssignmentIds.has(assignment.id)
+      );
+    })
+    .map((assignment) => assignment.id);
+
+  if (movableIds.length > 0) {
+    const { error: deleteError } = await client
+      .from("asignaciones")
+      .delete()
+      .in("id", movableIds);
+    if (deleteError) throw deleteError;
+  }
+
+  const summary = await generateAutomaticProjectAssignments("generate");
+  return {
+    ...summary,
+    asignacionesAutomaticasEliminadas: movableIds.length,
+    asignacionesManualesRespetadas: assignments.filter(
+      (assignment) => normalizeAssignmentText(assignment.tipo_asignacion) === "manual",
+    ).length,
+    asignacionesConEvaluacionRespetadas: evaluatedAssignmentIds.size,
   };
 }
 

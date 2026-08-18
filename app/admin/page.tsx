@@ -41,15 +41,21 @@ const adminLinks = [
     icon: Sprout,
   },
   {
+    href: "/api/admin/jovenes-emprendedores/export/excel",
+    title: "Descargar jóvenes emprendedores",
+    detail: "Descargue la base administrativa en Excel.",
+    icon: Download,
+  },
+  {
     href: "/proyectos",
     title: "Proyectos",
     detail: "Consulta interna de registros y análisis.",
     icon: ClipboardCheck,
   },
   {
-    href: "/tendencias",
-    title: "Tendencias",
-    detail: "Dashboard de tendencias IA y logistica.",
+    href: "/admin/tendencias",
+    title: "Análisis de tendencias IA",
+    detail: "Ejecute análisis masivo, consulte el dashboard y descargue el reporte institucional.",
     icon: BarChart3,
   },
   {

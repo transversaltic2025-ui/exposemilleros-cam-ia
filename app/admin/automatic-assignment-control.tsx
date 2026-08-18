@@ -22,6 +22,9 @@ type Summary = {
   proyectosSinEvaluadores: number;
   asignacionesCreadas: number;
   asignacionesExistentesRespetadas: number;
+  asignacionesAutomaticasEliminadas?: number;
+  asignacionesManualesRespetadas?: number;
+  asignacionesConEvaluacionRespetadas?: number;
   detalleEvaluadoresSinProyecto: Array<{ evaluador: string; documento: string; area: string; motivo: string }>;
   detalleProyectosSinEvaluadores: Array<{ proyecto: string; motivo: string }>;
 };
@@ -37,7 +40,7 @@ export function AutomaticAssignmentControl({
 }) {
   const router = useRouter();
   const [enabled, setEnabled] = useState(initialEnabled);
-  const [loading, setLoading] = useState<"toggle" | "generate" | "repair" | null>(null);
+  const [loading, setLoading] = useState<"toggle" | "generate" | "repair" | "rebalance" | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -93,6 +96,27 @@ export function AutomaticAssignmentControl({
     router.refresh();
   }
 
+  async function rebalance() {
+    if (!enabled) {
+      setError("La asignación automática está desactivada.");
+      return;
+    }
+    setLoading("rebalance");
+    setMessage("");
+    setError("");
+    setSummary(null);
+    const response = await fetch("/api/admin/asignaciones/rebalancear", { method: "POST" });
+    const payload = await response.json().catch(() => null);
+    setLoading(null);
+    if (!response.ok) {
+      setError(payload?.error ?? "No fue posible rebalancear las asignaciones.");
+      return;
+    }
+    setSummary(payload);
+    setMessage(payload.message);
+    router.refresh();
+  }
+
   return (
     <Card className="mt-6 bg-white/75">
       <CardHeader>
@@ -101,8 +125,8 @@ export function AutomaticAssignmentControl({
           Active o desactive la asignación automática de proyectos de investigación a evaluadores.
         </p>
         <p className="text-sm font-semibold text-[var(--color-text)]">
-          La asignación automática prioriza que todos los evaluadores activos reciban al menos un proyecto y luego
-          completa los proyectos hasta dos evaluadores.
+          La asignación automática cubre primero todos los proyectos con un evaluador, después garantiza participación
+          de los evaluadores activos y solo entonces completa segundos evaluadores.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -124,13 +148,24 @@ export function AutomaticAssignmentControl({
               disabled={loading !== null || !enabled}
               onClick={() => runAssignments("repair")}
             >
-              {loading === "repair" ? "Reparando..." : "Reparar asignaciones"}
+              {loading === "repair" ? "Reparando..." : "Reparar evaluadores sin proyecto"}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={loading !== null || !enabled}
+              onClick={rebalance}
+            >
+              {loading === "rebalance" ? "Rebalanceando..." : "Rebalancear asignaciones automáticas"}
             </Button>
           </div>
         </div>
         <p className="text-sm text-[var(--color-muted)]">
           Asigna un proyecto a evaluadores activos que aún no tienen proyectos, sin duplicar asignaciones existentes.
         </p>
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+          Si existen proyectos sin evaluador y los cupos ya están llenos, use Rebalancear asignaciones automáticas.
+          Esta acción redistribuye únicamente asignaciones automáticas pendientes y sin evaluación.
+        </div>
         {initialEvaluatorsWithoutProject.length > 0 && !summary ? (
           <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4">
             <p className="font-extrabold text-amber-900">Hay evaluadores activos sin proyectos asignados.</p>
@@ -163,6 +198,15 @@ export function AutomaticAssignmentControl({
               <SummaryItem value={summary.proyectosSinEvaluadores} label="Proyectos sin evaluadores" />
               <SummaryItem value={summary.asignacionesCreadas} label="Asignaciones creadas en esta ejecución" />
               <SummaryItem value={summary.asignacionesExistentesRespetadas} label="Asignaciones existentes respetadas" />
+              {summary.asignacionesAutomaticasEliminadas !== undefined ? (
+                <SummaryItem value={summary.asignacionesAutomaticasEliminadas} label="Asignaciones automáticas eliminadas para rebalanceo" />
+              ) : null}
+              {summary.asignacionesManualesRespetadas !== undefined ? (
+                <SummaryItem value={summary.asignacionesManualesRespetadas} label="Asignaciones manuales respetadas" />
+              ) : null}
+              {summary.asignacionesConEvaluacionRespetadas !== undefined ? (
+                <SummaryItem value={summary.asignacionesConEvaluacionRespetadas} label="Asignaciones con evaluación respetadas" />
+              ) : null}
             </div>
             {summary.detalleEvaluadoresSinProyecto.length > 0 ? (
               <DetailList
