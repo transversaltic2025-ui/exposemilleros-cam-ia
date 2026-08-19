@@ -1,6 +1,6 @@
 import { analyzeProjectTrends } from "@/lib/ai/trend-analysis";
 import { isOpenRouterRateLimitError } from "@/lib/ai/openrouter";
-import { isMalformedArrayError, MALFORMED_ARRAY_MESSAGE, normalizeAnalysisPayload } from "@/lib/ai/analysis-normalization";
+import { isMalformedArrayError, MALFORMED_ARRAY_MESSAGE, normalizeAnalysisForDatabase, validateAnalysisArrays } from "@/lib/ai/analysis-normalization";
 import { PROJECT_FILES_BUCKET } from "@/lib/supabase/storage";
 import type { Project, ProjectMember } from "@/types";
 
@@ -33,7 +33,8 @@ async function latestAnalysisId(client: DbClient, projectId: string) {
 
 async function save(client: DbClient, projectId: string, payload: Record<string, unknown>) {
   const id = await latestAnalysisId(client, projectId);
-  const normalized = normalizeAnalysisPayload(payload);
+  const normalized = normalizeAnalysisForDatabase(payload);
+  validateAnalysisArrays(normalized);
   const query = id ? client.from("analisis_ia").update(normalized).eq("id", id) : client.from("analisis_ia").insert({ proyecto_id: projectId, ...normalized });
   const { error } = await query;
   if (error) {
