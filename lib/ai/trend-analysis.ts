@@ -1,11 +1,12 @@
 import { z } from "zod";
 
 import { callOpenRouter, type OpenRouterContentPart } from "@/lib/ai/openrouter";
+import { toText, toTextArray } from "@/lib/ai/analysis-normalization";
 import type { Project } from "@/types";
 
 const score = z.coerce.number().catch(0).transform((v) => Math.min(100, Math.max(0, Math.round(v))));
-const text = z.preprocess((v) => typeof v === "string" && v.trim() ? v.trim() : "No reportado explícitamente", z.string());
-const list = z.preprocess((v) => Array.isArray(v) ? v : [], z.array(z.string()).catch([]));
+const text = z.preprocess((v) => toText(v) || "No reportado explícitamente", z.string());
+const list = z.preprocess(toTextArray, z.array(z.string()));
 
 const analysisSchema = z.object({
   resumen_ia: text, tendencias_identificadas: list, palabras_clave_ia: list, sectores_relacionados: list,
@@ -58,10 +59,11 @@ function trendLevel(percent: number) {
 }
 
 export async function analyzeProjectTrends(project: Project, file?: AnalysisFile, signal?: AbortSignal): Promise<TrendAnalysisResult> {
-  const system = "Eres analista técnico de ExpoSemilleros CAM IA. Lee el archivo adjunto y los datos registrados. Devuelve exclusivamente JSON válido. Analiza el enfoque de género únicamente con información explícita. No infieras género por nombres propios, apellidos, apariencia, municipio o institución. Identifica menciones explícitas a mujeres como beneficiarias, integrantes, formuladoras, ejecutoras, lideresas, aprendices, instructoras, productoras, emprendedoras o participantes. Si no hay evidencia explícita en formulación o ejecución, responde exactamente 'No reportado explícitamente'. Todos los puntajes deben estar entre 0 y 100.";
+  const system = "Eres analista técnico de ExpoSemilleros CAM IA. Lee el archivo adjunto y los datos registrados. Devuelve exclusivamente JSON válido. Analiza el enfoque de género únicamente con información explícita. No infieras género por nombres propios, apellidos, apariencia, municipio o institución. Identifica menciones explícitas a mujeres como beneficiarias, integrantes, formuladoras, ejecutoras, lideresas, aprendices, instructoras, productoras, emprendedoras o participantes. Si no hay evidencia explícita en formulación o ejecución, responde exactamente 'No reportado explícitamente'. Todos los puntajes deben estar entre 0 y 100. Los campos de tipo lista deben ser siempre arrays JSON, incluso si solo contienen un elemento; nunca devuelvas texto plano en esos campos.";
   const members = (project.equipo ?? []).map((member) => ({ rol_integrante: member.rol_integrante }));
   const prompt = `Analiza el proyecto y responde con esta estructura JSON exacta:
 {"resumen_ia":"","tendencias_identificadas":[],"palabras_clave_ia":[],"sectores_relacionados":[],"nivel_innovacion_ia":0,"nivel_pertinencia_ia":0,"nivel_impacto_ia":0,"nivel_viabilidad_ia":0,"nivel_claridad_metodologica_ia":0,"nivel_articulacion_tendencias_ia":0,"riesgos_detectados":[],"oportunidades_detectadas":[],"puntaje_sugerido_ia":0,"promedio_ia":0,"porcentaje_ia":0,"nivel_tendencia_ia":"","concepto_ia":"","enfoque_genero_ia":"","nivel_inclusion_genero_ia":0,"mujeres_involucradas_ia":"","mujeres_en_formulacion_ia":"","mujeres_en_ejecucion_ia":"","evidencia_genero_ia":"","brechas_genero_ia":[],"acciones_genero_recomendadas_ia":[],"recomendaciones_genero_ia":"","enfoque_etnico_ia":"","nivel_inclusion_etnica_ia":0,"recomendaciones_etnicas_ia":"","enfoque_diferencial_ia":"","riesgos_exclusion_ia":[],"oportunidades_inclusion_ia":[]}
+Los nueve campos de lista deben conservar los corchetes aunque tengan un solo elemento. Ejemplo correcto: "acciones_genero_recomendadas_ia":["Fortalecer la documentación explícita de la participación de mujeres en la formulación.","Identificar roles de mujeres en la ejecución del proyecto."]. Ejemplo incorrecto: "acciones_genero_recomendadas_ia":"Fortalecer la documentación explícita de la participación de mujeres.".
 Datos: ${JSON.stringify({ nombre_proyecto: value(project,"nombre_proyecto"), linea_tematica: value(project,"linea_tematica"), semillero: value(project,"semillero"), municipio: value(project,"municipio"), resumen_problema: value(project,"resumen_problema"), resumen_objetivo: value(project,"resumen_objetivo"), resumen_metodologia: value(project,"resumen_metodologia"), resumen_resultados: value(project,"resumen_resultados"), resumen_conclusiones: value(project,"resumen_conclusiones"), productos_obtenidos: values(project,"productos_obtenidos"), nivel_madurez: value(project,"nivel_madurez"), roles_integrantes: members })}
 Los nombres de integrantes solo permiten reconocer roles; nunca permiten inferir género. Sustenta evidencia_genero_ia con texto explícito del proyecto.`;
   const content: OpenRouterContentPart[] = [{ type: "text", text: prompt }];

@@ -1,13 +1,13 @@
 import { analyzeProjectTrends } from "@/lib/ai/trend-analysis";
 import { isOpenRouterRateLimitError } from "@/lib/ai/openrouter";
+import { isMalformedArrayError, MALFORMED_ARRAY_MESSAGE, normalizeAnalysisPayload } from "@/lib/ai/analysis-normalization";
 import { PROJECT_FILES_BUCKET } from "@/lib/supabase/storage";
 import type { Project, ProjectMember } from "@/types";
 
 type DbClient = ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>;
 
-const arrays = ["tendencias_identificadas", "palabras_clave_ia", "sectores_relacionados", "riesgos_detectados", "oportunidades_detectadas", "brechas_genero_ia", "acciones_genero_recomendadas_ia", "riesgos_exclusion_ia", "oportunidades_inclusion_ia"] as const;
-
 function message(error: unknown) {
+  if (isMalformedArrayError(error)) return MALFORMED_ARRAY_MESSAGE;
   if (error instanceof Error && (error.name === "AbortError" || error.message.toLowerCase().includes("aborted"))) return "Tiempo de espera agotado durante el análisis IA.";
   if (error instanceof Error) return error.message.slice(0, 1200);
   if (typeof error === "string") return error.slice(0, 1200);
@@ -33,9 +33,13 @@ async function latestAnalysisId(client: DbClient, projectId: string) {
 
 async function save(client: DbClient, projectId: string, payload: Record<string, unknown>) {
   const id = await latestAnalysisId(client, projectId);
-  const query = id ? client.from("analisis_ia").update(payload).eq("id", id) : client.from("analisis_ia").insert({ proyecto_id: projectId, ...payload });
+  const normalized = normalizeAnalysisPayload(payload);
+  const query = id ? client.from("analisis_ia").update(normalized).eq("id", id) : client.from("analisis_ia").insert({ proyecto_id: projectId, ...normalized });
   const { error } = await query;
-  if (error) throw error;
+  if (error) {
+    if (isMalformedArrayError(error)) throw new Error(MALFORMED_ARRAY_MESSAGE);
+    throw error;
+  }
 }
 
 export async function analyzeAndSaveProject(client: DbClient, projectRow: Record<string, unknown>, options: { timeoutMs?: number } = {}) {
@@ -55,9 +59,7 @@ export async function analyzeAndSaveProject(client: DbClient, projectRow: Record
       file = { filename: String(projectRow.archivo_proyecto_nombre || path.split("/").pop() || "proyecto.pdf"), mimeType: String(projectRow.archivo_proyecto_tipo || data.type || "application/pdf"), bytes: await data.arrayBuffer() };
     }
     const analysis = await analyzeProjectTrends({ ...(projectRow as unknown as Project), equipo: (memberRows ?? []) as ProjectMember[] }, file, controller.signal);
-    const payload: Record<string, unknown> = { ...analysis, fecha_analisis: new Date().toISOString() };
-    for (const field of arrays) payload[field] = Array.isArray(payload[field]) ? payload[field] : [];
-    await save(client, projectId, payload);
+    await save(client, projectId, { ...analysis, fecha_analisis: new Date().toISOString() });
     await client.from("proyectos").update({ estado_analisis_ia: "Completado" }).eq("id", projectId);
     return { success: true as const, projectCode };
   } catch (error) {
