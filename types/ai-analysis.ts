@@ -39,6 +39,11 @@ export interface AIAnalysis {
   mujeres_en_formulacion_ia?: string;
   mujeres_en_ejecucion_ia?: string;
   evidencia_genero_ia?: string;
+  evidencia_mujeres_involucradas_ia?: string;
+  evidencia_mujeres_formulacion_ia?: string;
+  evidencia_mujeres_ejecucion_ia?: string;
+  poblacion_impactada_ia?: string;
+  evidencia_poblacion_impactada_ia?: string;
   brechas_genero_ia?: string[];
   acciones_genero_recomendadas_ia?: string[];
   recomendaciones_genero_ia?: string | string[];
@@ -46,6 +51,10 @@ export interface AIAnalysis {
   nivel_inclusion_etnica_ia?: number;
   recomendaciones_etnicas_ia?: string[];
   enfoque_diferencial_ia?: string;
+  grupos_diferenciales_identificados_ia?: string[];
+  evidencia_enfoque_diferencial_ia?: string;
+  nivel_evidencia_genero_ia?: "Explícita" | "Parcial" | "No reportada explícitamente";
+  nivel_evidencia_diferencial_ia?: "Explícita" | "Parcial" | "No reportada explícitamente";
   riesgos_exclusion_ia?: string[];
   oportunidades_inclusion_ia?: string[];
   alertas_calidad?: string[];

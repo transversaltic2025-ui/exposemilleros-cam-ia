@@ -1,70 +1,18 @@
 import { z } from "zod";
 import { callOpenRouter } from "./openrouter";
+import { toText, toTextArray } from "./analysis-normalization";
 import type { ProductorIniciativa } from "@/types/productores";
 
-const text = z.preprocess(value => typeof value === "string" && value.trim() ? value.trim() : "Pendiente", z.string());
-const list = z.preprocess(value => Array.isArray(value) ? value.filter(item => typeof item === "string" && item.trim()).map(item => item.trim()) : [], z.array(z.string()));
-const number = (maximum: number) => z.preprocess(value => typeof value === "number" && Number.isFinite(value) ? value : 0, z.number()).transform(value => Math.min(maximum, Math.max(0, Math.round(value * 100) / 100)));
-const schema = z.object({
-  resumen_ia: text, linea_productiva_detectada: text, nivel_madurez_ia: text,
-  potencial_comercial_ia: text, riesgos_detectados: list, oportunidades_detectadas: list,
-  necesidades_fortalecimiento: list, recomendaciones_ia: list, tendencias_relacionadas: list,
-  prioridad_acompanamiento: text, puntaje_sugerido_ia: number(25), porcentaje_ia: number(100),
-  nivel_tendencia_ia: z.preprocess(value => typeof value === "string" ? value.trim() : "", z.string()),
-});
+const text=z.preprocess(v=>toText(v)||"No reportado explícitamente",z.string());
+const list=z.preprocess(toTextArray,z.array(z.string()));
+const number=(max:number)=>z.coerce.number().catch(0).transform(v=>Math.min(max,Math.max(0,Math.round(v*100)/100)));
+const evidence=z.preprocess(v=>{const s=toText(v);return ["Explícita","Parcial","No reportada explícitamente"].includes(s)?s:"No reportada explícitamente";},z.enum(["Explícita","Parcial","No reportada explícitamente"]));
+const schema=z.object({resumen_ia:text,linea_productiva_detectada:text,nivel_madurez_ia:text,potencial_comercial_ia:text,riesgos_detectados:list,oportunidades_detectadas:list,necesidades_fortalecimiento:list,recomendaciones_ia:list,tendencias_relacionadas:list,prioridad_acompanamiento:text,puntaje_sugerido_ia:number(25),porcentaje_ia:number(100),nivel_tendencia_ia:text,enfoque_genero_ia:text,mujeres_involucradas_ia:text,mujeres_en_formulacion_ia:text,mujeres_en_ejecucion_ia:text,evidencia_mujeres_involucradas_ia:text,evidencia_mujeres_formulacion_ia:text,evidencia_mujeres_ejecucion_ia:text,poblacion_impactada_ia:text,evidencia_poblacion_impactada_ia:text,enfoque_diferencial_ia:text,grupos_diferenciales_identificados_ia:list,evidencia_enfoque_diferencial_ia:text,brechas_genero_ia:list,acciones_genero_recomendadas_ia:list,nivel_evidencia_genero_ia:evidence,nivel_evidencia_diferencial_ia:evidence});
+export type ProductoresAnalysis=z.infer<typeof schema>&{modelo_ia:string};
+function extract(content:string){const c=content.trim().match(/```(?:json)?\s*([\s\S]*?)\s*```/i)?.[1]??content.trim();const a=c.indexOf("{");const b=c.lastIndexOf("}");if(a<0||b<=a)throw new Error("La IA respondió, pero no entregó un JSON válido.");try{return JSON.parse(c.slice(a,b+1));}catch{throw new Error("La IA respondió, pero no entregó un JSON válido.");}}
 
-export function extractProductoresJson(content: string) {
-  const trimmed = content.trim();
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  const candidate = fenced?.[1]?.trim() ?? trimmed;
-  const first = candidate.indexOf("{");
-  const last = candidate.lastIndexOf("}");
-  if (first < 0 || last <= first) throw new Error("La IA respondió, pero no entregó un JSON válido.");
-  try { return JSON.parse(candidate.slice(first, last + 1)) as unknown; }
-  catch { throw new Error("La IA respondió, pero no entregó un JSON válido."); }
-}
-
-function parse(content: string) {
-  try {
-    const result = schema.parse(extractProductoresJson(content));
-    const nivel = result.nivel_tendencia_ia || (result.porcentaje_ia >= 80 ? "Alto potencial" : result.porcentaje_ia >= 60 ? "Potencial medio" : "Requiere fortalecimiento");
-    return { ...result, nivel_tendencia_ia: nivel };
-  } catch (error) {
-    console.warn("[productores-ai] respuesta no interpretable", error instanceof Error ? error.message : "error desconocido");
-    throw new Error("La IA respondió, pero no entregó un JSON válido.");
-  }
-}
-
-export type ProductoresAnalysis = z.infer<typeof schema> & { modelo_ia: string };
-
-export async function analyzeProductor(initiative: ProductorIniciativa): Promise<ProductoresAnalysis> {
-  const prompt = `Analiza esta iniciativa productiva campesina. Responde estrictamente con un único JSON válido, sin markdown ni texto adicional, usando exactamente esta estructura:
-{
-"resumen_ia":"string",
-"linea_productiva_detectada":"string",
-"nivel_madurez_ia":"string",
-"potencial_comercial_ia":"string",
-"riesgos_detectados":["string"],
-"oportunidades_detectadas":["string"],
-"necesidades_fortalecimiento":["string"],
-"recomendaciones_ia":["string"],
-"tendencias_relacionadas":["string"],
-"prioridad_acompanamiento":"Alta | Media | Baja",
-"puntaje_sugerido_ia":0,
-"porcentaje_ia":0,
-"nivel_tendencia_ia":"Alto potencial | Potencial medio | Requiere fortalecimiento"
-}
-puntaje_sugerido_ia debe estar entre 0 y 25 y porcentaje_ia entre 0 y 100.
-Datos: ${JSON.stringify({ nombre: initiative.nombre_iniciativa, linea: initiative.linea_productiva, descripcion: initiative.descripcion_iniciativa, producto: initiative.producto_servicio, anio: initiative.anio_inicio, madurez: initiative.nivel_madurez, productos: initiative.productos_obtenidos, ventas: initiative.donde_vende, dificultades: initiative.principal_dificultad, municipio: initiative.municipio, vereda: initiative.vereda?.trim() || "No registrada" })}`;
-  let parsed: z.infer<typeof schema> | null = null;
-  const response = await callOpenRouter([
-    { role: "system", content: "Eres especialista en desarrollo rural colombiano. No inventes datos. Devuelve solo JSON válido." },
-    { role: "user", content: prompt },
-  ], {
-    temperature: 0.2,
-    validateContent: content => { parsed = parse(content); },
-    onModelAttempt: model => console.log("[productores-ai] intentando modelo", model),
-    onModelError: (model, error) => console.error("[productores-ai] modelo falló", model, error.message),
-  });
-  return { ...(parsed ?? parse(response.content)), modelo_ia: response.modelUsed };
+export async function analyzeProductor(initiative:ProductorIniciativa,signal?:AbortSignal):Promise<ProductoresAnalysis>{
+ const shape={resumen_ia:"",linea_productiva_detectada:"",nivel_madurez_ia:"",potencial_comercial_ia:"",riesgos_detectados:[],oportunidades_detectadas:[],necesidades_fortalecimiento:[],recomendaciones_ia:[],tendencias_relacionadas:[],prioridad_acompanamiento:"",puntaje_sugerido_ia:0,porcentaje_ia:0,nivel_tendencia_ia:"",enfoque_genero_ia:"",mujeres_involucradas_ia:"",mujeres_en_formulacion_ia:"",mujeres_en_ejecucion_ia:"",evidencia_mujeres_involucradas_ia:"",evidencia_mujeres_formulacion_ia:"",evidencia_mujeres_ejecucion_ia:"",poblacion_impactada_ia:"",evidencia_poblacion_impactada_ia:"",enfoque_diferencial_ia:"",grupos_diferenciales_identificados_ia:[],evidencia_enfoque_diferencial_ia:"",brechas_genero_ia:[],acciones_genero_recomendadas_ia:[],nivel_evidencia_genero_ia:"",nivel_evidencia_diferencial_ia:""};
+ const prompt=`Analiza esta iniciativa campesina y responde solo el JSON exacto ${JSON.stringify(shape)}. Identifica madurez, potencial comercial, riesgos, oportunidades, fortalecimiento, recomendaciones, tendencias y prioridad. Para inclusión, género y enfoque diferencial usa únicamente evidencia textual explícita. No infieras género por el nombre del productor o representante, apellidos, municipio, institución, rol o apariencia. Cada afirmación sobre mujeres involucradas, liderazgo/formulación, ejecución/producción, población impactada o enfoque diferencial debe tener una evidencia textual breve. Si no existe, responde exactamente "No reportado explícitamente". Los niveles de evidencia solo pueden ser "Explícita", "Parcial" o "No reportada explícitamente". Datos: ${JSON.stringify({nombre_iniciativa:initiative.nombre_iniciativa,linea_productiva:initiative.linea_productiva,descripcion:initiative.descripcion_iniciativa,producto_servicio:initiative.producto_servicio,anio_inicio:initiative.anio_inicio,nivel_madurez:initiative.nivel_madurez,productos_obtenidos:initiative.productos_obtenidos,donde_vende:initiative.donde_vende,dificultades:initiative.principal_dificultad,municipio:initiative.municipio,vereda:initiative.vereda||"No registrada"})}`;
+ let parsed:z.infer<typeof schema>|undefined;const response=await callOpenRouter([{role:"system",content:"Eres especialista en desarrollo rural colombiano. No inventes datos ni infieras atributos sensibles. Devuelve solo JSON válido."},{role:"user",content:prompt}],{signal,temperature:.2,validateContent:c=>{parsed=schema.parse(extract(c));}});const result=parsed??schema.parse(extract(response.content));return {...result,nivel_tendencia_ia:result.nivel_tendencia_ia==="No reportado explícitamente"?(result.porcentaje_ia>=80?"Alto potencial":result.porcentaje_ia>=60?"Potencial medio":"Requiere fortalecimiento"):result.nivel_tendencia_ia,modelo_ia:response.modelUsed};
 }

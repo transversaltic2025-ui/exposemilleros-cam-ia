@@ -3,12 +3,18 @@ export const ANALYSIS_ARRAY_FIELDS = [
   "oportunidades_detectadas", "brechas_genero_ia", "acciones_genero_recomendadas_ia",
   "recomendaciones_genero_ia", "recomendaciones_etnicas_ia", "riesgos_exclusion_ia",
   "oportunidades_inclusion_ia",
+  "grupos_diferenciales_identificados_ia", "necesidades_fortalecimiento", "recomendaciones_ia",
+  "tendencias_relacionadas",
 ] as const;
 
 const TEXT_FIELDS = [
   "resumen_ia", "nivel_tendencia_ia", "concepto_ia", "enfoque_genero_ia",
   "mujeres_involucradas_ia", "mujeres_en_formulacion_ia", "mujeres_en_ejecucion_ia",
   "evidencia_genero_ia", "enfoque_etnico_ia", "enfoque_diferencial_ia",
+  "evidencia_mujeres_involucradas_ia", "evidencia_mujeres_formulacion_ia",
+  "evidencia_mujeres_ejecucion_ia", "poblacion_impactada_ia", "evidencia_poblacion_impactada_ia",
+  "evidencia_enfoque_diferencial_ia", "nivel_evidencia_genero_ia", "nivel_evidencia_diferencial_ia",
+  "linea_productiva_detectada", "nivel_madurez_ia", "potencial_comercial_ia", "prioridad_acompanamiento",
   "estado_analisis", "mensaje_error", "modelo_ia",
 ] as const;
 

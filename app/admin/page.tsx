@@ -41,6 +41,12 @@ const adminLinks = [
     icon: Sprout,
   },
   {
+    href: "/admin/productores/tendencias",
+    title: "IA productores campesinos",
+    detail: "Ejecute análisis masivo, consulte dashboard y descargue reporte PDF de iniciativas campesinas.",
+    icon: BarChart3,
+  },
+  {
     href: "/api/admin/jovenes-emprendedores/export/excel",
     title: "Descargar jóvenes emprendedores",
     detail: "Descargue la base administrativa en Excel.",

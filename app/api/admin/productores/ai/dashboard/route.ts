@@ -1,0 +1,2 @@
+import { isAdminAuthenticated } from "@/lib/admin-auth";import { getProductoresDashboardData } from "@/lib/ai/productores-dashboard";
+export async function GET(){if(!(await isAdminAuthenticated()))return Response.json({success:false,error:"No autorizado"},{status:401});try{return Response.json(await getProductoresDashboardData());}catch(error){return Response.json({success:false,error:error instanceof Error?error.message:"No fue posible consultar el dashboard."},{status:500});}}

@@ -38,3 +38,24 @@ alter table public.productores_iniciativas enable row level security;
 alter table public.evaluadoras_productores enable row level security;
 alter table public.evaluaciones_productores enable row level security;
 alter table public.analisis_ia_productores enable row level security;
+
+alter table public.analisis_ia_productores
+  add column if not exists enfoque_genero_ia text,
+  add column if not exists mujeres_involucradas_ia text,
+  add column if not exists mujeres_en_formulacion_ia text,
+  add column if not exists mujeres_en_ejecucion_ia text,
+  add column if not exists evidencia_mujeres_involucradas_ia text,
+  add column if not exists evidencia_mujeres_formulacion_ia text,
+  add column if not exists evidencia_mujeres_ejecucion_ia text,
+  add column if not exists poblacion_impactada_ia text,
+  add column if not exists evidencia_poblacion_impactada_ia text,
+  add column if not exists enfoque_diferencial_ia text,
+  add column if not exists grupos_diferenciales_identificados_ia text[] default '{}',
+  add column if not exists evidencia_enfoque_diferencial_ia text,
+  add column if not exists brechas_genero_ia text[] default '{}',
+  add column if not exists acciones_genero_recomendadas_ia text[] default '{}',
+  add column if not exists nivel_evidencia_genero_ia text,
+  add column if not exists nivel_evidencia_diferencial_ia text,
+  add column if not exists estado_analisis text default 'Pendiente',
+  add column if not exists mensaje_error text,
+  add column if not exists fecha_analisis timestamptz;

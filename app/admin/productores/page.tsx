@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, Download, KeyRound, Users } from "lucide-react";
+import { ArrowUpRight, BarChart3, Download, KeyRound, Users } from "lucide-react";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { SiteShell } from "@/components/site-shell";
@@ -17,6 +17,7 @@ export default async function Page() {
     <div className="flex flex-wrap justify-between gap-4">
       <div><p className="expo-eyebrow">Administración</p><h1 className="expo-page-title mt-2">Productores campesinos</h1><p className="mt-2 text-[var(--color-muted)]">Iniciativas productivas, evaluaciones y análisis IA.</p></div>
       <div className="flex flex-wrap gap-2">
+        <Link href="/admin/productores/tendencias" className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 font-bold text-white"><BarChart3 className="size-4" />Análisis IA productores</Link>
         <Link href="/admin/productores/accesos" className="inline-flex h-11 items-center gap-2 rounded-xl border bg-white/70 px-4 font-bold text-[var(--color-primary)]"><KeyRound className="size-4" />Accesos productores</Link>
         <a href="/api/productores/export/excel" className="inline-flex h-11 items-center gap-2 rounded-xl border bg-white/70 px-4 font-bold text-[var(--color-primary)]"><Download className="size-4" />Descargar Excel</a>
         <a href="/api/productores/export/pdf" className="inline-flex h-11 items-center gap-2 rounded-xl border bg-white/70 px-4 font-bold text-[var(--color-primary)]"><Download className="size-4" />Descargar PDF</a>
