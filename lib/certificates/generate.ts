@@ -305,7 +305,7 @@ export async function generateCertificates(tipoCertificado: CertificateType) {
       continue;
     }
 
-    const pdf = createCertificatePdf({
+    const pdf = await createCertificatePdf({
       tipoCertificado: candidate.tipo_certificado,
       nombrePersona: candidate.nombre_persona,
       rolCertificado: candidate.rol_certificado,
