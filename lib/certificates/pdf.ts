@@ -1,86 +1,72 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 
-import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
+import { cleanCertificateText } from "@/lib/certificates/text";
+import type { TextPosition } from "@/types/certificate-template";
 
 export interface CertificatePdfInput {
   nombrePersona: string;
+  documentoPersona: string;
   rolCertificado: string;
-  nombreProyecto?: string;
-  lineaTematica?: string;
-  semillero?: string;
-  areaConocimiento?: string;
-  tipoCertificado: "Participante" | "Ponente" | "Instructor" | "Evaluador";
+  tipoCertificado: "Participante" | "Ponente" | "Instructor" | "Líder de proyecto" | "Evaluador" | "Evaluador productores campesinos";
 }
 
-export const CERTIFICATE_TEXT_POSITIONS = {
-  rol: {
-    x: 420,
-    y: 260,
-    size: 18,
-    maxWidth: 260,
-    align: "center",
-  },
-} as const;
-
-const MIN_ROLE_FONT_SIZE = 8;
-function getTemplatePath() {
-  const configuredPath = process.env.CERTIFICATE_TEMPLATE_PATH?.trim();
-  if (configuredPath) {
-    return path.resolve(/* turbopackIgnore: true */ process.cwd(), configuredPath);
-  }
-
-  return path.join(process.cwd(), "public", "templates", "certificado.pdf");
+export interface CertificatePdfOptions {
+  templateBytes: Uint8Array;
+  templateName?: string;
+  positions: { nombre: TextPosition; documento: TextPosition; rol: TextPosition };
 }
 
-function fontSizeToFit(text: string, font: PDFFont, preferredSize: number, maxWidth: number) {
-  let size = preferredSize;
-
-  while (size > MIN_ROLE_FONT_SIZE && font.widthOfTextAtSize(text, size) > maxWidth) {
-    size -= 0.5;
-  }
-
-  return size;
+export function fitTextToWidth(
+  text: string,
+  font: PDFFont,
+  initialSize: number,
+  maxWidth: number,
+  minSize = 16,
+) {
+  const effectiveMinSize = Math.min(initialSize, minSize);
+  let size = initialSize;
+  while (size > effectiveMinSize && font.widthOfTextAtSize(text, size) > maxWidth) size -= 0.5;
+  return Math.max(size, effectiveMinSize);
 }
 
-/** Usa la plantilla como fondo y superpone exclusivamente el rol. */
-export async function createCertificatePdf(input: CertificatePdfInput) {
-  const role = input.rolCertificado.trim();
-  if (!role) {
-    throw new Error("El rol del certificado es obligatorio.");
+function drawCertificateText(page: PDFPage, value: string, font: PDFFont, position: TextPosition) {
+  const text = cleanCertificateText(value);
+  const size = fitTextToWidth(text, font, position.size, position.maxWidth);
+  const width = font.widthOfTextAtSize(text, size);
+  const x = position.align === "left" ? position.x : position.x - width / 2;
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("[certificates/pdf] campo", { text, size, width, position });
+  }
+  page.drawText(text, { x, y: position.y, size, font, color: rgb(0, 0, 0) });
+}
+
+/** Única función de renderizado para vista previa y certificados reales. */
+export async function generateCertificatePdf(input: CertificatePdfInput, options: CertificatePdfOptions) {
+  const nombre = cleanCertificateText(input.nombrePersona);
+  const documento = cleanCertificateText(input.documentoPersona);
+  const rol = cleanCertificateText(input.rolCertificado);
+  if (!nombre || !documento || !rol) {
+    throw new Error("No se generó el certificado porque falta nombre, documento o rol.");
   }
 
-  let templateBytes: Buffer;
-  const templatePath = getTemplatePath();
-
-  try {
-    templateBytes = await readFile(templatePath);
-  } catch (error) {
-    throw new Error(
-      `No se pudo leer la plantilla del certificado en ${templatePath}. ` +
-        "Agregue el PDF institucional o configure CERTIFICATE_TEMPLATE_PATH.",
-      { cause: error },
-    );
+  if (process.env.NODE_ENV === "development") {
+    console.log("[certificates/pdf] generación", {
+      plantilla: options.templateName,
+      posiciones: options.positions,
+      nombre,
+      documento,
+      rol,
+    });
   }
 
-  const pdf = await PDFDocument.load(templateBytes);
+  const pdf = await PDFDocument.load(options.templateBytes);
   const page = pdf.getPages()[0];
-  if (!page) {
-    throw new Error("La plantilla del certificado no contiene páginas.");
-  }
+  if (!page) throw new Error("La plantilla del certificado no contiene páginas.");
 
   const font = await pdf.embedFont(StandardFonts.Helvetica);
-  const position = CERTIFICATE_TEXT_POSITIONS.rol;
-  const size = fontSizeToFit(role, font, position.size, position.maxWidth);
-  const width = font.widthOfTextAtSize(role, size);
-
-  page.drawText(role, {
-    x: position.x - width / 2,
-    y: position.y,
-    size,
-    font,
-    color: rgb(0, 0, 0),
-  });
-
+  drawCertificateText(page, nombre, font, options.positions.nombre);
+  drawCertificateText(page, documento, font, options.positions.documento);
+  drawCertificateText(page, rol, font, options.positions.rol);
   return Buffer.from(await pdf.save());
 }

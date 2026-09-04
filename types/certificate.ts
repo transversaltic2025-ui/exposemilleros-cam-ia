@@ -1,6 +1,6 @@
 export interface CertificateRecord {
   id?: string;
-  tipo_certificado?: "Participante" | "Ponente" | "Instructor" | "Evaluador";
+  tipo_certificado?: "Participante" | "Ponente" | "Instructor" | "Líder de proyecto" | "Evaluador" | "Evaluador productores campesinos";
   nombre_persona?: string;
   documento_persona?: string;
   rol_certificado?: string;

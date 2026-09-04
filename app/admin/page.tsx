@@ -83,6 +83,12 @@ const adminLinks = [
     icon: FileBadge,
   },
   {
+    href: "/admin/certificados/plantilla",
+    title: "Plantilla de certificados",
+    detail: "Cargue el PDF oficial y ajuste la posición del rol.",
+    icon: FileBadge,
+  },
+  {
     href: "/admin/capacitacion-evaluadores",
     title: "Capacitación de evaluadores",
     detail: "Evaluaciones de práctica sin efecto oficial.",

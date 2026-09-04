@@ -7,7 +7,8 @@ import { generateCertificates } from "@/lib/certificates/generate";
 export const runtime = "nodejs";
 
 const schema = z.object({
-  tipo_certificado: z.enum(["Ponente", "Instructor", "Evaluador"]),
+  tipo_certificado: z.enum(["Ponente", "Líder de proyecto", "Evaluador", "Evaluador productores campesinos"]),
+  overwrite: z.boolean().optional().default(false),
 });
 
 export async function POST(request: Request) {
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const values = schema.parse(body);
-    const result = await generateCertificates(values.tipo_certificado);
+    const result = await generateCertificates(values.tipo_certificado, values.overwrite);
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {

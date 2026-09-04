@@ -116,15 +116,16 @@ Supabase Database es la fuente principal de datos. Las tablas usan encabezados e
 
 | Campo | Tipo | Descripcion |
 | --- | --- | --- |
-| certificado_id | text | ID unico. |
-| tipo | text | Participante, Instructor o Evaluador. |
-| nombre | text | Nombre para certificado. |
-| documento | text | Documento interno si aplica. |
-| codigo_proyecto | text | Proyecto asociado si aplica. |
-| rol | text | Rol certificado. |
-| fecha_evento | date | Fecha del evento. |
-| estado | text | Pendiente, Generado o Enviado. |
-| archivo_certificado_url | text | URL futura del certificado. |
+| id | uuid | ID unico. |
+| tipo_certificado | text | Tipo usado para generación, filtros y paquetes. |
+| nombre_persona | text | Nombre para certificado. |
+| documento_persona | text | Documento interno para el certificado. |
+| rol_certificado | text | Texto dinámico que se dibuja como rol. |
+| proyecto_id | uuid | Proyecto asociado cuando aplica. |
+| evaluador_id | uuid | Evaluador de proyectos asociado cuando aplica. |
+| url_certificado | text | Ruta del PDF en Supabase Storage. |
+| estado_certificado | text | Pendiente, Generado o Enviado. |
+| created_at | timestamptz | Fecha de creación del registro. |
 
 ## Storage
 
