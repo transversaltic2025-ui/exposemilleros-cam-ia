@@ -1,5 +1,5 @@
 export const CERTIFICATE_TEMPLATE_TYPES = [
-  "General", "Ponentes", "Instructores", "Líder de proyecto", "Evaluadores", "Evaluador productores campesinos", "Productores campesinos", "Jóvenes emprendedores",
+  "General", "Investigador", "Ponentes", "Instructores", "Líder de proyecto", "Evaluadores", "Evaluador productores campesinos", "Productores campesinos", "Jóvenes emprendedores",
 ] as const;
 
 export type CertificateTemplateType = (typeof CERTIFICATE_TEMPLATE_TYPES)[number];

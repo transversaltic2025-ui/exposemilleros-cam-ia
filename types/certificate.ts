@@ -1,9 +1,10 @@
 export interface CertificateRecord {
   id?: string;
-  tipo_certificado?: "Participante" | "Ponente" | "Instructor" | "Líder de proyecto" | "Evaluador" | "Evaluador productores campesinos";
+  tipo_certificado?: "Participante" | "Ponente" | "Instructor" | "Líder de proyecto" | "Evaluador" | "Evaluador productores campesinos" | "Investigador";
   nombre_persona?: string;
   documento_persona?: string;
   rol_certificado?: string;
+  rol_participacion?: string;
   proyecto_id?: string | null;
   evaluador_id?: string | null;
   url_certificado?: string | null;

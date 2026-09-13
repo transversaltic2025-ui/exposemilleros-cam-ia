@@ -23,7 +23,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { createCertificateSignedUrl } from "@/lib/supabase/storage";
 import { GenerateCertificateButton } from "./generate-certificate-button";
 import { listCertificateTemplates } from "@/lib/certificates/templates";
-import { getProducerEvaluatorCertificateCount } from "@/lib/certificates/generate";
+import { getProducerEvaluatorCertificateCount, getResearcherCertificateCount } from "@/lib/certificates/generate";
 
 export const dynamic = "force-dynamic";
 const PACKAGE_SIZE = 30;
@@ -42,12 +42,13 @@ function packageLinks(tipo: string, label: string, count: number) {
 export default async function AdminCertificadosPage() {
   await requireAdmin();
 
-  const [certificados, proyectos, evaluaciones, templateResult, evaluadoresProductores] = await Promise.all([
+  const [certificados, proyectos, evaluaciones, templateResult, evaluadoresProductores, investigadores] = await Promise.all([
     getCertificates(),
     getProjects(),
     getHumanEvaluations(),
     listCertificateTemplates(),
     getProducerEvaluatorCertificateCount(),
+    getResearcherCertificateCount(),
   ]);
   const activeTemplate = templateResult.templates.find(template => template.activo) ?? null;
   const activeTemplateUrl = activeTemplate
@@ -68,7 +69,7 @@ export default async function AdminCertificadosPage() {
   const generados = certificados.filter(
     (certificado) => (certificado.estado_certificado ?? certificado.estado) === "Generado",
   ).length;
-  const candidatos = ponentes + lideres + evaluadoresConEvaluacion + evaluadoresProductores;
+  const candidatos = ponentes + lideres + evaluadoresConEvaluacion + evaluadoresProductores + investigadores;
   const pendientes = Math.max(candidatos - generados, 0);
   const downloadable = certificados.filter(certificado =>
     Boolean(certificado.url_certificado ?? certificado.archivo_certificado_url),
@@ -80,6 +81,7 @@ export default async function AdminCertificadosPage() {
     return kind.includes("evaluador productores") || kind.includes("evaluador de productores");
   };
   const packageGroups = [
+    { tipo: "investigador", label: "Investigadores", count: downloadable.filter(item => certificateKind(item) === "investigador").length },
     { tipo: "ponente", label: "Ponentes", count: downloadable.filter(item => certificateKind(item).includes("ponente")).length },
     { tipo: "lider", label: "Líderes de proyecto", count: downloadable.filter(item => certificateKind(item).includes("líder de proyecto") || certificateKind(item).includes("instructor")).length },
     { tipo: "evaluador", label: "Evaluadores", count: downloadable.filter(item => certificateKind(item).includes("evaluador") && !isProducerEvaluator(item)).length },
@@ -116,15 +118,16 @@ export default async function AdminCertificadosPage() {
         <p className="expo-eyebrow">Admin</p>
         <h1 className="expo-page-title mt-2">Certificados</h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--color-muted)]">
-          Generacion de certificados PDF en Supabase Storage para ponentes, instructores lideres y evaluadores.
+          Generacion de certificados PDF en Supabase Storage para ponentes, lideres de proyecto, investigadores asociados y evaluadores.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-4">
         <MetricCard label="Ponentes" value={ponentes} detail="Aprendices en póster" accent="secondary" />
         <MetricCard label="Líderes de proyecto" value={lideres} detail="Responsables únicos" accent="mint" />
         <MetricCard label="Evaluadores" value={evaluadoresConEvaluacion} detail="Con evaluación" accent="success" />
         <MetricCard label="Evaluadores productores" value={evaluadoresProductores} detail="Con evaluación registrada" accent="mint" />
+        <MetricCard label="Investigadores" value={investigadores} detail="Personas con rol investigador" accent="mint" />
         <MetricCard label="Generados" value={generados} detail="PDF creados" />
         <MetricCard label="Pendientes" value={pendientes} detail="Estimados" accent="secondary" />
       </div>
@@ -160,6 +163,8 @@ export default async function AdminCertificadosPage() {
             label="Generar certificados de evaluadores"
           />
           <GenerateCertificateButton tipoCertificado="Evaluador productores campesinos" label="Generar certificados de evaluadores de productores campesinos" />
+          <GenerateCertificateButton tipoCertificado="Investigador" label="Generar certificados de investigadores" />
+          <GenerateCertificateButton tipoCertificado="Investigador" label="Regenerar certificados de investigadores" overwrite />
           <GenerateCertificateButton tipoCertificado="Ponente" label="Regenerar certificados de ponentes" overwrite />
           <GenerateCertificateButton tipoCertificado="Líder de proyecto" label="Regenerar certificados de líderes de proyecto" overwrite />
           <GenerateCertificateButton tipoCertificado="Evaluador" label="Regenerar certificados de evaluadores" overwrite />
@@ -201,7 +206,7 @@ export default async function AdminCertificadosPage() {
                     {certificado.nombre_persona ?? certificado.nombre}
                   </TableCell>
                   <TableCell>{certificado.tipo_certificado ?? certificado.tipo}</TableCell>
-                  <TableCell>{certificado.rol_certificado ?? certificado.tipo_certificado ?? certificado.tipo}</TableCell>
+                  <TableCell>{certificado.rol_participacion ?? certificado.rol_certificado ?? certificado.tipo_certificado ?? certificado.tipo}</TableCell>
                   <TableCell className="whitespace-normal">
                     {certificado.proyecto_nombre ??
                       certificado.proyecto_codigo ??

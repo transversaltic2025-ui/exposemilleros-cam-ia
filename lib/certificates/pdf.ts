@@ -4,16 +4,11 @@ import { cleanCertificateText } from "@/lib/certificates/text";
 import type { TextPosition } from "@/types/certificate-template";
 
 export interface CertificatePdfInput {
-  nombrePersona: string;
-  documentoPersona: string;
-  rolCertificado: string;
-  tipoCertificado: "Participante" | "Ponente" | "Instructor" | "Líder de proyecto" | "Evaluador" | "Evaluador productores campesinos";
-}
-
-export interface CertificatePdfOptions {
-  templateBytes: Uint8Array;
-  templateName?: string;
-  positions: { nombre: TextPosition; documento: TextPosition; rol: TextPosition };
+  templatePdfBytes: Uint8Array;
+  nombre: string;
+  documento: string;
+  rol: string;
+  posiciones: { nombre: TextPosition; documento: TextPosition; rol: TextPosition };
 }
 
 export function fitTextToWidth(
@@ -42,31 +37,30 @@ function drawCertificateText(page: PDFPage, value: string, font: PDFFont, positi
 }
 
 /** Única función de renderizado para vista previa y certificados reales. */
-export async function generateCertificatePdf(input: CertificatePdfInput, options: CertificatePdfOptions) {
-  const nombre = cleanCertificateText(input.nombrePersona);
-  const documento = cleanCertificateText(input.documentoPersona);
-  const rol = cleanCertificateText(input.rolCertificado);
+export async function generateCertificatePdf(input: CertificatePdfInput) {
+  const nombre = cleanCertificateText(input.nombre);
+  const documento = cleanCertificateText(input.documento);
+  const rol = cleanCertificateText(input.rol);
   if (!nombre || !documento || !rol) {
     throw new Error("No se generó el certificado porque falta nombre, documento o rol.");
   }
 
   if (process.env.NODE_ENV === "development") {
     console.log("[certificates/pdf] generación", {
-      plantilla: options.templateName,
-      posiciones: options.positions,
+      posiciones: input.posiciones,
       nombre,
       documento,
       rol,
     });
   }
 
-  const pdf = await PDFDocument.load(options.templateBytes);
+  const pdf = await PDFDocument.load(input.templatePdfBytes);
   const page = pdf.getPages()[0];
   if (!page) throw new Error("La plantilla del certificado no contiene páginas.");
 
   const font = await pdf.embedFont(StandardFonts.Helvetica);
-  drawCertificateText(page, nombre, font, options.positions.nombre);
-  drawCertificateText(page, documento, font, options.positions.documento);
-  drawCertificateText(page, rol, font, options.positions.rol);
+  drawCertificateText(page, nombre, font, input.posiciones.nombre);
+  drawCertificateText(page, documento, font, input.posiciones.documento);
+  drawCertificateText(page, rol, font, input.posiciones.rol);
   return Buffer.from(await pdf.save());
 }

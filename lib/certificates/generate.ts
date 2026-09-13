@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { certificateErrorMessage } from "@/lib/certificates/errors";
 
 import { generateCertificatePdf } from "@/lib/certificates/pdf";
 import { getActiveCertificateTemplate, textPositionsFromTemplate } from "@/lib/certificates/templates";
@@ -7,7 +8,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { uploadCertificatePdf } from "@/lib/supabase/storage";
 import { certificateTypeToStorageFolder, sanitizeStorageKey } from "@/lib/certificates/storage-key";
 
-export type CertificateType = "Ponente" | "Líder de proyecto" | "Evaluador" | "Evaluador productores campesinos";
+export type CertificateType = "Ponente" | "Líder de proyecto" | "Evaluador" | "Evaluador productores campesinos" | "Investigador";
 
 interface ProjectRow {
   id: string;
@@ -293,7 +294,39 @@ export async function getProducerEvaluatorCertificateCount() {
   return (await getProducerEvaluatorCandidates()).length;
 }
 
+const RESEARCHER_ROLES = ["Investigador asociado", "Investigador", "Investigador/a asociado/a", "Investigador asociado/a"];
+
+async function getResearcherCandidates(): Promise<CertificateCandidate[]> {
+  const supabase = createSupabaseServerClient();
+  const candidates: CertificateCandidate[] = [];
+  // Read every matching member, including datasets above Supabase's default row limit.
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await supabase.from("proyecto_integrantes")
+      .select("id,proyecto_id,nombre_completo,documento")
+      .in("rol_integrante", RESEARCHER_ROLES)
+      .order("id", { ascending: true }).range(offset, offset + 499);
+    if (error) throw error;
+    for (const member of data ?? []) candidates.push({
+      tipo_certificado: "Investigador",
+      nombre_persona: member.nombre_completo,
+      documento_persona: String(member.documento ?? ""),
+      rol_certificado: "Investigador",
+      proyecto_id: member.proyecto_id,
+      evaluador_id: null,
+    });
+    if (!data || data.length < 500) break;
+  }
+  return candidates;
+}
+
+export async function getResearcherCertificateCount() {
+  const candidates = await getResearcherCandidates();
+  return new Set(candidates.map(person => cleanCertificateText(person.documento_persona).toLowerCase()
+    || cleanCertificateText(person.nombre_persona).toLowerCase())).size;
+}
+
 async function getCandidates(tipoCertificado: CertificateType) {
+  if (tipoCertificado === "Investigador") return getResearcherCandidates();
   if (tipoCertificado === "Evaluador productores campesinos") {
     return getProducerEvaluatorCandidates();
   }
@@ -304,29 +337,39 @@ async function getCandidates(tipoCertificado: CertificateType) {
   return getProjectCandidates(tipoCertificado);
 }
 
-export async function generateCertificates(tipoCertificado: CertificateType, overwrite = false) {
+export async function generateCertificates(tipoCertificado: CertificateType | "todos", overwrite = false, offset = 0, limit = 25) {
   const supabase = createSupabaseServerClient();
-  console.log("[certificates/generate] tipo solicitado", tipoCertificado);
+  console.log("[certificates/generate] solicitud", { tipo: tipoCertificado, regenerate: overwrite, offset, limit });
 
-  const candidates = (await getCandidates(tipoCertificado)) as CertificateCandidate[];
-  const activeTemplate = await getActiveCertificateTemplate(tipoCertificado);
-  if (!activeTemplate) {
-    throw new Error("No hay una plantilla PDF activa.");
+  const types: CertificateType[] = tipoCertificado === "todos"
+    ? ["Ponente", "Líder de proyecto", "Evaluador", "Evaluador productores campesinos", "Investigador"] : [tipoCertificado];
+  const candidateGroups = await Promise.all(types.map(getCandidates));
+  const candidates = [...new Map(candidateGroups.flat().map(candidate => [certificateKey(candidate), candidate])).values()]
+    .sort((a, b) => certificateKey(a).localeCompare(certificateKey(b)));
+  const batch = candidates.slice(offset, offset + limit);
+  const templates = new Map<CertificateType, { template: NonNullable<Awaited<ReturnType<typeof getActiveCertificateTemplate>>>; bytes: Uint8Array }>();
+  for (const type of new Set(batch.length ? batch.map(item => item.tipo_certificado) : types)) {
+    const activeTemplate = await getActiveCertificateTemplate(type);
+    if (!activeTemplate) {
+      throw new Error("No hay plantilla PDF activa.");
+    }
+    const { data: templateFile, error: templateError } = await supabase.storage
+      .from(activeTemplate.bucket)
+      .download(activeTemplate.archivo_path);
+    if (templateError || !templateFile) {
+      throw templateError ?? new Error("No se pudo descargar la plantilla activa.");
+    }
+    const templateBytes = new Uint8Array(await templateFile.arrayBuffer());
+    templates.set(type, { template: activeTemplate, bytes: templateBytes });
+    console.log("[certificates/generate] plantilla usada", { tipo: type, id: activeTemplate.id, nombre: activeTemplate.nombre, storageFolder: certificateTypeToStorageFolder(type) });
   }
-  const { data: templateFile, error: templateError } = await supabase.storage
-    .from(activeTemplate.bucket)
-    .download(activeTemplate.archivo_path);
-  if (templateError || !templateFile) {
-    throw templateError ?? new Error("No se pudo descargar la plantilla activa.");
-  }
-  const templateBytes = new Uint8Array(await templateFile.arrayBuffer());
-  console.log("[certificates/generate] cantidad de certificados candidatos", candidates.length);
+  console.log("[certificates/generate] cantidad encontrada", candidates.length);
 
   let existingQuery = supabase
     .from("certificados")
     .select("id,tipo_certificado,nombre_persona,documento_persona,proyecto_id,evaluador_id,url_certificado");
-  existingQuery = tipoCertificado === "Líder de proyecto"
-    ? existingQuery.in("tipo_certificado", ["Líder de proyecto", "Instructor", "Instructor líder", "Ponente"])
+  if (tipoCertificado !== "todos") existingQuery = tipoCertificado === "Líder de proyecto"
+    ? existingQuery.in("tipo_certificado", ["Líder de proyecto", "Instructor", "Instructor líder"])
     : existingQuery.eq("tipo_certificado", tipoCertificado);
   const { data: existingRows, error: existingError } = await existingQuery;
 
@@ -343,108 +386,107 @@ export async function generateCertificates(tipoCertificado: CertificateType, ove
   let regenerated = 0;
   let skipped = 0;
 
-  for (const candidate of candidates) {
-    const cleanName = cleanCertificateText(candidate.nombre_persona);
-    const cleanDocument = cleanCertificateText(candidate.documento_persona);
-    const cleanRole = cleanCertificateText(candidate.rol_certificado);
-    if (
-      !cleanName ||
-      !cleanDocument ||
-      !cleanRole
-    ) {
-      console.warn("No se generó el certificado porque falta nombre, documento o rol.", {
-        tipo: candidate.tipo_certificado,
-        tiene_nombre: Boolean(cleanName),
-        tiene_documento: Boolean(cleanDocument),
-        tiene_rol: Boolean(cleanRole),
+  const erroresDetalle: { nombre: string; documento: string; motivo: string }[] = [];
+  for (const candidate of batch) {
+    try {
+      const { template: activeTemplate, bytes: templateBytes } = templates.get(candidate.tipo_certificado)!;
+      const cleanName = cleanCertificateText(candidate.nombre_persona);
+      const cleanDocument = cleanCertificateText(candidate.documento_persona);
+      const cleanRole = cleanCertificateText(candidate.rol_certificado);
+      if (
+        !cleanName ||
+        !cleanDocument ||
+        !cleanRole
+      ) {
+        throw new Error("Falta nombre, documento o rol para generar el certificado.");
+      }
+      const key = certificateKey(candidate);
+      const existing = existingByKey.get(key);
+      if (existing && !overwrite) {
+        skipped += 1;
+        continue;
+      }
+
+      const pdf = await generateCertificatePdf({
+        nombre: cleanName,
+        documento: cleanDocument,
+        rol: cleanRole,
+        templatePdfBytes: templateBytes,
+        posiciones: textPositionsFromTemplate(activeTemplate),
+      });
+
+      const baseName = sanitizeStorageKey(
+        `${candidate.tipo_certificado}-${candidate.nombre_persona}-${candidate.documento_persona || crypto.randomUUID()}`,
+      ).slice(0, 160);
+      const storageFolder = certificateTypeToStorageFolder(candidate.tipo_certificado);
+      const canonicalPrefix = `certificados/${storageFolder}/`;
+      const existingPath = existing?.url_certificado &&
+        !/^https?:\/\//i.test(existing.url_certificado) &&
+        existing.url_certificado.startsWith(canonicalPrefix) &&
+        /^[a-z0-9/-]+\.pdf$/.test(existing.url_certificado)
+        ? existing.url_certificado
+        : null;
+      const storagePath = existingPath ?? `${canonicalPrefix}${baseName}-${Date.now()}.pdf`;
+
+      try {
+        await uploadCertificatePdf(storagePath, pdf);
+      } catch (error) {
+        console.error("[certificates/generate] error Supabase Storage subiendo PDF", error);
+        throw new Error(`No se pudo guardar en Storage: ${certificateErrorMessage(error)}`, { cause: error });
+      }
+
+      const certificateData = {
+        tipo_certificado: candidate.tipo_certificado,
+        nombre_persona: candidate.nombre_persona,
+        documento_persona: candidate.documento_persona,
+
         proyecto_id: candidate.proyecto_id,
         evaluador_id: candidate.evaluador_id,
-      });
-      skipped += 1;
-      continue;
-    }
-    const key = certificateKey(candidate);
-    let existing = existingByKey.get(key);
-    if (!existing && tipoCertificado === "Líder de proyecto") {
-      existing = ((existingRows ?? []) as unknown as ExistingCertificate[]).find(row =>
-        cleanCertificateText(row.documento_persona).toLowerCase() === cleanDocument.toLowerCase() &&
-        (row.proyecto_id ?? "") === (candidate.proyecto_id ?? "") &&
-        row.tipo_certificado === "Ponente",
-      );
-    }
-    if (existing && !overwrite) {
-      skipped += 1;
-      continue;
-    }
+        url_certificado: storagePath,
+        estado_certificado: "Generado",
+        created_at: new Date().toISOString(),
+      };
+      const save = (values: typeof certificateData & { rol_participacion?: string }) => existing
+        ? supabase.from("certificados").update(values).eq("id", existing.id)
+        : supabase.from("certificados").insert(values);
+      let { error: insertError } = await save({ ...certificateData, rol_participacion: cleanRole });
+      if (insertError && ["PGRST204", "42703"].includes(insertError.code) && insertError.message.includes("rol_participacion")) {
+        ({ error: insertError } = await save(certificateData));
+      }
 
-    const pdf = await generateCertificatePdf({
-      tipoCertificado: candidate.tipo_certificado,
-      nombrePersona: cleanName,
-      documentoPersona: cleanDocument,
-      rolCertificado: cleanRole,
-    }, {
-      templateBytes,
-      positions: textPositionsFromTemplate(activeTemplate),
-      templateName: `${activeTemplate.nombre} (${activeTemplate.tipo_certificado})`,
-    });
+      if (insertError) {
+        console.error("[certificates/generate] error Supabase guardando certificado", insertError);
+        throw insertError;
+      }
 
-    const baseName = sanitizeStorageKey(
-      `${candidate.tipo_certificado}-${candidate.nombre_persona}-${candidate.documento_persona || crypto.randomUUID()}`,
-    ).slice(0, 160);
-    const storageFolder = certificateTypeToStorageFolder(candidate.tipo_certificado);
-    const canonicalPrefix = `certificados/${storageFolder}/`;
-    const existingPath = existing?.url_certificado &&
-      !/^https?:\/\//i.test(existing.url_certificado) &&
-      existing.url_certificado.startsWith(canonicalPrefix)
-      ? existing.url_certificado
-      : null;
-    const storagePath = existingPath ?? `${canonicalPrefix}${baseName}-${Date.now()}.pdf`;
-
-    try {
-      await uploadCertificatePdf(storagePath, pdf);
+      existingByKey.set(key, { ...certificateData, id: existing?.id ?? "", url_certificado: storagePath });
+      if (existing) regenerated += 1;
+      else generated += 1;
     } catch (error) {
-      console.error("[certificates/generate] error Supabase Storage subiendo PDF", error);
-      throw new Error("No se pudo guardar el certificado porque la ruta del archivo contiene caracteres no permitidos.", { cause: error });
+      const detalle = { nombre: candidate.nombre_persona, documento: candidate.documento_persona, motivo: certificateErrorMessage(error) };
+      console.error("[certificates/generate] error por certificado", { tipo: candidate.tipo_certificado, ...detalle });
+      erroresDetalle.push(detalle);
     }
-
-    const certificateData = {
-      tipo_certificado: candidate.tipo_certificado,
-      nombre_persona: candidate.nombre_persona,
-      documento_persona: candidate.documento_persona,
-      rol_certificado: candidate.rol_certificado,
-      proyecto_id: candidate.proyecto_id,
-      evaluador_id: candidate.evaluador_id,
-      url_certificado: storagePath,
-      estado_certificado: "Generado",
-      created_at: new Date().toISOString(),
-    };
-    const { error: insertError } = existing
-      ? await supabase.from("certificados").update(certificateData).eq("id", existing.id)
-      : await supabase.from("certificados").insert(certificateData);
-
-    if (insertError) {
-      console.error("[certificates/generate] error Supabase guardando certificado", insertError);
-      throw insertError;
-    }
-
-    existingByKey.set(key, { ...certificateData, id: existing?.id ?? "", url_certificado: storagePath });
-    if (existing) regenerated += 1;
-    else generated += 1;
   }
 
   console.log("[certificates/generate] cantidad generada", generated);
   console.log("[certificates/generate] cantidad omitida por duplicado", skipped);
 
   return {
+    success: true,
+    total: candidates.length,
+    offset,
+    limit,
+    remaining: Math.max(0, candidates.length - offset - batch.length),
+    nextOffset: offset + batch.length,
+    omitidos: skipped,
+    errores: erroresDetalle.length,
+    erroresDetalle,
     tipo_certificado: tipoCertificado,
     candidatos: candidates.length,
     generados: generated,
     regenerados: regenerated,
     omitidos_por_duplicado: skipped,
-    message: candidates.length === 0 && tipoCertificado === "Evaluador productores campesinos"
-      ? "No hay evaluadores de productores campesinos con evaluaciones registradas."
-      : tipoCertificado === "Evaluador productores campesinos"
-        ? "Certificados de evaluadores de productores campesinos generados correctamente."
-        : undefined,
+    message: "Lote generado correctamente.",
   };
 }

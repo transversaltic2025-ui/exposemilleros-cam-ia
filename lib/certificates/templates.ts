@@ -17,7 +17,7 @@ export function isMissingTemplatesTableError(error: { code?: string; message?: s
 }
 
 export function templateTypeForCertificate(type: string): CertificateTemplateType {
-  if ((["General", "Ponentes", "Instructores", "Líder de proyecto", "Evaluadores", "Evaluador productores campesinos", "Productores campesinos", "Jóvenes emprendedores"] as string[]).includes(type)) {
+  if ((["General", "Investigador", "Ponentes", "Instructores", "Líder de proyecto", "Evaluadores", "Evaluador productores campesinos", "Productores campesinos", "Jóvenes emprendedores"] as string[]).includes(type)) {
     return type as CertificateTemplateType;
   }
   if (type === "Ponente") return "Ponentes";

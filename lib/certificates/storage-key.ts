@@ -11,6 +11,7 @@ export function sanitizeStorageKey(value: unknown) {
 
 export function certificateTypeToStorageFolder(tipo: string) {
   const folders: Record<string, string> = {
+    Investigador: "investigadores",
     Ponente: "ponentes",
     "Líder de proyecto": "lider-proyecto",
     Evaluador: "evaluadores",
