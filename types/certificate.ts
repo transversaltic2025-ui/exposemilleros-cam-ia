@@ -1,4 +1,14 @@
 export interface CertificateRecord {
+  certificado_firmado_path?: string | null;
+  certificado_firmado_nombre?: string | null;
+  certificado_firmado_tipo?: string | null;
+  certificado_firmado_size?: number | null;
+  certificado_firmado_at?: string | null;
+  certificado_firmado_subido_por?: string | null;
+  iniciativa_id?: string | null;
+  iniciativa_nombre?: string | null;
+  iniciativa_codigo?: string | null;
+  estado_firma?: "Pendiente de firma" | "Firmado" | "Reemplazado" | "Error de asociación" | null;
   id?: string;
   tipo_certificado?: "Participante" | "Ponente" | "Instructor" | "Líder de proyecto" | "Evaluador" | "Evaluador productores campesinos" | "Investigador";
   nombre_persona?: string;

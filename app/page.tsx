@@ -134,6 +134,10 @@ export default async function Home() {
         />
       </section>
 
+      <Link href="/certificados/consultar" className="mt-6 block rounded-2xl border border-[var(--color-border)] bg-white/65 p-5 hover:bg-white">
+        <span className="font-bold text-[var(--color-primary)]">Consultar certificados</span>
+        <p className="mt-1 text-sm text-[var(--color-muted)]">Descargue sus certificados firmados del evento.</p>
+      </Link>
       <FeriaServicesSlider />
     </SiteShell>
   );

@@ -12,7 +12,7 @@ export type StatusTone = keyof typeof toneClasses;
 
 export function getStatusTone(status?: string): StatusTone {
   const normalized = status?.toLowerCase() ?? "";
-  if (normalized.includes("complet") || normalized.includes("generado") || normalized.includes("activo")) {
+  if (normalized === "firmado" || normalized.includes("complet") || normalized.includes("generado") || normalized.includes("activo")) {
     return "success";
   }
   if (normalized.includes("asign") || normalized.includes("proceso") || normalized.includes("evalu")) {

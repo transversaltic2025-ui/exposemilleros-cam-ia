@@ -133,6 +133,20 @@ export default async function AdminCertificadosPage() {
       </div>
 
       <Card className="mt-6">
+        <CardHeader><CardTitle>Certificados firmados</CardTitle></CardHeader>
+        <CardContent>
+          <p className="text-sm text-[var(--color-muted)]">Suba los certificados PDF firmados para que los participantes puedan descargarlos desde la plataforma.</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link href="/admin/certificados/firmados" className={buttonVariants()}>Gestionar certificados firmados</Link>
+            <Link href="/admin/certificados/firmados#individual" className={buttonVariants({ variant: "outline" })}>Subir certificado firmado individual</Link>
+            <Link href="/admin/certificados/firmados#zip" className={buttonVariants({ variant: "outline" })}>Subir certificados firmados por ZIP</Link>
+            <Link href="/admin/certificados/firmados?estado=pendientes#listado" className={buttonVariants({ variant: "outline" })}>Ver certificados pendientes de firma</Link>
+            <Link href="/admin/certificados/firmados?estado=firmados#listado" className={buttonVariants({ variant: "outline" })}>Ver certificados firmados</Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
         <CardHeader><CardTitle className="flex items-center gap-2"><FileUp className="size-5 text-[var(--color-primary)]" />Plantilla oficial de certificados</CardTitle></CardHeader>
         <CardContent>
           <p className="text-sm text-[var(--color-muted)]">Suba y configure el PDF base que se utilizará para generar los certificados del evento.</p>
@@ -196,6 +210,7 @@ export default async function AdminCertificadosPage() {
                 <TableHead>Rol</TableHead>
                 <TableHead>Proyecto</TableHead>
                 <TableHead>Estado</TableHead>
+                <TableHead>Estado de firma</TableHead>
                 <TableHead>Certificado</TableHead>
               </TableRow>
             </TableHeader>
@@ -215,6 +230,10 @@ export default async function AdminCertificadosPage() {
                   </TableCell>
                   <TableCell>
                     <StatusPill status={certificado.estado_certificado ?? certificado.estado ?? "Pendiente"} />
+                  </TableCell>
+                  <TableCell>
+                    <StatusPill status={certificado.estado_firma ?? "Pendiente de firma"} />
+                    {certificado.certificado_firmado_path && <Link href={`/api/admin/certificados/firmados/descargar?id=${certificado.id}`} className="mt-2 block text-sm font-bold text-[var(--color-primary)] underline">Descargar firmado</Link>}
                   </TableCell>
                   <TableCell>
                     {certificado.signedUrl ? (
