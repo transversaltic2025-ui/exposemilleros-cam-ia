@@ -4,6 +4,7 @@ import { matchSignedCertificate } from "./signed-matching";
 import { listSignedCertificates, MAX_SIGNED_PDF, MAX_SIGNED_ZIP, saveSignedCertificate } from "./signed";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { UploadResult } from "@/types/signed-certificate";
+import { signedCertificateError } from "./signed-schema";
 
 async function boundedPdf(entry: JSZip.JSZipObject) {
   const chunks: Buffer[] = [];
@@ -36,7 +37,7 @@ export async function uploadSignedZip(bytes: Buffer, replace: boolean) {
     try {
       if (!match.certificate) {
         const { error } = await createSupabaseServerClient().from("certificados_firma_errores").insert({ archivo: result.archivo, documento: result.documento, motivo: result.motivo });
-        if (error) throw new Error("No fue posible registrar el error de asociación.");
+        if (error) result.motivo += ` ${signedCertificateError(error, "No fue posible guardar este resultado en el historial.")}`;
       } else if (seen.has(match.certificate.id)) {
         result.estado = "Duplicado"; result.motivo = "Otro PDF del ZIP corresponde al mismo certificado.";
       } else {
@@ -54,7 +55,7 @@ export async function uploadSignedZip(bytes: Buffer, replace: boolean) {
       }
     } catch (error) {
       result.estado = "Error";
-      result.motivo = error instanceof Error ? error.message : "No se pudo guardar el certificado firmado.";
+      result.motivo = signedCertificateError(error, "No se pudo guardar el certificado firmado.");
     }
     results.push(result);
   }

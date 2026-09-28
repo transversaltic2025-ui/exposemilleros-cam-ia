@@ -2,6 +2,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { certificateTypeToStorageFolder, sanitizeStorageKey } from "./storage-key";
 import { normalizeDocument } from "./signed-matching";
 import type { SignedCertificate } from "@/types/signed-certificate";
+import { CERTIFICATES_BUCKET } from "@/lib/supabase/storage";
+import { SIGNED_CERTIFICATE_COLUMNS, signedCertificateError } from "./signed-schema";
 
 export const MAX_SIGNED_PDF = 15 * 1024 * 1024;
 export const MAX_SIGNED_ZIP = 50 * 1024 * 1024;
@@ -11,15 +13,16 @@ export function validateSignedPdf(name: string, bytes: Buffer) {
   if (bytes.length > MAX_SIGNED_PDF) throw new Error("Cada PDF debe pesar máximo 15 MB.");
 }
 
-export async function listSignedCertificates(document?: string) {
+export async function listSignedCertificates(document?: string, missingColumns: readonly string[] = []) {
   const db = createSupabaseServerClient();
   const rows: SignedCertificate[] = [];
   for (let offset = 0; ; offset += 1000) {
-    let query = db.from("certificados").select("*").order("id").range(offset, offset + 999);
+    const required = SIGNED_CERTIFICATE_COLUMNS.filter(column => !missingColumns.includes(column));
+    let query = db.from("certificados").select(["*", ...required].join(",")).order("id").range(offset, offset + 999);
     if (document !== undefined) query = query.eq("documento_normalizado", normalizeDocument(document));
     const { data, error } = await query;
     if (error) throw error;
-    rows.push(...(data as SignedCertificate[]));
+    rows.push(...(data as unknown as SignedCertificate[]).map(row => ({ ...row, estado_firma: row.estado_firma ?? "Pendiente de firma" as const })));
     if (data.length < 1000) break;
   }
   const ids = [...new Set(rows.map(row => row.proyecto_id).filter(Boolean))] as string[];
@@ -45,7 +48,7 @@ export async function listSignedCertificates(document?: string) {
 
 export async function signedDownload(path: string, name?: string | null) {
   if (!/^firmados\/[a-z0-9-]+\/[a-z0-9-]+\.pdf$/.test(path)) throw new Error("Ruta de certificado firmado inválida.");
-  const { data, error } = await createSupabaseServerClient().storage.from("certificates")
+  const { data, error } = await createSupabaseServerClient().storage.from(CERTIFICATES_BUCKET)
     .createSignedUrl(path, 600, { download: name || true });
   if (error) throw error;
   return data.signedUrl;
@@ -62,10 +65,10 @@ export async function saveSignedCertificate(certificate: SignedCertificate, file
   // Keep the requested canonical name on first upload. Never overwrite an active
   // object before committing its new metadata; suffix collisions and replacements.
   let path = `firmados/${folder}/${base}${certificate.certificado_firmado_path ? `-${crypto.randomUUID()}` : ""}.pdf`;
-  let { error: uploadError } = await db.storage.from("certificates").upload(path, bytes, { contentType: "application/pdf", upsert: false });
+  let { error: uploadError } = await db.storage.from(CERTIFICATES_BUCKET).upload(path, bytes, { contentType: "application/pdf", upsert: false });
   if (uploadError && ("statusCode" in uploadError && String(uploadError.statusCode) === "409" || /already exists|duplicate/i.test(uploadError.message))) {
     path = `firmados/${folder}/${base}-${crypto.randomUUID()}.pdf`;
-    ({ error: uploadError } = await db.storage.from("certificates").upload(path, bytes, { contentType: "application/pdf", upsert: false }));
+    ({ error: uploadError } = await db.storage.from(CERTIFICATES_BUCKET).upload(path, bytes, { contentType: "application/pdf", upsert: false }));
   }
   if (uploadError) throw uploadError;
   let update = db.from("certificados").update({
@@ -79,11 +82,11 @@ export async function saveSignedCertificate(certificate: SignedCertificate, file
     : update.is("certificado_firmado_path", null);
   const { data, error } = await update.select("id");
   if (error || !data?.length) {
-    await db.storage.from("certificates").remove([path]);
-    throw new Error(error ? "No se pudo actualizar el registro del certificado." : "El certificado cambió durante la carga. Actualice e intente nuevamente.");
+    await db.storage.from(CERTIFICATES_BUCKET).remove([path]);
+    throw new Error(error ? signedCertificateError(error, "No se pudo actualizar el registro del certificado.") : "El certificado cambió durante la carga. Actualice e intente nuevamente.");
   }
   if (certificate.certificado_firmado_path?.startsWith("firmados/")) {
-    const { error: cleanupError } = await db.storage.from("certificates").remove([certificate.certificado_firmado_path]);
+    const { error: cleanupError } = await db.storage.from(CERTIFICATES_BUCKET).remove([certificate.certificado_firmado_path]);
     if (cleanupError) console.error("[certificados-firmados] No se pudo retirar la versión anterior", cleanupError);
   }
   return certificate.certificado_firmado_path ? "Reemplazado" as const : "Asociado" as const;

@@ -2,6 +2,8 @@
 
 Aplicar `docs/CERTIFICADOS_FIRMADOS.sql` en el SQL Editor de Supabase antes del despliegue. Es idempotente: agrega los campos faltantes, un documento normalizado calculado e indexado y una tabla privada para errores de asociación. No modifica los PDF generados ni sus referencias. Mantiene el bucket `certificates` privado y restringe su acceso directo a claves públicas. Las operaciones de Next.js usan `SUPABASE_SERVICE_ROLE_KEY`.
 
+El módulo comprueba individualmente las siete columnas de firma y `rol_participacion`, incluso si la tabla está vacía, e indica cada columna faltante. La migración incluye `rol_participacion`. Los registros disponibles siguen visibles cuando falta una columna o falla el historial de asociaciones; las cargas se deshabilitan si faltan columnas o no se puede verificar el bucket privado `certificates`. Un fallo del historial no impide cargar PDFs asociados. Los resultados no asociados siguen apareciendo en el informe ZIP aunque no se pueda persistir su historial. Los estados de firma nulos se leen como `Pendiente de firma`.
+
 ## Uso
 
 1. Generar y descargar los certificados desde el módulo existente. Firmarlos externamente.

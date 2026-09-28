@@ -13,7 +13,7 @@ const field = "w-full rounded-xl border border-[var(--color-border)] bg-white p-
 type UploadFields = { certificadoId: string; archivo: FileList; reemplazar: boolean };
 type ZipReport = { results: UploadResult[]; resumen: Record<string, number> };
 
-export function SignedManager({ certificates, errors, errorCount, initialStatus }: { certificates: SignedCertificate[]; errors: AssociationError[]; errorCount: number; initialStatus: string }) {
+export function SignedManager({ certificates, errors, errorCount, initialStatus, uploadsDisabled = false }: { certificates: SignedCertificate[]; errors: AssociationError[]; errorCount: number; initialStatus: string; uploadsDisabled?: boolean }) {
   const router = useRouter();
   const individual = useForm<UploadFields>();
   const zip = useForm<UploadFields>();
@@ -33,6 +33,7 @@ export function SignedManager({ certificates, errors, errorCount, initialStatus 
   const signed = certificates.filter(row => row.estado_firma === "Firmado" && row.certificado_firmado_path).length;
 
   async function upload(values: UploadFields, bulk: boolean) {
+    if (uploadsDisabled) return;
     const file = values.archivo?.[0];
     if (!file) { setMessage("Seleccione un archivo."); return; }
     if (file.size > (bulk ? 50 : 15) * 1024 * 1024 || !(bulk ? /\.zip$/i : /\.pdf$/i).test(file.name)) {
@@ -63,7 +64,7 @@ export function SignedManager({ certificates, errors, errorCount, initialStatus 
     ].map(([label, count]) => <Card key={label}><CardContent className="pt-5"><p className="text-sm">{label}</p><p className="mt-2 text-3xl font-bold">{count}</p></CardContent></Card>)}</div>
     <p role="status" aria-live="polite" className="font-medium">{busy ? "Procesando archivos. Espere a que termine la carga…" : message}</p>
     <Card id="individual"><CardHeader><CardTitle>Subir certificado firmado individual</CardTitle></CardHeader><CardContent>
-      <fieldset disabled={busy} className="space-y-4"><legend className="mb-3 font-semibold">Buscar certificado</legend>
+      <fieldset disabled={busy || uploadsDisabled} className="space-y-4"><legend className="mb-3 font-semibold">Buscar certificado</legend>
         <div className="grid gap-3 md:grid-cols-2">
           <label>Documento<input className={field} inputMode="numeric" value={search.documento} onChange={e => setSearch({ ...search, documento: e.target.value })} /></label>
           <label>Nombre<input className={field} value={search.nombre} onChange={e => setSearch({ ...search, nombre: e.target.value })} /></label>
@@ -81,7 +82,7 @@ export function SignedManager({ certificates, errors, errorCount, initialStatus 
     </CardContent></Card>
     <Card id="zip"><CardHeader><CardTitle>Subir certificados firmados por ZIP</CardTitle></CardHeader><CardContent>
       <p className="mb-4 text-sm">Máximo 50 MB, 200 archivos y 200 MB descomprimidos. Nombre cada PDF con el formato TIPO - NOMBRE COMPLETO - DOCUMENTO.pdf. Ejemplo: Evaluador - Yesny Alejandra Chavez Veloza - 1120563238.pdf. Se aceptan documentos al inicio, en medio o al final; el tipo al inicio permite distinguir los certificados de una misma persona.</p>
-      <form onSubmit={zip.handleSubmit(values => upload(values, true))}><fieldset disabled={busy} className="space-y-4">
+      <form onSubmit={zip.handleSubmit(values => upload(values, true))}><fieldset disabled={busy || uploadsDisabled} className="space-y-4">
         <label className="block">Archivo ZIP<input required type="file" accept=".zip,application/zip" className={field} {...zip.register("archivo", { required: true })} /></label>
         <label className="flex gap-2"><input type="checkbox" {...zip.register("reemplazar")} />Reemplazar los firmados existentes que coincidan</label>
         <Button type="submit" disabled={busy}>Subir ZIP</Button>

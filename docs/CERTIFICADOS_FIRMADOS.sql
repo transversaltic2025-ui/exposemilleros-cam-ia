@@ -8,6 +8,7 @@ alter table public.certificados
   add column if not exists certificado_firmado_at timestamptz,
   add column if not exists certificado_firmado_subido_por text,
   add column if not exists estado_firma text default 'Pendiente de firma',
+  add column if not exists rol_participacion text,
   add column if not exists documento_normalizado text generated always as
     (regexp_replace(coalesce(documento_persona::text, ''), '[^0-9]', '', 'g')) stored;
 create index if not exists certificados_documento_normalizado_idx on public.certificados(documento_normalizado);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { MAX_SIGNED_ZIP } from "@/lib/certificates/signed";
 import { uploadSignedZip } from "@/lib/certificates/signed-zip";
+import { signedCertificateError } from "@/lib/certificates/signed-schema";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -16,6 +17,6 @@ export async function POST(request: Request) {
     return NextResponse.json(await uploadSignedZip(Buffer.from(await file.arrayBuffer()), form.get("reemplazar") === "true"));
   } catch (error) {
     console.error("[firmados/zip]", error);
-    return NextResponse.json({ message: "No fue posible procesar el ZIP. Revise que sea válido, con máximo 200 archivos y 50 MB." }, { status: 400 });
+    return NextResponse.json({ message: signedCertificateError(error, "No fue posible procesar el ZIP. Revise que sea válido, con máximo 200 archivos y 50 MB.") }, { status: 400 });
   }
 }

@@ -18,6 +18,33 @@ function load(file, mocks = {}) {
 }
 
 async function main() {
+  const schema = load('lib/certificates/signed-schema.ts');
+  for (const column of schema.SIGNED_CERTIFICATE_COLUMNS) {
+    const expected = `Falta la columna certificados.${column}. Ejecute la migración de certificados firmados.`;
+    assert.equal(schema.signedCertificateError({ code: '42703', message: `column certificados.${column} does not exist` }), expected);
+    assert.equal(schema.signedCertificateError({ code: 'PGRST204', message: `Could not find the '${column}' column of 'certificados' in the schema cache` }), expected);
+  }
+  assert.match(schema.signedCertificateError({ code: 'PGRST205', message: "Could not find the table 'public.certificados_firma_errores' in the schema cache" }), /Falta la tabla certificados_firma_errores/);
+  assert.match(schema.signedCertificateError({ message: 'Bucket not found' }), /bucket certificates/);
+  const checkedColumns = [];
+  const diagnosticDb = {
+    from: table => ({ select(column, options) {
+      assert.equal(table, 'certificados'); assert.equal(options.head, true); checkedColumns.push(column);
+      return { limit: async () => ({ error: ['estado_firma', 'rol_participacion'].includes(column) ? { code: '42703' } : null }) };
+    } }),
+    storage: { getBucket: async bucket => { assert.equal(bucket, 'certificates'); return { data: { public: false }, error: null }; } },
+  };
+  const diagnostic = load('lib/certificates/signed-schema.ts', { '@/lib/supabase/server': { createSupabaseServerClient: () => diagnosticDb } });
+  assert.deepEqual(await diagnostic.inspectSignedCertificateColumns(), ['estado_firma', 'rol_participacion']);
+  assert.deepEqual(checkedColumns, [...schema.SIGNED_CERTIFICATE_COLUMNS]);
+  await diagnostic.inspectSignedCertificateBucket();
+  const listDb = { from: () => ({ select(columns) {
+    assert.equal(columns.split(',').includes('rol'), false);
+    assert.equal(columns.split(',').includes('rol_participacion'), false);
+    return { order: () => ({ range: async () => ({ data: [{ id: 'pending', estado_firma: null }], error: null }) }) };
+  } }) };
+  const listing = load('lib/certificates/signed.ts', { '@/lib/supabase/server': { createSupabaseServerClient: () => listDb } });
+  assert.equal((await listing.listSignedCertificates(undefined, ['rol_participacion']))[0].estado_firma, 'Pendiente de firma');
   const { normalizeDocument, documentFromFilename, matchSignedCertificate, parseSignedCertificateFilename } = load('lib/certificates/signed-matching.ts');
   assert.equal(normalizeDocument(' 1.029-988 863x'), '1029988863');
   assert.equal(normalizeDocument(40396189), '40396189');

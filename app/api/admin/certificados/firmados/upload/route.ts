@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { MAX_SIGNED_PDF, saveSignedCertificate } from "@/lib/certificates/signed";
 import type { SignedCertificate } from "@/types/signed-certificate";
 import { z } from "zod";
+import { SIGNED_CERTIFICATE_COLUMNS, signedCertificateError } from "@/lib/certificates/signed-schema";
 
 export const runtime = "nodejs";
 export async function POST(request: Request) {
@@ -16,10 +17,12 @@ export async function POST(request: Request) {
     const file = form.get("archivo");
     if (!(file instanceof File) || file.size > MAX_SIGNED_PDF) return NextResponse.json({ message: "Seleccione un PDF de máximo 15 MB." }, { status: 400 });
     const db = createSupabaseServerClient();
-    const { data, error } = await db.from("certificados").select("*").eq("id", id).single();
-    if (error || !data) return NextResponse.json({ message: "Certificado no encontrado." }, { status: 404 });
-    if (data.certificado_firmado_path && form.get("reemplazar") !== "true") return NextResponse.json({ message: "Confirme el reemplazo del certificado firmado." }, { status: 409 });
-    const estado = await saveSignedCertificate(data as SignedCertificate, file.name, Buffer.from(await file.arrayBuffer()), form.get("reemplazar") === "true");
+    const { data, error } = await db.from("certificados").select(["*", ...SIGNED_CERTIFICATE_COLUMNS].join(",")).eq("id", id).maybeSingle();
+    if (error) throw error;
+    if (!data) return NextResponse.json({ message: "Certificado no encontrado." }, { status: 404 });
+    const certificate = data as unknown as SignedCertificate;
+    if (certificate.certificado_firmado_path && form.get("reemplazar") !== "true") return NextResponse.json({ message: "Confirme el reemplazo del certificado firmado." }, { status: 409 });
+    const estado = await saveSignedCertificate(certificate, file.name, Buffer.from(await file.arrayBuffer()), form.get("reemplazar") === "true");
     const errorId = form.get("errorId");
     let warning = "";
     if (typeof errorId === "string" && z.string().uuid().safeParse(errorId).success) {
@@ -29,6 +32,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: `${estado}: certificado firmado guardado.${warning}` });
   } catch (error) {
     console.error("[firmados/upload]", error);
-    return NextResponse.json({ message: error instanceof Error ? error.message : "No se pudo subir el certificado." }, { status: 400 });
+    return NextResponse.json({ message: signedCertificateError(error, "No se pudo subir el certificado.") }, { status: 400 });
   }
 }
