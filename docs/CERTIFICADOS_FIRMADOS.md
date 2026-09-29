@@ -30,3 +30,20 @@ El módulo comprueba individualmente las siete columnas de firma y `rol_particip
 `node scripts/test-signed-certificates.cjs` cubre normalización, asociación, ambigüedad, duplicados ZIP, restricciones de archivos, reemplazo, fallos de persistencia y consulta pública. `node scripts/test-certificates.cjs` conserva la prueba de generación existente. Ejecutar `npm.cmd run build`.
 
 Para aceptación en Supabase: cargar un PDF, consultar su documento con y sin separadores, descargar, intentar reemplazar sin confirmar, reemplazar confirmado, subir ZIP mixto y resolver un error. Verificar acceso anónimo denegado al bucket y tabla, y expiración de un enlace transcurridos 10 minutos.
+
+
+## Carga ZIP directa a Storage (Vercel)
+
+Aplicar `docs/CERTIFICADOS_FIRMADOS_ZIP.sql` después de la migración base. Crea o adapta el historial sin borrar datos y permite ZIP de hasta 50 MB en el bucket existente. Revisar también que el límite global de Storage admita 50 MB. No se expone la clave de servicio al navegador.
+
+La interfaz obtiene una URL firmada en `create-zip-upload-url`, hace PUT del ZIP directamente a Storage y llama a `process-zip` (primer lote) y `process-zip-batch` (siguientes). Reciben `{zipPath, cursor, limit, replaceExisting}`; cursor predeterminado 0, límite predeterminado y máximo 30. Devuelven resultados por archivo, conteos, remaining y nextCursor. El endpoint antiguo responde JSON 410; Vercel puede rechazar su cuerpo antes de ejecutar código.
+
+Límites: 50 MB comprimidos, 200 entradas de archivo, 200 MB descomprimidos en el ZIP completo y 15 MB por PDF. Cada lote se detiene entre archivos después de 45 segundos de procesamiento y devuelve el cursor real. Se ignoran carpetas y metadatos __MACOSX.
+
+Si el historial no existe, los resultados siguen disponibles en pantalla y la carga continúa con un aviso. Resolver manualmente cambia estado a Resuelto. La coincidencia exige documento y tipo; los nombres normalizados desempatan registros múltiples. Un archivo duplicado en otro lote no reemplaza al primero.
+
+Mantener la página abierta hasta terminar. Ante un fallo de red se conservan resultados parciales; revisar antes de volver a enviar el ZIP, especialmente si se permite reemplazar. Los ZIP originales quedan en la carpeta privada `firmados/zips/`; retirarlos desde Storage cuando ya no sean necesarios. No eliminar los PDF asociados.
+
+Validación operativa: probar un ZIP mayor de 4,5 MB, al menos 31 PDF, documento inexistente, nombres ambiguos, reemplazo desactivado/activado y descarga pública del firmado. La prueba real requiere Supabase configurado y un despliegue Vercel.
+
+Contrato de URL firmada: enviar JSON `{fileName, fileType, fileSize}` a `create-zip-upload-url`; devuelve `{success, path, token, signedUrl}`. El nombre original se limpia y se agrega timestamp y UUID para evitar colisiones. Enviar el archivo por PUT a `signedUrl`, y usar `path` como `zipPath` al procesar. Nunca enviar el ZIP a Next.js. El progreso incluye los restantes desde la respuesta del primer lote.

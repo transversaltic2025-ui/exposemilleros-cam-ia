@@ -5,6 +5,7 @@ const navItems = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/proyectos-investigacion", label: "Proyectos de investigación", icon: FileText },
   { href: "/evaluadores/registro", label: "Evaluadores de proyectos", icon: UserRoundPlus },
+  { href: "/certificados/consultar", label: "Certificados", icon: FileText },
   { href: "/admin/login", label: "Admin", icon: ShieldCheck },
 ];
 

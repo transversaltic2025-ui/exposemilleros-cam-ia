@@ -16,10 +16,10 @@ export function documentFromFilename(filename: string) {
     return document.length >= 5 ? document : "";
   }
   // Legacy names may put the document at the beginning or in the middle.
-  // Count actual digits, not formatting characters, and reject ambiguity.
+  // Count actual digits and select the last eligible numeric sequence.
   const groups = basename.match(/(?<![\p{L}\d])\d[\d.\s]*(?![\p{L}\d])/gu) ?? [];
-  const documents = [...new Set(groups.map(normalizeDocument).filter(value => value.length >= 5))];
-  return documents.length === 1 ? documents[0] : "";
+  const documents = groups.map(normalizeDocument).filter(value => value.length >= 5);
+  return documents.at(-1) ?? "";
 }
 
 function certificateType(value: string) {
@@ -53,6 +53,10 @@ export function matchSignedCertificate(filename: string, rows: SignedCertificate
   let candidates = documento ? rows.filter(row => normalizeDocument(row.documento_persona) === documento) : [];
   // A recognized type must match even when only one record has this document.
   if (tipo) candidates = candidates.filter(row => certificateType(row.tipo_certificado ?? "") === tipo);
+  else candidates = [];
+  if (candidates.length > 1 && nombre) {
+    candidates = candidates.filter(row => sanitizeStorageKey(row.nombre_persona) === sanitizeStorageKey(nombre));
+  }
   return { documento, tipo, nombre, certificate: candidates.length === 1 ? candidates[0] : null,
     motivo: !documento ? "No se detectó un documento único en el nombre." : candidates.length > 1
       ? "Varios certificados coinciden. Seleccione el registro en la carga individual."

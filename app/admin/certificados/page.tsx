@@ -138,10 +138,10 @@ export default async function AdminCertificadosPage() {
           <p className="text-sm text-[var(--color-muted)]">Suba los certificados PDF firmados para que los participantes puedan descargarlos desde la plataforma.</p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Link href="/admin/certificados/firmados" className={buttonVariants()}>Gestionar certificados firmados</Link>
-            <Link href="/admin/certificados/firmados#individual" className={buttonVariants({ variant: "outline" })}>Subir certificado firmado individual</Link>
-            <Link href="/admin/certificados/firmados#zip" className={buttonVariants({ variant: "outline" })}>Subir certificados firmados por ZIP</Link>
-            <Link href="/admin/certificados/firmados?estado=pendientes#listado" className={buttonVariants({ variant: "outline" })}>Ver certificados pendientes de firma</Link>
-            <Link href="/admin/certificados/firmados?estado=firmados#listado" className={buttonVariants({ variant: "outline" })}>Ver certificados firmados</Link>
+            <Link href="/admin/certificados/firmados" className={buttonVariants({ variant: "outline" })}>Subir certificado firmado individual</Link>
+            <Link href="/admin/certificados/firmados" className={buttonVariants({ variant: "outline" })}>Subir certificados firmados por ZIP</Link>
+            <Link href="/admin/certificados/firmados?estado=Pendiente%20de%20firma" className={buttonVariants({ variant: "outline" })}>Ver certificados pendientes de firma</Link>
+            <Link href="/admin/certificados/firmados?estado=Firmado" className={buttonVariants({ variant: "outline" })}>Ver certificados firmados</Link>
           </div>
         </CardContent>
       </Card>

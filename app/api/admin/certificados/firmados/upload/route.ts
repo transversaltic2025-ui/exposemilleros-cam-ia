@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     const errorId = form.get("errorId");
     let warning = "";
     if (typeof errorId === "string" && z.string().uuid().safeParse(errorId).success) {
-      const { error: resolveError } = await db.from("certificados_firma_errores").update({ resuelto: true }).eq("id", errorId);
+      const { error: resolveError } = await db.from("certificados_firma_errores").update({ estado: "Resuelto", certificado_id: id }).eq("id", errorId);
       if (resolveError) warning = " El firmado se guardó, pero no se pudo cerrar el error de asociación.";
     }
     return NextResponse.json({ message: `${estado}: certificado firmado guardado.${warning}` });

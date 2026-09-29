@@ -1,5 +1,6 @@
 "use client";
 
+import { readUploadResponse } from "@/lib/certificates/upload-response";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -11,7 +12,7 @@ import type { AssociationError, SignedCertificate, UploadResult } from "@/types/
 
 const field = "w-full rounded-xl border border-[var(--color-border)] bg-white p-3 text-sm";
 type UploadFields = { certificadoId: string; archivo: FileList; reemplazar: boolean };
-type ZipReport = { results: UploadResult[]; resumen: Record<string, number> };
+type ZipReport = { results: UploadResult[]; resumen: Record<string, number>; remaining: number | null };
 
 export function SignedManager({ certificates, errors, errorCount, initialStatus, uploadsDisabled = false }: { certificates: SignedCertificate[]; errors: AssociationError[]; errorCount: number; initialStatus: string; uploadsDisabled?: boolean }) {
   const router = useRouter();
@@ -43,17 +44,45 @@ export function SignedManager({ certificates, errors, errorCount, initialStatus,
     setBusy(true); setMessage("");
     if (bulk) setReport(null);
     try {
-      const form = new FormData();
-      form.set("archivo", file); form.set("reemplazar", String(Boolean(values.reemplazar)));
-      if (!bulk) { form.set("certificadoId", values.certificadoId); if (errorId) form.set("errorId", errorId); }
-      const response = await fetch(`/api/admin/certificados/firmados/${bulk ? "upload-zip" : "upload"}`, { method: "POST", body: form });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message || "No se pudo completar la carga.");
-      if (bulk) { setReport(result); zip.reset(); setMessage("Carga ZIP procesada. Revise el resultado de cada archivo."); }
-      else { setMessage(result.message); individual.reset(); setErrorId(""); }
+      if (bulk) {
+        const post = async (endpoint: string, body: object) => readUploadResponse(await fetch(`/api/admin/certificados/firmados/${endpoint}`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+        }));
+        setMessage("Preparando carga directa a Supabase Storage...");
+        const prepared = await post("create-zip-upload-url", { fileName: file.name, fileType: file.type, fileSize: file.size });
+        setMessage("Subiendo ZIP a Supabase Storage...");
+        await readUploadResponse(await fetch(prepared.signedUrl, { method: "PUT", headers: { "Content-Type": "application/zip" }, body: file }));
+        const aggregate: ZipReport = { results: [], resumen: { procesados: 0, asociados: 0, noAsociados: 0, errores: 0, duplicados: 0, reemplazados: 0 }, remaining: null };
+        setReport({ results: [], resumen: { ...aggregate.resumen }, remaining: null });
+        let cursor = 0;
+        let remaining = 1;
+        const warnings = new Set<string>();
+        while (remaining > 0) {
+          setMessage("Procesando certificados firmados...");
+          const batch = await post(cursor === 0 ? "process-zip" : "process-zip-batch", {
+            zipPath: prepared.path, cursor, limit: 30, replaceExisting: Boolean(values.reemplazar),
+          });
+          if (!Array.isArray(batch.results) || !Number.isInteger(batch.nextCursor) || batch.nextCursor <= cursor || !Number.isInteger(batch.remaining) || batch.remaining < 0) throw new Error("Respuesta de lote inválida. Revise los resultados parciales.");
+          aggregate.results.push(...batch.results);
+          for (const [key, value] of Object.entries(batch.resumen as Record<string, number>)) aggregate.resumen[key] = (aggregate.resumen[key] ?? 0) + value;
+          if (batch.warning) warnings.add(batch.warning);
+          setReport({ results: [...aggregate.results], resumen: { ...aggregate.resumen }, remaining: batch.remaining });
+          cursor = batch.nextCursor;
+          remaining = batch.remaining;
+        }
+        zip.reset();
+        setMessage(`Carga ZIP procesada. Revise el resultado de cada archivo. ${[...warnings].join(" ")}`);
+      } else {
+        const form = new FormData();
+        form.set("archivo", file); form.set("reemplazar", String(Boolean(values.reemplazar)));
+        form.set("certificadoId", values.certificadoId);
+        if (errorId) form.set("errorId", errorId);
+        const result = await readUploadResponse(await fetch("/api/admin/certificados/firmados/upload", { method: "POST", body: form }));
+        setMessage(result.message); individual.reset(); setErrorId("");
+      }
       router.refresh();
     } catch (error) { setMessage(error instanceof Error ? error.message : "No se pudo completar la carga. Intente nuevamente."); }
-    finally { setBusy(false); }
+    finally { setBusy(false); router.refresh(); }
   }
 
   return <div className="space-y-6">
@@ -62,7 +91,7 @@ export function SignedManager({ certificates, errors, errorCount, initialStatus,
       ["Pendientes de firma", certificates.filter(row => !row.certificado_firmado_path && (!row.estado_firma || row.estado_firma === "Pendiente de firma")).length],
       ["Certificados firmados", signed], ["Errores de asociación", errorCount + certificates.filter(row => row.estado_firma === "Error de asociación").length],
     ].map(([label, count]) => <Card key={label}><CardContent className="pt-5"><p className="text-sm">{label}</p><p className="mt-2 text-3xl font-bold">{count}</p></CardContent></Card>)}</div>
-    <p role="status" aria-live="polite" className="font-medium">{busy ? "Procesando archivos. Espere a que termine la carga…" : message}</p>
+    <p role="status" aria-live="polite" className="font-medium">{message || (busy ? "Procesando archivos..." : "")}</p>
     <Card id="individual"><CardHeader><CardTitle>Subir certificado firmado individual</CardTitle></CardHeader><CardContent>
       <fieldset disabled={busy || uploadsDisabled} className="space-y-4"><legend className="mb-3 font-semibold">Buscar certificado</legend>
         <div className="grid gap-3 md:grid-cols-2">
@@ -81,15 +110,15 @@ export function SignedManager({ certificates, errors, errorCount, initialStatus,
       </fieldset>
     </CardContent></Card>
     <Card id="zip"><CardHeader><CardTitle>Subir certificados firmados por ZIP</CardTitle></CardHeader><CardContent>
-      <p className="mb-4 text-sm">Máximo 50 MB, 200 archivos y 200 MB descomprimidos. Nombre cada PDF con el formato TIPO - NOMBRE COMPLETO - DOCUMENTO.pdf. Ejemplo: Evaluador - Yesny Alejandra Chavez Veloza - 1120563238.pdf. Se aceptan documentos al inicio, en medio o al final; el tipo al inicio permite distinguir los certificados de una misma persona.</p>
+      <p className="mb-4 text-sm">ZIP máximo recomendado: 50 MB. Máximo 200 PDF por ZIP y máximo 200 MB descomprimidos; cada PDF admite hasta 15 MB. El ZIP se sube directamente a Supabase Storage y se procesa por lotes de hasta 30 PDF. Mantenga esta página abierta hasta terminar. Nombre cada PDF con el formato TIPO - NOMBRE COMPLETO - DOCUMENTO.pdf. Ejemplo: Evaluador - Yesny Alejandra Chavez Veloza - 1120563238.pdf.</p>
       <form onSubmit={zip.handleSubmit(values => upload(values, true))}><fieldset disabled={busy || uploadsDisabled} className="space-y-4">
         <label className="block">Archivo ZIP<input required type="file" accept=".zip,application/zip" className={field} {...zip.register("archivo", { required: true })} /></label>
         <label className="flex gap-2"><input type="checkbox" {...zip.register("reemplazar")} />Reemplazar los firmados existentes que coincidan</label>
         <Button type="submit" disabled={busy}>Subir ZIP</Button>
       </fieldset></form>
-      {report && <div className="mt-6 space-y-4"><div className="flex flex-wrap gap-4">{Object.entries({ "PDFs procesados": report.resumen.procesados, "Asociados correctamente": report.resumen.asociados, "No asociados": report.resumen.noAsociados, Duplicados: report.resumen.duplicados, Reemplazados: report.resumen.reemplazados, Errores: report.resumen.errores }).map(([key, value]) => <p key={key}>{key}: <b>{value}</b></p>)}</div><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr>{["Archivo", "Documento detectado", "Certificado asociado", "Estado", "Motivo"].map(label => <th className="p-2" key={label}>{label}</th>)}</tr></thead><tbody>{report.results.map((row, index) => <tr key={index} className="border-t"><td className="p-2 break-all">{row.archivo}</td><td className="p-2">{row.documento || "No detectado"}</td><td className="p-2">{row.certificado ?? "Sin asociación"}</td><td className="p-2">{row.estado}</td><td className="p-2">{row.motivo}</td></tr>)}</tbody></table></div></div>}
+      {report && <div className="mt-6 space-y-4"><div className="flex flex-wrap gap-4">{Object.entries({ "PDFs procesados": report.resumen.procesados, "Asociados correctamente": report.resumen.asociados, "No asociados": report.resumen.noAsociados, Duplicados: report.resumen.duplicados, Reemplazados: report.resumen.reemplazados, Errores: report.resumen.errores, Restantes: report.remaining ?? "Calculando..." }).map(([key, value]) => <p key={key}>{key}: <b>{value}</b></p>)}</div><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr>{["Archivo", "Tipo detectado", "Documento detectado", "Certificado asociado", "Estado", "Motivo"].map(label => <th className="p-2" key={label}>{label}</th>)}</tr></thead><tbody>{report.results.map((row, index) => <tr key={index} className="border-t"><td className="p-2 break-all">{row.archivo}</td><td className="p-2">{row.tipo || "No detectado"}</td><td className="p-2">{row.documento || "No detectado"}</td><td className="p-2">{row.certificado ?? "Sin asociación"}</td><td className="p-2">{row.estado}</td><td className="p-2">{row.motivo}</td></tr>)}</tbody></table></div></div>}
     </CardContent></Card>
-    {errors.length > 0 && <Card><CardHeader><CardTitle>Errores de asociación pendientes</CardTitle></CardHeader><CardContent><p className="mb-3 text-sm">Mostrando los {errors.length} errores más recientes de {errorCount}. Los archivos no asociados deben adjuntarse nuevamente al resolverlos.</p><ul className="space-y-3">{errors.map(row => <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"><div className="min-w-0"><StatusPill status="Error de asociación" /><p className="break-all font-semibold">{row.archivo}</p><p>{row.documento} · {row.motivo}</p></div><Button disabled={busy} variant="outline" onClick={() => { setErrorId(row.id); individual.reset(); setSearch({ documento: row.documento, nombre: "", tipo: "", proyecto: "" }); document.getElementById("individual")?.scrollIntoView({ behavior: "smooth" }); }}>Resolver manualmente</Button></li>)}</ul></CardContent></Card>}
+    {errors.length > 0 && <Card><CardHeader><CardTitle>Errores de asociación pendientes</CardTitle></CardHeader><CardContent><p className="mb-3 text-sm">Mostrando los {errors.length} errores más recientes de {errorCount}. Los archivos no asociados deben adjuntarse nuevamente al resolverlos.</p><ul className="space-y-3">{errors.map(row => <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"><div className="min-w-0"><StatusPill status="Error de asociación" /><p className="break-all font-semibold">{row.archivo}</p><p>{row.documento} · {row.motivo}</p></div><Button disabled={busy} variant="outline" onClick={() => { setErrorId(row.id); individual.reset(); setSearch({ documento: row.documento ?? "", nombre: "", tipo: "", proyecto: "" }); document.getElementById("individual")?.scrollIntoView({ behavior: "smooth" }); }}>Resolver manualmente</Button></li>)}</ul></CardContent></Card>}
     <Card id="listado"><CardHeader><CardTitle>Estado de firma de certificados</CardTitle></CardHeader><CardContent>
       <div className="mb-4 flex flex-wrap gap-3">{["Todos", "Pendiente de firma", "Firmado", "Error de asociación", "Reemplazado"].map(value => <Button key={value} variant={status === value ? "default" : "outline"} onClick={() => setStatus(value)}>{value}</Button>)}</div>
       <p className="mb-3 text-sm">{rows.length} certificados. Se aplican los filtros de búsqueda de la carga individual.</p>

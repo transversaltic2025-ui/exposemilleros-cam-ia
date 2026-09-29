@@ -13,7 +13,7 @@ export function validateSignedPdf(name: string, bytes: Buffer) {
   if (bytes.length > MAX_SIGNED_PDF) throw new Error("Cada PDF debe pesar máximo 15 MB.");
 }
 
-export async function listSignedCertificates(document?: string, missingColumns: readonly string[] = []) {
+export async function listSignedCertificates(document?: string, missingColumns: readonly string[] = [], warnings: string[] = []) {
   const db = createSupabaseServerClient();
   const rows: SignedCertificate[] = [];
   for (let offset = 0; ; offset += 1000) {
@@ -28,7 +28,11 @@ export async function listSignedCertificates(document?: string, missingColumns: 
   const ids = [...new Set(rows.map(row => row.proyecto_id).filter(Boolean))] as string[];
   for (let offset = 0; offset < ids.length; offset += 100) {
     const { data, error } = await db.from("proyectos").select("id,nombre_proyecto,codigo_proyecto").in("id", ids.slice(offset, offset + 100));
-    if (error) throw error;
+    if (error) {
+      console.error("[firmados/proyectos]", error);
+      warnings.push(signedCertificateError(error, "No se pudieron consultar los nombres de proyectos."));
+      continue;
+    }
     for (const project of data ?? []) for (const row of rows) if (row.proyecto_id === project.id) {
       row.proyecto_nombre = project.nombre_proyecto;
       row.proyecto_codigo = project.codigo_proyecto;
@@ -37,7 +41,11 @@ export async function listSignedCertificates(document?: string, missingColumns: 
   const initiativeIds = [...new Set(rows.map(row => row.iniciativa_id).filter(Boolean))] as string[];
   for (let offset = 0; offset < initiativeIds.length; offset += 100) {
     const { data, error } = await db.from("productores_iniciativas").select("id,nombre_iniciativa,codigo_iniciativa").in("id", initiativeIds.slice(offset, offset + 100));
-    if (error) throw error;
+    if (error) {
+      console.error("[firmados/iniciativas]", error);
+      warnings.push(signedCertificateError(error, "No se pudieron consultar los nombres de iniciativas."));
+      continue;
+    }
     for (const initiative of data ?? []) for (const row of rows) if (row.iniciativa_id === initiative.id) {
       row.iniciativa_nombre = initiative.nombre_iniciativa;
       row.iniciativa_codigo = initiative.codigo_iniciativa;

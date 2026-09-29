@@ -13,7 +13,7 @@ async function main() {
     if (error) process.exitCode = 1;
     if (error && !error.code) return;
   }
-  const { error: historyError } = await db.from('certificados_firma_errores').select('id,archivo,documento,motivo,resuelto,created_at', { head: true }).limit(0);
+  const { error: historyError } = await db.from('certificados_firma_errores').select('id,archivo_nombre,documento_detectado,tipo_detectado,certificado_id,estado,motivo,detalle_tecnico,created_at', { head: true }).limit(0);
   console.log(`certificados_firma_errores: ${historyError ? historyError.code || 'CONNECTION_ERROR' : 'OK'}`);
   for (const [table, columns] of [
     ['certificados', '*,certificado_firmado_path,certificado_firmado_nombre,certificado_firmado_tipo,certificado_firmado_size,certificado_firmado_at,certificado_firmado_subido_por,estado_firma,rol_participacion'],
@@ -25,6 +25,10 @@ async function main() {
   }
   const { data, error } = await db.storage.getBucket('certificates');
   console.log(`bucket certificates: ${error ? error.status || error.statusCode || 'CONNECTION_ERROR' : data.public ? 'PUBLIC' : 'PRIVATE'}`);
+  if (data) {
+    console.log(`bucket size limit: ${data.file_size_limit ?? 'global'}`);
+    console.log(`bucket allows ZIP: ${!data.allowed_mime_types || data.allowed_mime_types.includes('application/zip') || data.allowed_mime_types.includes('application/*') || data.allowed_mime_types.includes('*/*') ? 'YES' : 'NO'}`);
+  }
   if (historyError || error || data?.public) process.exitCode = 1;
 }
 main().catch(() => { console.error('No fue posible ejecutar el diagnóstico. Verifique la configuración y conexión del servidor.'); process.exitCode = 1; });

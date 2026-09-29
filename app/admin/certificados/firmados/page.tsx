@@ -1,3 +1,4 @@
+import { signedStatusFilter } from "@/lib/certificates/signed-status";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin-auth";
 import { listSignedCertificates } from "@/lib/certificates/signed";
@@ -20,7 +21,7 @@ export default async function SignedCertificatesPage({ searchParams }: { searchP
     inspectSignedCertificateColumns(),
     inspectSignedCertificateBucket(),
     (async () => {
-      const result = await createSupabaseServerClient().from("certificados_firma_errores").select("id,archivo,documento,motivo", { count: "exact" }).eq("resuelto", false).order("created_at", { ascending: false }).limit(200);
+      const result = await createSupabaseServerClient().from("certificados_firma_errores").select("id,archivo:archivo_nombre,documento:documento_detectado,motivo", { count: "exact" }).in("estado", ["No asociado", "Error"]).order("created_at", { ascending: false }).limit(200);
       if (result.error) throw result.error;
       return result;
     })(),
@@ -38,7 +39,7 @@ export default async function SignedCertificatesPage({ searchParams }: { searchP
     warnings.push(`${signedCertificateError(associationErrors.reason, "No se pudo cargar el historial de errores de asociación.")} El historial no está disponible; puede consultar los certificados.`);
   }
   try {
-    certificates = await listSignedCertificates(undefined, missingColumns);
+    certificates = await listSignedCertificates(undefined, missingColumns, warnings);
   } catch (error) {
     console.error("[firmados/admin] No se pudo consultar el módulo", error);
     warnings.push(signedCertificateError(error));
@@ -49,6 +50,6 @@ export default async function SignedCertificatesPage({ searchParams }: { searchP
       <h1 className="expo-page-title mt-4">Certificados firmados</h1>
       <p className="my-4 text-[var(--color-muted)]">Suba los certificados PDF firmados para que los participantes puedan descargarlos desde la plataforma.</p>
       {warnings.length > 0 && <div role="alert" className="my-5 space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">{[...new Set(warnings)].map(message => <p key={message}>{message}</p>)}{uploadsDisabled && <p>Las cargas están deshabilitadas hasta corregir la configuración. Los registros disponibles se muestran abajo.</p>}</div>}
-      <SignedManager certificates={certificates} errors={errors} errorCount={errorCount} uploadsDisabled={uploadsDisabled} initialStatus={estado === "firmados" ? "Firmado" : estado === "pendientes" ? "Pendiente de firma" : "Todos"} />
+      <SignedManager key={signedStatusFilter(estado)} certificates={certificates} errors={errors} errorCount={errorCount} uploadsDisabled={uploadsDisabled} initialStatus={signedStatusFilter(estado)} />
     </SiteShell>;
 }
